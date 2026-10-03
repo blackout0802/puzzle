@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>04 かいだんステップ</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 04: 2枚→3枚→4枚→6枚→9枚。クリアするごとに階段をのぼる、段階式 */
+body{background:linear-gradient(#8ed8ff,#d9f4ff 55%,#fff)}
+.cloud{position:fixed;background:#fff;border-radius:40px;opacity:.9;animation:drift 40s linear infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud:before{width:55%;height:140%;left:12%;top:-60%}.cloud:after{width:40%;height:110%;right:14%;top:-40%}
+@keyframes drift{from{transform:translateX(-30vw)}to{transform:translateX(130vw)}}
+#steps{position:fixed;top:max(8px,env(safe-area-inset-top));right:10px;height:56px;display:flex;align-items:flex-end;gap:4px;z-index:40}
+.step{width:30px;border-radius:6px 6px 0 0;background:rgba(255,255,255,.7);position:relative;transition:background .4s}
+.step.done{background:#ffc61a}
+.step.done:after{content:"★";position:absolute;top:-2px;left:0;right:0;text-align:center;color:#fff;font-size:15px;line-height:20px}
+.step.cur{background:#fff;box-shadow:0 0 0 3px #ff8a3c}
+#ball{position:absolute;bottom:100%;left:50%;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff9a9a,#ff3d3d);transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+#frame{position:absolute;border-radius:18px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 5px #fff,0 8px 20px rgba(0,0,0,.18)}
+#frame .gh{position:absolute;inset:0;width:100%;height:100%;opacity:.28;border-radius:18px}
+.pc{position:absolute;border-radius:14px;box-shadow:0 4px 8px rgba(0,0,0,.3);transform:rotate(var(--tilt,0deg))}
+.pc.placed{box-shadow:none;border-radius:0;transform:none}
+#go{position:fixed;left:50%;margin-left:-48px;bottom:7%;z-index:70;width:96px;height:96px;border-radius:50%;border:0;background:#3ec598;color:#fff;font-size:44px;box-shadow:0 7px 0 #249a74;display:none;animation:jump .6s infinite alternate}
+@keyframes jump{to{transform:translateY(-14px)}}
+#hintBtn{position:fixed;left:62px;top:max(10px,env(safe-area-inset-top));z-index:60;width:44px;height:44px;border-radius:50%;border:0;background:#fff;font-size:20px;font-weight:800;color:#e69a00;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.hint{position:absolute;border:4px solid #ffc61a;border-radius:14px;background:rgba(255,198,26,.35);animation:hint .5s 4 alternate;pointer-events:none}
+@keyframes hint{to{transform:scale(1.12)}}
+</style></head><body>
+<div class="cloud" style="top:14%;width:120px;height:34px"></div>
+<div class="cloud" style="top:48%;width:90px;height:26px;animation-delay:-18s"></div>
+<a class="home" href="index.html">⌂</a>
+<button id="hintBtn">?</button>
+<div id="steps"></div>
+<div id="frame"></div>
+<button id="go">▶</button>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const LEVELS = [2, 3, 4, 6, 9];
+const st = {lv: 0};
+const frame = $('#frame'), steps = $('#steps'), go = $('#go');
+let pieces = [];
+
+function drawSteps(climb) {
+  steps.innerHTML = '';
+  LEVELS.forEach((n, i) => {
+    const s = PZ.el('div', 'step', steps); s.style.height = 18 + i * 9 + 'px';
+    if (i < st.lv) s.classList.add('done');
+    if (i === st.lv) { s.classList.add('cur'); const b = PZ.el('div', '', s); b.id = 'ball'; if (climb) { b.style.transform = 'translate(-30px,18px)'; requestAnimationFrame(() => requestAnimationFrame(() => (b.style.transform = ''))); } }
+  });
+}
+/* 盤面(上)と、ピースを置く場所(下)がどちらも画面に入る最大の大きさを探す */
+function layout(n, portrait) {
+  const [rows, cols] = PZ.grid(n, portrait);
+  for (let cell = Math.min(240, Math.floor((innerWidth - 32) / cols)); cell >= 48; cell -= 4) {
+    if (portrait) {
+      const per = Math.max(1, Math.floor((innerWidth - 12) / (cell + 8))), tr = Math.ceil(n / per);
+      if (74 + rows * cell + 18 + tr * (cell + 8) + 8 <= innerHeight) return {rows, cols, cell, per};
+    } else {
+      const per = Math.max(1, Math.floor((innerWidth - (cols * cell + 90)) / (cell + 8))), tr = Math.ceil(n / per);
+      if (per >= 1 && rows * cell + 90 <= innerHeight && tr * (cell + 8) + 70 <= innerHeight) return {rows, cols, cell, per};
+    }
+  }
+  return {rows, cols, cell: 48, per: 4};
+}
+async function start() {
+  go.style.display = 'none'; $$('.pc,.hint').forEach((e) => e.remove()); frame.innerHTML = '';
+  const n = LEVELS[st.lv], portrait = PZ.isPortrait();
+  const {rows, cols, cell, per} = layout(n, portrait);
+  const W = cols * cell, H = rows * cell, bx = portrait ? (innerWidth - W) / 2 : 40, by = portrait ? 74 : (innerHeight - H) / 2 + 20;
+  Object.assign(frame.style, {left: bx + 'px', top: by + 'px', width: W + 'px', height: H + 'px'});
+  const src = await PZ.artCanvas(PZ.art[st.lv], W, H);
+  const g = new Image(); g.className = 'gh'; g.src = src.toDataURL(); frame.appendChild(g);
+  pieces = [];
+  PZ.shuffle([...Array(n).keys()]).forEach((i, k) => {
+    const r = Math.floor(i / cols), c = i % cols, rr = Math.floor(k / per), cc = k % per, inRow = Math.min(per, n - rr * per);
+    const el = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, null, true); el.className = 'pc';
+    el.style.setProperty('--tilt', (Math.random() * 6 - 3).toFixed(1) + 'deg');
+    let x, y;
+    if (portrait) { x = (innerWidth - inRow * (cell + 8) + 8) / 2 + cc * (cell + 8); y = by + H + 18 + rr * (cell + 8); }
+    else { const x0 = bx + W + 40, rowsAvail = innerWidth - x0; x = x0 + (rowsAvail - inRow * (cell + 8) + 8) / 2 + cc * (cell + 8); y = 70 + rr * (cell + 8); }
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    document.body.appendChild(el);
+    pieces.push({el, i, tx: bx + c * cell, ty: by + r * cell, cell});
+  });
+  PZ.snapDrag(pieces, {snap: (p) => p.cell * .85, onWin: win});
+}
+function win() {
+  PZ.win({say: PZ.art[st.lv].say});
+  const last = st.lv === LEVELS.length - 1;
+  go.textContent = last ? '↻' : '▶'; go.style.display = 'block';
+}
+go.onclick = () => {
+  if (st.lv === LEVELS.length - 1) st.lv = 0; else st.lv++;
+  drawSteps(true); start();
+};
+$('#hintBtn').onclick = () => {
+  const p = pieces.find((q) => !q.placed); if (!p) return;
+  const h = PZ.el('div', 'hint', document.body);
+  Object.assign(h.style, {left: p.tx + 'px', top: p.ty + 'px', width: p.cell + 'px', height: p.cell + 'px'}); p.el.style.zIndex = 99;
+  setTimeout(() => h.remove(), 2200);
+};
+PZ.onLayoutChange(start); drawSteps(false); start();
+</script></body></html>

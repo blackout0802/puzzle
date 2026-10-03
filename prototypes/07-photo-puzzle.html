@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>07 しゃしんパズル</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 07: 好きな写真をパズルに。写真は端末の中だけで処理（外に送らない）。選ぶ操作は保護者ゲートの先 */
+body{background:#2b2d34;color:#fff}
+.scr{position:absolute;inset:0;display:none}
+.scr.on{display:block}
+/* えらぶ画面 */
+#pick{overflow-y:auto;touch-action:pan-y;padding:70px 16px 24px}
+#pick h1{margin:0 0 4px;font-size:22px}
+#pick p.note{margin:0 0 14px;color:#b9bdc9;font-size:13px;line-height:1.5}
+#thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-bottom:16px}
+.th{aspect-ratio:1;border-radius:12px;overflow:hidden;border:4px solid transparent;background:#444;padding:0}
+.th img{width:100%;height:100%;object-fit:cover}
+.th.on{border-color:#ffd93d}
+.th.add{display:grid;place-items:center;background:#3c4a8a;color:#fff;font-size:34px;border:4px dashed #8ea0ff}
+.th.add small{display:block;font-size:11px;margin-top:-6px}
+.row{display:flex;gap:8px;align-items:center;margin:8px 0 18px}
+.row button{flex:1;height:54px;border:0;border-radius:14px;background:#454a5a;color:#fff;font-size:22px;font-weight:800}
+.row button.on{background:#ffd93d;color:#2b2d34}
+#go{width:100%;height:68px;border:0;border-radius:18px;background:#3ec598;color:#fff;font-size:26px;font-weight:900;box-shadow:0 6px 0 #249a74}
+/* あそぶ画面 */
+#play{background:radial-gradient(#4a4e5a,#23252b)}
+#frame{position:absolute;background:#111;box-shadow:0 0 0 10px #fff,0 0 0 11px #bbb,0 14px 30px rgba(0,0,0,.6)}
+#frame img{position:absolute;inset:0;width:100%;height:100%;opacity:.18}
+#frame.peek img{opacity:1;z-index:50}
+.pc{position:absolute;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+.pc.placed{filter:none}
+#bar{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:60;display:flex;gap:6px}
+#bar button{min-width:50px;height:46px;padding:0 14px;border:0;border-radius:23px;background:#fff;color:#2b2d34;font-size:17px;font-weight:800}
+#peek{background:#ffd93d !important}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<input type="file" id="file" accept="image/*" hidden>
+<section class="scr on" id="pick">
+  <h1>しゃしんで パズル</h1>
+  <p class="note">🔒 写真は この たんまつ の中だけで使います。インターネットには送りません。保存もしません。</p>
+  <div id="thumbs"></div>
+  <div class="row" id="cnt"><button data-n="4">4</button><button data-n="6">6</button><button data-n="9">9</button><button data-n="12">12</button></div>
+  <button id="go">はじめる ▶</button>
+</section>
+<section class="scr" id="play">
+  <div id="bar"><button id="back">えらぶ</button><button id="peek">みほん</button></div>
+  <div id="frame"></div>
+</section>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const st = {n: 6, sel: 0, photos: []};   // sel: 0..7=サンプル絵, 100+=自分の写真
+const thumbs = $('#thumbs'), frame = $('#frame');
+let pieces = [];
+
+function drawThumbs() {
+  thumbs.innerHTML = '';
+  PZ.art.forEach((a, i) => { const b = PZ.el('button', 'th', thumbs); b.dataset.k = i; const im = new Image(); im.src = PZ.svgUrl(a); b.appendChild(im); });
+  st.photos.forEach((p, i) => { const b = PZ.el('button', 'th', thumbs); b.dataset.k = 100 + i; const im = new Image(); im.src = p.thumb; b.appendChild(im); });
+  const add = PZ.el('button', 'th add', thumbs); add.id = 'add'; add.innerHTML = '＋<small>しゃしん</small>';
+  $$('.th[data-k]', thumbs).forEach((b) => b.classList.toggle('on', +b.dataset.k === st.sel));
+}
+thumbs.onclick = async (e) => {
+  const b = e.target.closest('.th'); if (!b) return;
+  if (b.id === 'add') {                                   // 写真の追加は保護者ゲートの先
+    if (await PZ.parentGate('写真を えらぶ ときは おとなの かたが 操作してください')) $('#file').click();
+    return;
+  }
+  st.sel = +b.dataset.k; drawThumbs();
+};
+$('#file').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const img = await PZ.fileImage(f), t = PZ.coverCanvas(img, 160, 160);
+    st.photos.push({img, thumb: t.toDataURL('image/jpeg', .8)}); st.sel = 100 + st.photos.length - 1; drawThumbs();
+  } catch (err) { alert('この写真は読みこめませんでした'); }
+};
+$('#cnt').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; st.n = +b.dataset.n; sync(); };
+function sync() { $$('#cnt button').forEach((b) => b.classList.toggle('on', +b.dataset.n === st.n)); }
+$('#go').onclick = () => { $('#pick').classList.remove('on'); $('#play').classList.add('on'); play(); };
+$('#back').onclick = () => { cleanup(); $('#play').classList.remove('on'); $('#pick').classList.add('on'); };
+function cleanup() { $$('.pc').forEach((e) => e.remove()); frame.innerHTML = ''; }
+
+async function play() {
+  cleanup();
+  const portrait = PZ.isPortrait(), [rows, cols] = PZ.grid(st.n, portrait), n = rows * cols;
+  const maxW = portrait ? innerWidth - 44 : innerWidth * .5, maxH = portrait ? innerHeight * .42 : innerHeight - 110;
+  const cell = PZ.fitCell(rows, cols, maxW, maxH), W = cols * cell, H = rows * cell;
+  const bx = portrait ? (innerWidth - W) / 2 : 44, by = portrait ? 74 : (innerHeight - H) / 2 + 20;
+  Object.assign(frame.style, {left: bx + 'px', top: by + 'px', width: W + 'px', height: H + 'px'});
+  let src;
+  if (st.sel >= 100) src = PZ.coverCanvas(st.photos[st.sel - 100].img, W, H);
+  else src = await PZ.artCanvas(PZ.art[st.sel], W, H);
+  const g = new Image(); g.src = src.toDataURL(); frame.appendChild(g);
+  const E = PZ.edges(rows, cols, 11 + n + st.sel);
+  pieces = [];
+  const area = portrait ? {x0: 4, x1: innerWidth - 4, y0: by + H + 24, y1: innerHeight - 4} : {x0: bx + W + 30, x1: innerWidth - 4, y0: 60, y1: innerHeight - 4};
+  const pw = cell + PZ.pad(cell, cell, false) * 2, spots = PZ.scatter(n, area, pw, pw);
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const el = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, E, false); el.className = 'pc';
+    el.style.left = spots[i].x + 'px'; el.style.top = spots[i].y + 'px';
+    $('#play').appendChild(el);
+    pieces.push({el, i, tx: bx + c * cell - el.pad, ty: by + r * cell - el.pad, cell});
+  }
+  PZ.snapDrag(pieces, {snap: (p) => p.cell * .7, onWin: () => PZ.win({text: 'できあがり！', say: 'できたね'})});
+}
+const peek = $('#peek');
+let peekT = 0;
+peek.addEventListener('pointerdown', () => { peekT = Date.now(); frame.classList.add('peek'); });
+['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => peek.addEventListener(ev, () => {
+  if (!frame.classList.contains('peek')) return;
+  const hold = Date.now() - peekT;                         // ちょん と押したら1.5秒だけ見せる／押し続けたらその間だけ
+  if (hold < 300) setTimeout(() => frame.classList.remove('peek'), 1500); else frame.classList.remove('peek');
+}));
+PZ.onLayoutChange(() => { if ($('#play').classList.contains('on')) play(); });
+drawThumbs(); sync();
+</script></body></html>

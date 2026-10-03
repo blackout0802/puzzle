@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>10 シールちょう</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 10: アプリ全体の形を試す。ホーム → パズル → ごほうびシール → シール帳 / 保護者設定(ゲート付き) */
+body{background:linear-gradient(#ffe3f1,#ffd0e6)}
+.scr{position:absolute;inset:0;display:none}
+.scr.on{display:block}
+.top{position:absolute;left:0;right:0;top:max(10px,env(safe-area-inset-top));display:flex;justify-content:space-between;padding:0 12px;z-index:20}
+.rb{height:50px;min-width:50px;padding:0 16px;border:0;border-radius:25px;background:#fff;color:#d6338a;font-size:20px;font-weight:900;box-shadow:0 3px 0 #f0a6cc}
+#home h1{margin:0;position:absolute;top:max(14px,env(safe-area-inset-top));left:0;right:0;text-align:center;color:#d6338a;font-size:26px;text-shadow:0 2px 0 #fff}
+#cards{position:absolute;left:12px;right:12px;top:76px;bottom:84px;display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;gap:12px}
+@media (orientation:landscape){#cards{grid-template-columns:repeat(4,1fr)}}
+.card{border:0;border-radius:22px;padding:0;background:#fff;box-shadow:0 6px 0 #f0a6cc;position:relative;overflow:hidden;min-height:0}
+.card img{width:100%;height:100%;object-fit:cover}
+.card.todo img{filter:grayscale(1) contrast(.55) brightness(1.25) blur(2px)}
+.card.todo:after{content:"?";position:absolute;inset:0;display:grid;place-items:center;font-size:56px;color:#fff;font-weight:900;text-shadow:0 3px 0 #d6338a,0 0 14px rgba(214,51,138,.6)}
+.card.done:after{content:"★";position:absolute;right:10px;top:6px;font-size:30px;color:#ffc61a;text-shadow:0 2px 0 #fff}
+#dock{position:absolute;left:0;right:0;bottom:0;height:76px;display:flex;justify-content:center;align-items:center;gap:14px}
+#dock .rb{height:58px;font-size:22px}
+/* パズル */
+#play{background:linear-gradient(#dff6ff,#bfe9ff)}
+#frame{position:absolute;background:rgba(255,255,255,.6);border-radius:16px;box-shadow:inset 0 0 0 5px #fff,0 8px 18px rgba(0,0,0,.2)}
+#frame img{position:absolute;inset:0;width:100%;height:100%;opacity:.25;border-radius:16px}
+.pc{position:absolute;border-radius:12px;box-shadow:0 4px 8px rgba(0,0,0,.3)}
+.pc.placed{border-radius:0;box-shadow:none}
+/* シール帳 */
+#book{background:#fff7e0}
+#pages{position:absolute;left:14px;right:14px;top:76px;bottom:20px;border-radius:22px;background:#fff;box-shadow:0 0 0 6px #ffd98a,0 10px 24px rgba(0,0,0,.2);display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;gap:10px;padding:14px}
+@media (orientation:landscape){#pages{grid-template-columns:repeat(4,1fr)}}
+.sl{border-radius:18px;border:3px dashed #e8d3a0;display:grid;place-items:center;background:#fffdf5;min-height:0;overflow:hidden}
+.sl img{width:88%;height:88%;object-fit:cover;border-radius:50%;border:6px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.35);transform:rotate(var(--r))}
+.sl.new img{animation:stick .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes stick{from{transform:scale(2.2) rotate(30deg);opacity:0}}
+/* 保護者設定 */
+#set{background:#f3f4f8}
+#panel{position:absolute;left:16px;right:16px;top:80px;background:#fff;border-radius:20px;padding:18px;box-shadow:0 4px 14px rgba(0,0,0,.12);color:#333}
+#panel h2{margin:0 0 10px;font-size:17px}
+#panel .opt{display:flex;gap:8px;margin-bottom:18px}
+#panel .opt button{flex:1;height:50px;border:2px solid #dde;border-radius:12px;background:#f7f8fb;font-size:19px;font-weight:800;color:#555}
+#panel .opt button.on{background:#3b8bff;color:#fff;border-color:#3b8bff}
+#panel .danger{width:100%;height:48px;border:0;border-radius:12px;background:#ffe3e3;color:#c92a2a;font-weight:800;font-size:16px}
+#panel small{display:block;margin-top:12px;color:#777;line-height:1.6}
+</style></head><body>
+<a class="home" href="index.html" id="gal">⌂</a>
+<section class="scr on" id="home">
+  <h1>パズルを えらぼう</h1>
+  <div id="cards"></div>
+  <div id="dock"><button class="rb" id="toBook">シールちょう</button><button class="rb" id="toSet">⚙</button></div>
+</section>
+<section class="scr" id="play">
+  <div class="top"><button class="rb" id="pBack">◀</button><span></span></div>
+  <div id="frame"></div>
+</section>
+<section class="scr" id="book">
+  <div class="top"><button class="rb" id="bBack">◀</button><span></span></div>
+  <div id="pages"></div>
+</section>
+<section class="scr" id="set">
+  <div class="top"><button class="rb" id="sBack">◀</button><span></span></div>
+  <div id="panel">
+    <h2>ピースの かず</h2>
+    <div class="opt" id="optN"><button data-n="4">4</button><button data-n="6">6</button><button data-n="9">9</button></div>
+    <h2>おと・こえ</h2>
+    <div class="opt" id="optS"><button data-s="1">あり</button><button data-s="0">なし</button></div>
+    <h2>きろく</h2>
+    <button class="danger" id="reset">シールを ぜんぶ けす</button>
+    <small>この画面は 保護者ゲートの先にあります。<br>設定とシールは この たんまつの中だけに保存され、外には送られません。</small>
+  </div>
+</section>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const KEY = 'pz10';
+let save = {done: [], n: 4, sound: 1};
+try { Object.assign(save, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { } };
+PZ.muted = !save.sound;
+let cur = -1, recent = -1, live = [];
+
+function show(id) { $$('.scr').forEach((s) => s.classList.toggle('on', s.id === id)); $('#gal').style.display = id === 'home' ? '' : 'none'; }
+function drawHome() {
+  const c = $('#cards'); c.innerHTML = '';
+  PZ.art.forEach((a, i) => {
+    const b = PZ.el('button', 'card ' + (save.done.includes(i) ? 'done' : 'todo'), c); const im = new Image(); im.src = PZ.svgUrl(a); b.appendChild(im);
+    b.onclick = () => { PZ.snd.pick(); play(i); };
+  });
+}
+async function play(i) {
+  cur = i; show('play'); const frame = $('#frame'); frame.innerHTML = ''; $$('#play .pc').forEach((e) => e.remove());
+  const portrait = PZ.isPortrait(), [rows, cols] = PZ.grid(save.n, portrait), n = rows * cols;
+  const cell = PZ.fitCell(rows, cols, portrait ? innerWidth - 36 : innerWidth * .5, portrait ? innerHeight * .46 : innerHeight - 100), W = cols * cell, H = rows * cell;
+  const bx = portrait ? (innerWidth - W) / 2 : 40, by = portrait ? 84 : (innerHeight - H) / 2 + 20;
+  Object.assign(frame.style, {left: bx + 'px', top: by + 'px', width: W + 'px', height: H + 'px'});
+  const src = await PZ.artCanvas(PZ.art[i], W, H);
+  const g = new Image(); g.src = src.toDataURL(); frame.appendChild(g);
+  const pieces = live = [];
+  const area = portrait ? {x0: 6, x1: innerWidth - 6, y0: by + H + 14, y1: innerHeight - 6} : {x0: bx + W + 24, x1: innerWidth - 6, y0: 70, y1: innerHeight - 6};
+  const spots = PZ.scatter(n, area, cell, cell);
+  PZ.shuffle([...Array(n).keys()]).forEach((k, j) => {
+    const r = Math.floor(k / cols), c = k % cols;
+    const el = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, null, true); el.className = 'pc';
+    el.style.left = spots[j].x + 'px'; el.style.top = spots[j].y + 'px';
+    $('#play').appendChild(el); pieces.push({el, tx: bx + c * cell, ty: by + r * cell, cell});
+  });
+  PZ.snapDrag(pieces, {snap: (p) => p.cell * .8, onWin: () => {
+    if (!save.done.includes(i)) { save.done.push(i); recent = i; persist(); }
+    PZ.win({text: 'シールゲット！', say: PZ.art[i].say});
+    setTimeout(() => { drawBook(); show('book'); }, 2600);
+  }});
+}
+function drawBook() {
+  const p = $('#pages'); p.innerHTML = '';
+  PZ.art.forEach((a, i) => {
+    const s = PZ.el('div', 'sl', p);
+    if (save.done.includes(i)) { const im = new Image(); im.src = PZ.svgUrl(a); im.style.setProperty('--r', (i % 2 ? 5 : -5) + 'deg'); s.appendChild(im); if (i === recent) s.classList.add('new'); }
+  });
+  recent = -1;
+}
+$('#toBook').onclick = () => { drawBook(); show('book'); };
+$('#pBack').onclick = () => { show('home'); };
+$('#bBack').onclick = () => { drawHome(); show('home'); };
+$('#toSet').onclick = async () => { if (await PZ.parentGate('せってい画面は おとなの かたが ひらいてください')) { syncSet(); show('set'); } };
+$('#sBack').onclick = () => { drawHome(); show('home'); };
+$('#optN').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; save.n = +b.dataset.n; persist(); syncSet(); };
+$('#optS').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; save.sound = +b.dataset.s; PZ.muted = !save.sound; persist(); syncSet(); PZ.snd.ok(); };
+$('#reset').onclick = () => { if (confirm('シールを ぜんぶ けしますか？')) { save.done = []; persist(); drawHome(); } };
+function syncSet() {
+  $$('#optN button').forEach((b) => b.classList.toggle('on', +b.dataset.n === save.n));
+  $$('#optS button').forEach((b) => b.classList.toggle('on', +b.dataset.s === save.sound));
+}
+PZ.onLayoutChange(() => { if ($('#play').classList.contains('on')) play(cur); });
+drawHome(); show('home');
+</script></body></html>

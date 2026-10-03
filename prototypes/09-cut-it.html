@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>09 じぶんでカット</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 09: 指でスワイプして絵を「ずばっ」と切る → 自分で切った形のパズルを、元にもどす */
+body{background:#f1ecff}
+#bar{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:60;display:flex;gap:8px;align-items:center}
+#cuts{display:flex;gap:5px;background:#fff;padding:8px 12px;border-radius:24px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+#cuts i{width:18px;height:18px;border-radius:50%;background:#d9d0ff}
+#cuts i.on{background:#7c5cff}
+#msg{position:absolute;left:0;right:0;text-align:center;font-weight:800;color:#6a4fe0;font-size:20px}
+#board{position:absolute;background:#2a2150;border-radius:6px;box-shadow:0 8px 22px rgba(0,0,0,.3);touch-action:none}
+#board .gh{position:absolute;inset:0;width:100%;height:100%;opacity:.25;pointer-events:none}
+.pc{position:absolute;box-shadow:0 0 0 2px #fff,0 4px 8px rgba(0,0,0,.3);transition:left .6s cubic-bezier(.3,1.3,.5,1),top .6s cubic-bezier(.3,1.3,.5,1)}
+.pc.placed{box-shadow:none}
+#trail{position:absolute;inset:0;pointer-events:none;z-index:30}
+.slash{position:absolute;background:#fff;box-shadow:0 0 14px 4px #fff;z-index:31;pointer-events:none;animation:sl .35s forwards}
+@keyframes sl{to{opacity:0}}
+.shake{animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.big{position:fixed;left:50%;margin-left:-48px;bottom:5%;z-index:60;width:96px;height:96px;border-radius:50%;border:0;background:#7c5cff;color:#fff;font-size:26px;font-weight:900;box-shadow:0 7px 0 #5238c2;display:none;animation:jump .6s infinite alternate}
+@keyframes jump{to{transform:translateY(-12px)}}
+#undo{height:46px;border:0;border-radius:23px;padding:0 16px;background:#fff;color:#6a4fe0;font-size:18px;font-weight:800;box-shadow:0 3px 0 #cfc3ff}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<div id="bar"><div id="cuts"></div><button id="undo">↺</button></div>
+<div id="msg"></div>
+<div id="board"></div>
+<button class="big" id="go">あそぶ</button>
+<button class="big" id="again">↻</button>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const MAXCUT = 4, MINSIZE = .2;
+const st = {art: 0, mode: 'cut'};
+const board = $('#board');
+let B = 0, bx = 0, by = 0, src = null, rects = [], pieces = [], dragLine = null;
+
+function drawCuts() { const c = $('#cuts'); c.innerHTML = ''; for (let i = 0; i < MAXCUT; i++) PZ.el('i', i < MAXCUT - (rects.length - 1) ? 'on' : '', c); }
+function render() {
+  $$('.pc', board).forEach((e) => e.remove());
+  rects.forEach((r) => {
+    const cv = document.createElement('canvas'); cv.width = Math.round(r.w * PZ.dpr); cv.height = Math.round(r.h * PZ.dpr); cv.style.width = r.w + 'px'; cv.style.height = r.h + 'px';
+    cv.getContext('2d').drawImage(src, r.x * PZ.dpr, r.y * PZ.dpr, r.w * PZ.dpr, r.h * PZ.dpr, 0, 0, cv.width, cv.height);
+    cv.className = 'pc'; cv.style.left = r.x + 'px'; cv.style.top = r.y + 'px'; cv.style.transition = 'none'; board.appendChild(cv);
+    r.cv = cv;
+  });
+}
+async function start() {
+  st.mode = 'cut'; $('#go').style.display = 'none'; $('#again').style.display = 'none'; $$('.pc').forEach((e) => e.remove());
+  const portrait = PZ.isPortrait();
+  B = Math.floor(portrait ? Math.min(innerWidth - 36, innerHeight * .5) : Math.min(innerWidth * .56, innerHeight - 120));
+  bx = portrait ? (innerWidth - B) / 2 : (innerWidth - B) / 2; by = portrait ? 90 : 72;
+  Object.assign(board.style, {left: bx + 'px', top: by + 'px', width: B + 'px', height: B + 'px'});
+  Object.assign($('#msg').style, {top: by + B + 22 + 'px'});
+  src = await PZ.artCanvas(PZ.art[st.art], B, B);
+  rects = [{x: 0, y: 0, w: B, h: B}];
+  $$('.gh', board).forEach((e) => e.remove());
+  render(); drawCuts(); $('#msg').textContent = 'ゆびで ずばっ と きってみよう';
+}
+/* スワイプで切る */
+let sp = null;
+board.addEventListener('pointerdown', (e) => {
+  if (st.mode !== 'cut') return;
+  const b = board.getBoundingClientRect(); sp = {x: e.clientX - b.left, y: e.clientY - b.top}; board.setPointerCapture(e.pointerId);
+  dragLine = PZ.el('div', 'slash', board); dragLine.style.animation = 'none'; dragLine.style.height = '4px'; dragLine.style.width = '0'; dragLine.style.left = sp.x + 'px'; dragLine.style.top = sp.y + 'px'; dragLine.style.transformOrigin = '0 50%';
+});
+board.addEventListener('pointermove', (e) => {
+  if (!sp || !dragLine) return;
+  const b = board.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  const len = Math.hypot(x - sp.x, y - sp.y), ang = Math.atan2(y - sp.y, x - sp.x);
+  dragLine.style.width = len + 'px'; dragLine.style.transform = `rotate(${ang}rad)`;
+});
+const endSwipe = (e) => {
+  if (!sp) return;
+  const b = board.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top, s = sp; sp = null;
+  if (dragLine) { dragLine.remove(); dragLine = null; }
+  const dx = x - s.x, dy = y - s.y;
+  if (Math.hypot(dx, dy) < 40) return;
+  cut(Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v', (s.x + x) / 2, (s.y + y) / 2);
+};
+board.addEventListener('pointerup', endSwipe); board.addEventListener('pointercancel', endSwipe);
+function cut(dir, mx, my) {
+  if (rects.length - 1 >= MAXCUT) { $('#msg').textContent = 'もう きれないよ。「あそぶ」を おしてね'; return; }
+  const r = rects.find((q) => mx >= q.x && mx < q.x + q.w && my >= q.y && my < q.y + q.h); if (!r) return;
+  const min = B * MINSIZE;
+  let a, c;
+  if (dir === 'h') { const at = my - r.y; if (at < min || r.h - at < min) return reject(); a = {x: r.x, y: r.y, w: r.w, h: at}; c = {x: r.x, y: my, w: r.w, h: r.h - at}; }
+  else { const at = mx - r.x; if (at < min || r.w - at < min) return reject(); a = {x: r.x, y: r.y, w: at, h: r.h}; c = {x: mx, y: r.y, w: r.w - at, h: r.h}; }
+  rects.splice(rects.indexOf(r), 1, a, c);
+  const fl = PZ.el('div', 'slash', board);
+  if (dir === 'h') Object.assign(fl.style, {left: r.x + 'px', top: my - 2 + 'px', width: r.w + 'px', height: '4px'});
+  else Object.assign(fl.style, {left: mx - 2 + 'px', top: r.y + 'px', width: '4px', height: r.h + 'px'});
+  setTimeout(() => fl.remove(), 400);
+  PZ.snd.pop(); render(); drawCuts(); $('#go').style.display = 'block'; $('#msg').textContent = 'いいね！ もっと きってもいいよ';
+}
+function reject() { board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake'); PZ.snd.soft(); $('#msg').textContent = 'そこは ちいさすぎるよ'; }
+$('#undo').onclick = () => { if (st.mode === 'cut') start(); };
+$('#go').onclick = () => {
+  st.mode = 'play'; $('#go').style.display = 'none'; $('#msg').textContent = '';
+  const g = new Image(); g.className = 'gh'; g.src = src.toDataURL(); board.insertBefore(g, board.firstChild);
+  $$('.pc', board).forEach((e) => e.remove());
+  pieces = [];
+  const portrait = PZ.isPortrait();
+  const area = portrait ? {x0: 6, x1: innerWidth - 6, y0: by + B + 14, y1: innerHeight - 6} : {x0: 6, x1: innerWidth - 6, y0: 70, y1: innerHeight - 6};
+  rects.forEach((r) => {
+    const cv = document.createElement('canvas'); cv.width = Math.round(r.w * PZ.dpr); cv.height = Math.round(r.h * PZ.dpr); cv.style.width = r.w + 'px'; cv.style.height = r.h + 'px';
+    cv.getContext('2d').drawImage(src, r.x * PZ.dpr, r.y * PZ.dpr, r.w * PZ.dpr, r.h * PZ.dpr, 0, 0, cv.width, cv.height);
+    cv.className = 'pc'; cv.style.left = bx + r.x + 'px'; cv.style.top = by + r.y + 'px'; document.body.appendChild(cv);
+    pieces.push({el: cv, tx: bx + r.x, ty: by + r.y, r});
+  });
+  // 少し待ってから、切ったピースを下にちらばらせる
+  setTimeout(() => {
+    pieces.forEach((p) => {
+      let x, y, tries = 0;
+      do {
+        x = area.x0 + Math.random() * Math.max(0, area.x1 - area.x0 - p.r.w); y = area.y0 + Math.random() * Math.max(0, area.y1 - area.y0 - p.r.h); tries++;
+        if (portrait ? y > by + B + 4 || tries > 30 : (x + p.r.w < bx - 4 || x > bx + B + 4 || tries > 30)) break;
+      } while (true);
+      p.el.style.left = x + 'px'; p.el.style.top = y + 'px';
+    });
+  }, 250);
+  PZ.snapDrag(pieces, {snap: (p) => Math.min(p.r.w, p.r.h) * .6 + 20, onWin: () => { PZ.win({text: 'できた！', say: PZ.art[st.art].say}); $('#again').style.display = 'block'; }});
+};
+$('#again').onclick = () => { st.art = (st.art + 1) % PZ.art.length; start(); };
+PZ.onLayoutChange(start); start();
+</script></body></html>

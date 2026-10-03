@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>02 ほんもの風ジグソー</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 02: 本物のジグソーの形。木のテーブルにピースがちらばっている。ドラッグ＋大きな吸着範囲 */
+body{background:
+  repeating-linear-gradient(90deg,rgba(0,0,0,.035) 0 3px,transparent 3px 11px),
+  linear-gradient(#d9a566,#c58f4f)}
+#bar{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:60;display:flex;gap:6px}
+#bar button{min-width:46px;height:46px;border:0;border-radius:23px;background:#fff8e7;color:#7a4b16;font-size:19px;font-weight:800;box-shadow:0 3px 0 #9d6a2e}
+#bar button.on{background:#ff8a3c;color:#fff}
+#frame{position:absolute;background:#f3dcb4;border-radius:10px;box-shadow:inset 0 0 0 4px #8a5a24,inset 0 4px 12px rgba(0,0,0,.35)}
+#frame img{position:absolute;inset:0;width:100%;height:100%;opacity:.26;border-radius:10px;pointer-events:none}
+.pc{position:absolute;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.pc.placed{filter:none}
+.hint{position:absolute;border:4px solid #ffe14d;border-radius:12px;background:rgba(255,225,77,.35);animation:hint .5s 4 alternate;pointer-events:none}
+@keyframes hint{to{transform:scale(1.15);opacity:.6}}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<div id="bar"><button data-n="4">4</button><button data-n="6">6</button><button data-n="12">12</button><button id="hintBtn">?</button><button id="nextBtn">▶</button></div>
+<div id="frame"></div>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const st = {n: 6, art: 0};
+const frame = $('#frame');
+let pieces = [], api;
+
+async function start() {
+  $$('.pc,.hint').forEach((e) => e.remove()); frame.innerHTML = '';
+  const portrait = PZ.isPortrait();
+  const [rows, cols] = PZ.grid(st.n, portrait), n = rows * cols;
+  const maxW = portrait ? innerWidth - 36 : innerWidth * .52, maxH = portrait ? innerHeight * .44 : innerHeight - 100;
+  const cell = PZ.fitCell(rows, cols, maxW, maxH), W = cols * cell, H = rows * cell;
+  const bx = portrait ? (innerWidth - W) / 2 : 40, by = portrait ? 64 : (innerHeight - H) / 2 + 20;
+  Object.assign(frame.style, {left: bx + 'px', top: by + 'px', width: W + 'px', height: H + 'px'});
+  const src = await PZ.artCanvas(PZ.art[st.art], W, H);
+  const g = new Image(); g.src = src.toDataURL(); frame.appendChild(g);
+  const E = PZ.edges(rows, cols, 7 + st.art * 13 + n);
+  pieces = [];
+  const area = portrait ? {x0: 6, x1: innerWidth - 6, y0: by + H + 14, y1: innerHeight - 6}
+                        : {x0: bx + W + 20, x1: innerWidth - 6, y0: 60, y1: innerHeight - 6};
+  const padPx = PZ.pad(cell, cell, false), pw = cell + padPx * 2;
+  const spots = PZ.scatter(n, area, pw, pw);
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const el = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, E, false); el.className = 'pc';
+    el.style.left = spots[i].x + 'px'; el.style.top = spots[i].y + 'px';
+    document.body.appendChild(el);
+    pieces.push({el, i, tx: bx + c * cell - el.pad, ty: by + r * cell - el.pad, cell});
+  }
+  api = PZ.snapDrag(pieces, {snap: (p) => p.cell * .7, onWin: () => { PZ.win({say: PZ.art[st.art].say}); }});
+}
+$('#bar').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.n) { st.n = +b.dataset.n; sync(); start(); }
+  else if (b.id === 'nextBtn') { st.art = (st.art + 1) % PZ.art.length; start(); }
+  else if (b.id === 'hintBtn') {
+    const p = pieces.find((q) => !q.placed); if (!p) return;
+    const h = PZ.el('div', 'hint', document.body);
+    Object.assign(h.style, {left: p.tx + p.el.pad + 'px', top: p.ty + p.el.pad + 'px', width: p.cell + 'px', height: p.cell + 'px'});
+    setTimeout(() => h.remove(), 2200); p.el.style.zIndex = 99;
+  }
+};
+function sync() { $$('#bar [data-n]').forEach((b) => b.classList.toggle('on', +b.dataset.n === st.n)); }
+PZ.onLayoutChange(start); sync(); start();
+</script></body></html>

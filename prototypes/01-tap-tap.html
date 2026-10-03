@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>01 タップ＆タップ</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 01: 「ドラッグしない」パズル。ピースをタップ→置きたい場所をタップ */
+body{background:linear-gradient(#e6fbf0,#c9f1e1);display:flex;flex-direction:column}
+#bar{height:64px;flex:none;display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:0 10px 0 60px}
+.pill{display:flex;gap:6px;background:#fff;border-radius:30px;padding:5px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.pill button{min-width:48px;height:48px;border:0;border-radius:24px;background:transparent;font-size:20px;font-weight:800;color:#3a8f6d}
+.pill button.on{background:#3ec598;color:#fff}
+#stage{flex:1;display:grid;place-items:center;min-height:0}
+#board{position:relative;background:#fff;border-radius:14px;box-shadow:0 6px 0 #a9dfc9,0 12px 24px rgba(0,0,0,.18);padding:0}
+#board .ghost{position:absolute;inset:0;width:100%;height:100%;opacity:.22;border-radius:14px;pointer-events:none}
+.slot{position:absolute;border:3px dashed #8fd3b9;border-radius:10px;background:rgba(62,197,152,.07);transition:background .2s}
+.slot.target{background:rgba(255,213,77,.45);border-color:#ffb300;animation:blink .6s infinite alternate}
+.slot img{width:100%;height:100%;border-radius:8px}
+.slot.done{border:0;background:none}
+@keyframes blink{to{transform:scale(1.04)}}
+#tray{flex:none;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:8px;padding:6px 8px 12px;background:rgba(255,255,255,.55);border-radius:22px 22px 0 0}
+.tp{border-radius:12px;box-shadow:0 4px 0 rgba(0,0,0,.18);background:#fff;transition:transform .15s}
+.tp.sel{transform:translateY(-12px) scale(1.12);box-shadow:0 10px 0 rgba(0,0,0,.18),0 0 0 5px #ffb300;animation:bob .5s infinite alternate}
+.tp.wob{animation:wob .4s}
+@keyframes bob{to{transform:translateY(-18px) scale(1.12)}}
+@keyframes wob{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.fly{position:fixed;z-index:100;transition:transform .45s cubic-bezier(.3,1.4,.5,1);transform-origin:0 0;border-radius:12px}
+#next{position:fixed;right:14px;bottom:30%;z-index:60;width:84px;height:84px;border-radius:50%;border:0;background:#ff8a3c;color:#fff;font-size:40px;box-shadow:0 6px 0 #d96a1c;display:none;animation:bob .6s infinite alternate}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<div id="bar">
+  <div class="pill" id="cnt"><button data-n="4">4</button><button data-n="6">6</button><button data-n="9">9</button></div>
+  <div class="pill"><button id="ghost" title="うすい見本">◐</button></div>
+</div>
+<div id="stage"><div id="board"></div></div>
+<div id="tray"></div>
+<button id="next">▶</button>
+<script src="common/common.js"></script>
+<script>
+const {$, $$, snd} = PZ;
+const st = {n: 4, art: 0, ghost: true, sel: null, placed: 0, total: 0};
+const board = $('#board'), tray = $('#tray');
+
+async function start() {
+  st.sel = null; st.placed = 0; $('#next').style.display = 'none';
+  board.innerHTML = ''; tray.innerHTML = '';
+  const portrait = PZ.isPortrait();
+  const [rows, cols] = PZ.grid(st.n, portrait), n = rows * cols; st.total = n;
+  let cell;
+  if (portrait) {                                   // 縦：ピース置き場は下
+    const perRow = Math.min(n, 5), ts0 = Math.min(96, Math.floor((innerWidth - 24) / perRow) - 8);
+    const trayH = Math.ceil(n / perRow) * (ts0 + 8) + 22;
+    Object.assign(tray.style, {position: '', width: '', height: trayH + 'px', right: '', top: '', bottom: ''}); $('#stage').style.marginRight = '0';
+    cell = PZ.fitCell(rows, cols, innerWidth - 28, innerHeight - 64 - trayH - 24); st.ts = ts0;
+  } else {                                          // 横：ピース置き場は右
+    const perRow = n > 6 ? 3 : 2, ts0 = Math.min(96, Math.floor((innerHeight - 64 - 20) / Math.ceil(n / perRow)) - 8);
+    const trayW = perRow * (ts0 + 8) + 24;
+    Object.assign(tray.style, {position: 'fixed', width: trayW + 'px', height: '', right: '0', top: '64px', bottom: '0'}); tray.style.borderRadius = '22px 0 0 0'; $('#stage').style.marginRight = trayW + 'px';
+    cell = PZ.fitCell(rows, cols, innerWidth - trayW - 28, innerHeight - 64 - 20); st.ts = ts0;
+  }
+  const ts = st.ts;
+  board.style.width = cols * cell + 'px'; board.style.height = rows * cell + 'px';
+  const src = await PZ.artCanvas(PZ.art[st.art], cols * cell, rows * cell);
+  const ghost = new Image(); ghost.className = 'ghost'; ghost.src = src.toDataURL(); ghost.style.display = st.ghost ? '' : 'none'; board.appendChild(ghost);
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const s = PZ.el('div', 'slot', board); s.dataset.slot = i;
+    Object.assign(s.style, {left: c * cell + 'px', top: r * cell + 'px', width: cell + 'px', height: cell + 'px'});
+    s.onclick = () => onSlot(s);
+  }
+  PZ.shuffle([...Array(n).keys()]).forEach((i) => {
+    const r = Math.floor(i / cols), c = i % cols;
+    const img = new Image(); img.className = 'tp'; img.dataset.piece = i; img.draggable = false;
+    img.src = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, null, true).toDataURL();
+    img.style.width = img.style.height = ts + 'px';
+    img.onclick = () => onPiece(img);
+    tray.appendChild(img);
+  });
+}
+function onPiece(img) {
+  if (img.dataset.done) return;
+  if (st.sel) st.sel.classList.remove('sel');
+  if (st.sel === img) { st.sel = null; $$('.slot.target').forEach((s) => s.classList.remove('target')); return; }
+  st.sel = img; img.classList.add('sel'); snd.pick();
+}
+function onSlot(slot) {
+  if (!st.sel || slot.classList.contains('done')) return;
+  const img = st.sel;
+  if (img.dataset.piece !== slot.dataset.slot) {          // ちがう場所：やさしくゆれるだけ
+    snd.soft(); img.classList.remove('wob'); void img.offsetWidth; img.classList.add('wob'); return;
+  }
+  st.sel = null; img.classList.remove('sel');
+  fly(img, slot);
+}
+function fly(img, slot) {
+  const a = img.getBoundingClientRect(), b = slot.getBoundingClientRect();
+  const clone = img.cloneNode(); clone.className = 'fly';
+  Object.assign(clone.style, {left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px'});
+  document.body.appendChild(clone); img.style.visibility = 'hidden'; img.dataset.done = 1;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    clone.style.transform = `translate(${b.left - a.left}px,${b.top - a.top}px) scale(${b.width / a.width})`;
+  }));
+  setTimeout(() => {
+    const f = new Image(); f.src = img.src; slot.appendChild(f); slot.classList.add('done'); clone.remove();
+    snd.ok();
+    if (++st.placed === st.total) { PZ.win({say: PZ.art[st.art].say}); $('#next').style.display = 'block'; }
+  }, 470);
+}
+$('#cnt').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; st.n = +b.dataset.n; sync(); start(); };
+$('#ghost').onclick = () => { st.ghost = !st.ghost; sync(); const g = $('.ghost'); if (g) g.style.display = st.ghost ? '' : 'none'; };
+$('#next').onclick = () => { st.art = (st.art + 1) % PZ.art.length; start(); };
+function sync() { $$('#cnt button').forEach((b) => b.classList.toggle('on', +b.dataset.n === st.n)); $('#ghost').classList.toggle('on', st.ghost); }
+PZ.onLayoutChange(start); sync(); start();
+</script></body></html>

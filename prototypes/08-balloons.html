@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>08 ふうせんパズル</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 08: ふうせんをタップ → ぱん！ → 絵のピースがあらわれる。置く操作ゼロ。いちばん小さい子向け */
+body{background:linear-gradient(#7cc8ff,#cdeeff 60%,#f4fbff)}
+#bar{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:60;display:flex;gap:6px}
+#bar button{min-width:46px;height:46px;border:0;border-radius:23px;background:#fff;color:#2f86d6;font-size:19px;font-weight:800;box-shadow:0 3px 0 #a9d4f5}
+#bar button.on{background:#ff6b8a;color:#fff}
+#frame{position:absolute;background:#fff;border-radius:14px;box-shadow:0 0 0 6px #fff,0 10px 24px rgba(0,0,0,.25);overflow:hidden}
+.cellbg{position:absolute;background:linear-gradient(135deg,#e7eef7,#cfdceb);box-shadow:inset 0 0 0 2px #fff;display:grid;place-items:center;color:#9ab;font-size:min(8vw,40px);font-weight:900}
+.reveal{position:absolute;animation:rev .5s cubic-bezier(.3,1.8,.5,1)}
+@keyframes rev{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
+.bl{position:fixed;z-index:30;width:var(--w);height:calc(var(--w)*1.25);margin:0;padding:0;border:0;background:none;touch-action:manipulation}
+.bl svg{width:100%;height:100%;overflow:visible}
+.bit{position:fixed;z-index:40;border-radius:50%;pointer-events:none;animation:bit .6s ease-out forwards}
+@keyframes bit{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+#next{position:fixed;left:50%;margin-left:-42px;bottom:7%;z-index:60;width:84px;height:84px;border-radius:50%;border:0;background:#ff6b8a;color:#fff;font-size:38px;box-shadow:0 6px 0 #c94668;display:none;animation:jump .6s infinite alternate}
+@keyframes jump{to{transform:translateY(-12px)}}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<div id="bar"><button data-n="4">4</button><button data-n="6">6</button><button data-n="9">9</button><button data-n="12">12</button></div>
+<div id="frame"></div>
+<button id="next">▶</button>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const st = {n: 6, art: 0};
+const frame = $('#frame');
+const COLORS = ['#ff5a5f', '#ffc61a', '#3ec598', '#3b8bff', '#ff7eb6', '#a56bff', '#ff9f43'];
+let balloons = [], raf = 0, last = 0, zone = null, left = 0, geom = null;
+
+const balloonSvg = (c) => `<svg viewBox="0 0 80 100"><path d="M40 92 L36 100 H44Z" fill="${c}"/><ellipse cx="40" cy="42" rx="34" ry="40" fill="${c}"/><ellipse cx="27" cy="26" rx="8" ry="13" fill="#fff" opacity=".45" transform="rotate(25 27 26)"/></svg>`;
+
+async function start() {
+  cancelAnimationFrame(raf); $$('.bl,.reveal').forEach((e) => e.remove()); frame.innerHTML = ''; balloons = [];
+  $('#next').style.display = 'none';
+  const portrait = PZ.isPortrait(), [rows, cols] = PZ.grid(st.n, portrait), n = rows * cols;
+  const maxW = portrait ? innerWidth - 40 : innerWidth * .42, maxH = portrait ? innerHeight * .4 : innerHeight - 100;
+  const cell = PZ.fitCell(rows, cols, maxW, maxH), W = cols * cell, H = rows * cell;
+  const bx = portrait ? (innerWidth - W) / 2 : 36, by = portrait ? 70 : (innerHeight - H) / 2 + 20;
+  Object.assign(frame.style, {left: bx + 'px', top: by + 'px', width: W + 'px', height: H + 'px'});
+  const src = await PZ.artCanvas(PZ.art[st.art], W, H);
+  left = n; geom = {rows, cols};
+  const bw = Math.max(64, Math.min(92, (portrait ? innerWidth : innerWidth - W - 80) / 4.2));
+  zone = portrait ? {x0: 6, x1: innerWidth - 6 - bw, y0: by + H + 24, y1: innerHeight - bw * 1.25 + 30}
+                  : {x0: bx + W + 30, x1: innerWidth - 6 - bw, y0: 60, y1: innerHeight - bw * 1.25 + 30};
+  const order = PZ.shuffle([...Array(n).keys()]);
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const bg = PZ.el('div', 'cellbg', frame); Object.assign(bg.style, {left: c * cell + 'px', top: r * cell + 'px', width: cell + 'px', height: cell + 'px'}); bg.textContent = '?'; bg.id = 'bg' + i;
+  }
+  order.forEach((i, k) => {
+    const r = Math.floor(i / cols), c = i % cols, color = COLORS[k % COLORS.length];
+    const b = PZ.el('button', 'bl', document.body); b.style.setProperty('--w', bw + 'px'); b.innerHTML = balloonSvg(color);
+    const o = {el: b, i, r, c, color, w: bw, x: zone.x0 + (k + .5) / n * (zone.x1 - zone.x0), y: zone.y0 + Math.random() * (zone.y1 - zone.y0), ph: Math.random() * 6, sp: 22 + Math.random() * 22};
+    b.onclick = () => pop(o, src, cell);
+    balloons.push(o);
+  });
+  last = performance.now(); raf = requestAnimationFrame(tick);
+}
+function tick(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t;
+  balloons.forEach((o) => {
+    o.y -= o.sp * dt; o.ph += dt * 1.5;
+    if (o.y < zone.y0 - o.w) o.y = zone.y1 + 20;
+    o.el.style.transform = `translate(${o.x + Math.sin(o.ph) * 14}px,${o.y}px) rotate(${Math.sin(o.ph) * 5}deg)`;
+    o.el.style.left = '0'; o.el.style.top = '0';
+  });
+  raf = requestAnimationFrame(tick);
+}
+function pop(o, src, cell) {
+  const bb = o.el.getBoundingClientRect();
+  o.el.remove(); balloons = balloons.filter((q) => q !== o); PZ.snd.pop();
+  for (let k = 0; k < 10; k++) {
+    const d = PZ.el('div', 'bit', document.body), s = 8 + Math.random() * 10, a = Math.random() * 6.28, rr = 40 + Math.random() * 50;
+    Object.assign(d.style, {width: s + 'px', height: s + 'px', background: o.color, left: bb.left + bb.width / 2 + 'px', top: bb.top + bb.height / 2 + 'px'});
+    d.style.setProperty('--dx', Math.cos(a) * rr + 'px'); d.style.setProperty('--dy', Math.sin(a) * rr + 'px'); setTimeout(() => d.remove(), 700);
+  }
+  const bg = $('#bg' + o.i), pc = PZ.pieceCanvas(src, o.r, o.c, geom.rows, geom.cols, cell, cell, null, true);
+  pc.className = 'reveal'; Object.assign(pc.style, {left: bg.style.left, top: bg.style.top}); bg.textContent = ''; frame.appendChild(pc);
+  setTimeout(() => PZ.snd.ok(), 120);
+  if (--left === 0) { cancelAnimationFrame(raf); PZ.win({say: PZ.art[st.art].say}); $('#next').style.display = 'block'; }
+}
+$('#bar').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; st.n = +b.dataset.n; sync(); start(); };
+$('#next').onclick = () => { st.art = (st.art + 1) % PZ.art.length; start(); };
+function sync() { $$('#bar button').forEach((b) => b.classList.toggle('on', +b.dataset.n === st.n)); }
+PZ.onLayoutChange(start); sync(); start();
+</script></body></html>

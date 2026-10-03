@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>06 いれかえパズル</title>
+<link rel="stylesheet" href="common/common.css">
+<style>
+/* 06: ごちゃまぜの写真プリントを、2枚タップして入れかえる。右上に「みほん」 */
+body{background:#fff4e0 radial-gradient(#ffe2b0 2px,transparent 2.5px) 0 0/22px 22px}
+#bar{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;z-index:60;display:flex;gap:6px;align-items:center}
+#bar button{min-width:46px;height:46px;border:0;border-radius:23px;background:#fff;color:#d2691e;font-size:19px;font-weight:800;box-shadow:0 3px 0 #e8b985}
+#bar button.on{background:#ff8a3c;color:#fff}
+#ref{width:62px;height:62px;border-radius:8px;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.3);transform:rotate(4deg);background:#fff}
+#wrap{position:absolute}
+.ph{position:absolute;background:#fff;padding:var(--b);border-radius:6px;box-shadow:0 4px 10px rgba(0,0,0,.28);transition:left .35s cubic-bezier(.3,1.3,.5,1),top .35s cubic-bezier(.3,1.3,.5,1),transform .2s,box-shadow .3s;transform:rotate(var(--rot))}
+.ph img{width:100%;height:100%;border-radius:2px}
+.ph.sel{transform:rotate(0deg) scale(1.1);z-index:20;box-shadow:0 12px 20px rgba(0,0,0,.35),0 0 0 5px #ff8a3c}
+.ph.ok{box-shadow:0 0 0 4px #6bd66b}
+.ph.ok:after{content:"★";position:absolute;right:4px;top:-2px;color:#ffc61a;font-size:22px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.ph.flash{animation:fl .4s 4 alternate}
+@keyframes fl{to{box-shadow:0 0 0 7px #ffe14d;transform:rotate(0) scale(1.08)}}
+.ph.won{transform:none;padding:0;border-radius:0;box-shadow:none;transition:all .6s}
+#next{position:fixed;left:50%;margin-left:-42px;bottom:5%;z-index:60;width:84px;height:84px;border-radius:50%;border:0;background:#ff8a3c;color:#fff;font-size:38px;box-shadow:0 6px 0 #c9631a;display:none;animation:jump .6s infinite alternate}
+@keyframes jump{to{transform:translateY(-12px)}}
+</style></head><body>
+<a class="home" href="index.html">⌂</a>
+<div id="bar"><button data-n="4">4</button><button data-n="6">6</button><button data-n="9">9</button><button id="hintBtn">?</button><img id="ref" alt=""></div>
+<div id="wrap"></div>
+<button id="next">▶</button>
+<script src="common/common.js"></script>
+<script>
+const {$, $$} = PZ;
+const st = {n: 4, art: 0};
+const wrap = $('#wrap');
+let ph = [], pos = [], sel = null, geom = null, left = 0, busy = false;   // pos[slot] = ピース番号
+
+function xy(slot) { return {x: (slot % geom.cols) * geom.step, y: Math.floor(slot / geom.cols) * geom.step}; }
+function place(p, slot) { const q = xy(slot); p.el.style.left = q.x + 'px'; p.el.style.top = q.y + 'px'; p.slot = slot; }
+async function start() {
+  $('#next').style.display = 'none'; wrap.innerHTML = ''; sel = null; busy = false; ph = [];
+  const [rows, cols] = PZ.grid(st.n, PZ.isPortrait()), n = rows * cols, b = 6, gap = 10;
+  const cell = Math.max(30, Math.min(Math.floor((innerWidth - 24 + gap) / cols), Math.floor((innerHeight - 130 + gap) / rows)) - b * 2 - gap);
+  const step = cell + b * 2 + gap, W = cols * step - gap, H = rows * step - gap;
+  geom = {rows, cols, step, cell, b, n};
+  Object.assign(wrap.style, {left: (innerWidth - W) / 2 + 'px', top: 72 + (innerHeight - 72 - H) / 2 - 10 + 'px', width: W + 'px', height: H + 'px'});
+  const src = await PZ.artCanvas(PZ.art[st.art], cols * cell, rows * cell);
+  $('#ref').src = src.toDataURL();
+  let perm; do { perm = PZ.shuffle([...Array(n).keys()]); } while (perm.some((v, i) => v === i));
+  left = n;
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols, el = PZ.el('div', 'ph', wrap);
+    el.style.setProperty('--b', b + 'px'); el.style.setProperty('--rot', (Math.random() * 4 - 2).toFixed(1) + 'deg');
+    el.style.width = el.style.height = cell + b * 2 + 'px';
+    const img = new Image(); img.draggable = false; img.src = PZ.pieceCanvas(src, r, c, rows, cols, cell, cell, null, true).toDataURL(); el.appendChild(img);
+    const p = {el, i, slot: 0}; ph.push(p); el.onclick = () => tap(p);
+  }
+  perm.forEach((pieceIdx, slot) => place(ph[pieceIdx], slot));
+  ph.forEach(mark);
+}
+function mark(p) { if (p.slot === p.i && !p.el.classList.contains('ok')) { p.el.classList.add('ok'); left--; } }
+function tap(p) {
+  if (busy || p.el.classList.contains('ok')) return;
+  if (!sel) { sel = p; p.el.classList.add('sel'); PZ.snd.pick(); return; }
+  if (sel === p) { p.el.classList.remove('sel'); sel = null; return; }
+  const a = sel, s = a.slot; sel = null; a.el.classList.remove('sel'); busy = true;
+  place(a, p.slot); place(p, s); PZ.snd.drop();
+  setTimeout(() => {
+    const before = left; ph.forEach(mark);
+    if (left < before) PZ.snd.ok();
+    busy = false;
+    if (left === 0) finish();
+  }, 380);
+}
+function finish() {
+  ph.forEach((p) => { p.el.classList.remove('ok'); p.el.classList.add('won'); p.el.style.setProperty('--b', '0px'); p.el.style.width = p.el.style.height = geom.cell + 'px'; const q = {x: (p.slot % geom.cols) * geom.cell, y: Math.floor(p.slot / geom.cols) * geom.cell}; p.el.style.left = q.x + 'px'; p.el.style.top = q.y + 'px'; p.el.style.padding = '0'; });
+  setTimeout(() => { PZ.win({say: PZ.art[st.art].say}); $('#next').style.display = 'block'; }, 600);
+}
+$('#hintBtn').onclick = () => {
+  const p = ph.find((q) => !q.el.classList.contains('ok')); if (!p) return;
+  const holder = ph.find((q) => q.slot === p.i);               // 正解の場所に今いるピース
+  [p, holder].forEach((q) => { q.el.classList.add('flash'); setTimeout(() => q.el.classList.remove('flash'), 1800); });
+};
+$('#bar').onclick = (e) => { const b = e.target.closest('button[data-n]'); if (!b) return; st.n = +b.dataset.n; sync(); start(); };
+$('#next').onclick = () => { st.art = (st.art + 1) % PZ.art.length; start(); };
+function sync() { $$('#bar [data-n]').forEach((b) => b.classList.toggle('on', +b.dataset.n === st.n)); }
+PZ.onLayoutChange(start); sync(); start();
+</script></body></html>

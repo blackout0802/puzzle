@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ジグソー試作ギャラリー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* 幼児向けジグソー10試作の一覧。やわらかい丸ゴシックで、遊び道具のカタログのように */
+:root{
+  --bg:#fbf8f3; --surface:#ffffff; --fg:#2d2a32; --muted:#6c6672; --line:#e9e2d8;
+  --accent:#f26a3d; --accent-fg:#ffffff; --chip:#f3ece2; --fav:#e8a100;
+  --disp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --fav:#ffc83d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --fav:#ffc83d; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;padding-inline:max(16px,env(safe-area-inset-left));padding-block:28px 56px;line-height:1.7;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto}
+h1{font-family:var(--disp);font-weight:900;font-size:clamp(26px,6vw,40px);line-height:1.25;margin:0 0 8px;text-wrap:balance}
+.lead{margin:0 0 22px;color:var(--muted);max-width:44em}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 30px;padding:0;list-style:none}
+.how li{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+.how b{display:block;font-family:var(--disp);margin-bottom:2px}
+.how span{color:var(--muted);font-size:13.5px}
+h2{font-family:var(--disp);font-size:20px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;margin:0 0 40px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-width:0;position:relative}
+.strip{height:74px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 14px 8px;background:linear-gradient(110deg,var(--c1),var(--c2))}
+.no{font-family:var(--disp);font-weight:900;font-size:34px;line-height:1;color:var(--ink)}
+.mode{font-size:12px;font-weight:700;background:rgba(255,255,255,.85);color:#3a3440;border-radius:20px;padding:2px 10px}
+.fav{position:absolute;top:8px;right:8px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.88);color:#8d8695;font-size:22px;line-height:1;cursor:pointer}
+.fav[aria-pressed="true"]{color:var(--fav)}
+.fav:focus-visible,.open:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.body h3{font-family:var(--disp);font-weight:900;font-size:20px;margin:0}
+.body p{margin:0;font-size:14px}
+.check{color:var(--muted);font-size:13px}
+.check b{color:var(--fg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{background:var(--chip);border-radius:20px;padding:1px 10px;font-size:12px}
+.open{margin-top:auto;display:block;text-align:center;text-decoration:none;font-family:var(--disp);font-weight:900;font-size:17px;background:var(--accent);color:var(--accent-fg);padding:12px;border-radius:14px}
+.tips{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px}
+.tips ul{margin:8px 0 0;padding-left:1.2em}
+.tips li{margin:4px 0}
+.note{color:var(--muted);font-size:13px;margin-top:22px}
+</style></head><body>
+<div class="wrap">
+  <h1>ジグソー試作ギャラリー</h1>
+  <p class="lead">4歳児向けのジグソーパズルを、遊び方から変えた10パターンです。どれも1枚のHTMLで動き、広告も通信もありません。実際に触って、気になったものにハートを付けてください。</p>
+  <ul class="how">
+    <li><b>スマホ・タブレットで開く</b><span>縦でも横でも遊べます。音が出ない時は、iPhoneの消音スイッチを確認してください。</span></li>
+    <li><b>左上の家マークで戻る</b><span>各試作の左上にある丸いボタンで、このページに戻れます。</span></li>
+    <li><b>ハートで残す</b><span>気に入った試作に印を付けると、この端末に保存されます。</span></li>
+  </ul>
+
+  <h2>10パターン</h2>
+  <div class="grid" id="grid"></div>
+
+  <section class="tips">
+    <h2>甥っ子さんと試すときの見どころ</h2>
+    <ul>
+      <li>説明なしで、自分から触りはじめるか。</li>
+      <li>指が離れてしまう、押し間違えるなど、つまずく場所はどこか。</li>
+      <li>間違えた時に、怒らず、もう一度やろうとするか。</li>
+      <li>完成した時の反応。「もう一回」と言うか、次の絵に行きたがるか。</li>
+      <li>何分くらいで飽きるか。飽きた理由は操作か、絵か、音か。</li>
+    </ul>
+  </section>
+  <p class="note">絵と効果音はすべてこのページ内で生成した仮のものです。写真パズル（07）は、写真を端末の外に送りません。</p>
+</div>
+<script>
+var ITEMS=[
+ {n:'01',f:'01-tap-tap.html',t:'タップ＆タップ',m:'タップ',c1:'#d9f6e8',c2:'#3ec598',ink:'#17694f',
+  d:'ピースをタップ、置きたい場所をタップ。ドラッグがいらない、いちばん素直な形です。',
+  k:'指を離さずに動かす操作が苦手な子でも遊べるか。',tags:['4・6・9枚','うす見本あり','間違いはゆれるだけ']},
+ {n:'02',f:'02-classic-jigsaw.html',t:'ほんもの風ジグソー',m:'ドラッグ',c1:'#e0b378',c2:'#b98242',ink:'#fff',
+  d:'本物のジグソーの形。木の机に散らばったピースを、広めの吸着範囲でスッと収めます。',
+  k:'吸い付く瞬間の気持ちよさと、ピースの重なりで迷わないか。',tags:['4・6・12枚','ヒントボタン','近づくと吸着']},
+ {n:'03',f:'03-shape-sorter.html',t:'かたちあわせ',m:'ドラッグ',c1:'#fff0b8',c2:'#f6b73a',ink:'#7a4b00',
+  d:'絵を切らずに、顔つきのかたちを同じ形の穴へ入れます。パズルの前の入口にも使えます。',
+  k:'最年少向けとして、迷わず最後までいけるか。',tags:['3・4・6個','ちがう穴は戻る','入ると笑顔']},
+ {n:'04',f:'04-stairs.html',t:'かいだんステップ',m:'ドラッグ',c1:'#cdeeff',c2:'#6fc3f5',ink:'#0b5a8a',
+  d:'2枚、3枚、4枚、6枚、9枚と、クリアするたびに階段をのぼって枚数が増えます。',
+  k:'難しくなっても、自分から次へ進みたがるか。',tags:['2〜9枚','星で進み具合','ヒントボタン']},
+ {n:'05',f:'05-rotate.html',t:'くるくるパズル',m:'タップ',c1:'#4a4fb5',c2:'#1d1f55',ink:'#ffd93d',
+  d:'ピースは最初から並んでいます。タップで回して、絵の向きをそろえます。',
+  k:'「動かす」ではなく「回す」で、どれくらい分かりやすいか。',tags:['4・6・9枚','合うと星','完成で境目が消える']},
+ {n:'06',f:'06-swap.html',t:'いれかえパズル',m:'タップ',c1:'#ffe9c4',c2:'#ff9f5c',ink:'#8a3a00',
+  d:'ごちゃまぜの写真プリントを、2枚タップして入れかえます。右上に見本がいつも出ています。',
+  k:'見本と見比べて考えられるか。ヒントは足りているか。',tags:['4・6・9枚','見本つき','合うと固定']},
+ {n:'07',f:'07-photo-puzzle.html',t:'しゃしんパズル',m:'ドラッグ',c1:'#4a4e5a',c2:'#23252b',ink:'#ffd93d',
+  d:'好きな写真をパズルにします。写真を選ぶ前に保護者ゲートが出て、写真は端末の外に出ません。',
+  k:'家族の写真だと、食いつきがどう変わるか。',tags:['4〜12枚','保護者ゲート','みほん表示']},
+ {n:'08',f:'08-balloons.html',t:'ふうせんパズル',m:'タップ',c1:'#bfe6ff',c2:'#ff8aa5',ink:'#1b4f7a',
+  d:'ふうせんを割ると、絵のピースが現れます。置く操作がないので、いちばん小さい子向けです。',
+  k:'パズルというより遊びとして続くか。絵が見えてくる楽しさはあるか。',tags:['4〜12枚','割ると音','置く操作なし']},
+ {n:'09',f:'09-cut-it.html',t:'じぶんでカット',m:'スワイプ＋ドラッグ',c1:'#e6dcff',c2:'#9b82ff',ink:'#3d2a8f',
+  d:'指でスワイプして絵を切り、自分で作った形のパズルを元に戻します。',
+  k:'「切る」だけで満足してしまわないか。切った後にちゃんと遊べるか。',tags:['最大5枚','切った数が見える','毎回ちがう形']},
+ {n:'10',f:'10-sticker-book.html',t:'シールちょう',m:'アプリ全体',c1:'#ffd9ec',c2:'#ff8fc4',ink:'#a01c63',
+  d:'ホームで絵を選び、完成するとシールがもらえてシール帳が育ちます。設定は保護者ゲートの奥です。',
+  k:'「また集めたい」という気持ちが続くか。アプリ全体の流れは分かりやすいか。',tags:['シール帳','保護者設定','おと・こえ切替']}
+];
+var KEY='pzgallery', favs={};
+try{favs=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){favs={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(favs))}catch(e){}}
+var grid=document.getElementById('grid');
+ITEMS.forEach(function(it){
+  var el=document.createElement('article'); el.className='card';
+  el.innerHTML='<div class="strip" style="--c1:'+it.c1+';--c2:'+it.c2+';--ink:'+it.ink+'"><span class="no">'+it.n+'</span><span class="mode">'+it.m+'</span></div>'
+   +'<button class="fav" type="button" aria-label="'+it.t+'をお気に入りにする" aria-pressed="'+(!!favs[it.n])+'">'+(favs[it.n]?'♥':'♡')+'</button>'
+   +'<div class="body"><h3>'+it.t+'</h3><p>'+it.d+'</p><p class="check"><b>見どころ</b> '+it.k+'</p>'
+   +'<div class="chips">'+it.tags.map(function(t){return '<span>'+t+'</span>'}).join('')+'</div>'
+   +'<a class="open" href="'+it.f+'">あそぶ</a></div>';
+  var b=el.querySelector('.fav');
+  b.onclick=function(){favs[it.n]=!favs[it.n]; b.setAttribute('aria-pressed',String(!!favs[it.n])); b.textContent=favs[it.n]?'♥':'♡'; save();};
+  grid.appendChild(el);
+});
+</script>
+</body></html>
