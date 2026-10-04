@@ -185,3 +185,21 @@ button{font-family:inherit;color:inherit}
 .grp.sel{filter:drop-shadow(0 0 calc(5px*var(--inv)) #ffe14d) drop-shadow(0 0 calc(2px*var(--inv)) #ffe14d)}
 .grp.joined{animation:joined .45s ease-out}
 @keyframes joined{0%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+/* あそびかた・もどす */
+#filters .help{margin-left:auto;background:#fff6e0;color:var(--wood-dark)}
+#back2tray{position:absolute;left:10px;top:128px;z-index:6;display:none;border:0;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;box-shadow:0 3px 0 #c9631a}
+#back2tray.on{display:block}
+@media (orientation:landscape){#back2tray{top:108px}}
+.helpbtn{border:0;border-radius:20px;background:rgba(255,255,255,.88);color:var(--wood-dark);font-weight:800;font-size:14px;padding:10px 16px;box-shadow:0 3px 0 var(--wood-dark)}
+.helpbox{width:min(94vw,460px)}
+.helpbox h2{margin-bottom:10px}
+.hrow{display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.hrow:first-of-type{border-top:0}
+.hrow svg{width:58px;height:58px;background:#fff;border-radius:14px;border:2px solid var(--line)}
+.hrow b{display:block;font-size:15px;margin-bottom:2px}
+.hrow p{margin:0;font-size:13px;line-height:1.65;color:#5a4220}
+
+/* 写真のサムネイル：パズルと同じ縦横比 */
+.th.photo{display:grid;place-items:center;background:#fff}
+.th.photo img{object-fit:fill;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.12)}

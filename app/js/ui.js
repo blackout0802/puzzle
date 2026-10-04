@@ -42,6 +42,12 @@
   };
 
   /* ---------------------------------------------------------------- ホーム */
+  /* 写真のサムネイルは、パズルと同じ縦横比で見せる（縦長は縦長、横長は横長。横にとても長いものは2マス分） */
+  function thumbHtml(p, on) {
+    const a = Math.min(2, Math.max(0.5, p.w / p.h)), wide = a >= 1.6;
+    const iw = wide ? 100 : (a >= 1 ? 100 : 100 * a), ih = wide ? 100 : (a >= 1 ? 100 / a : 100);
+    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" src="${blobUrl(p.id, p.blob)}"></button>`;
+  }
   let collageUrl = null;
   async function getCollageUrl() {
     if (collageUrl) return collageUrl;
@@ -72,12 +78,13 @@
         <button id="goBook" class="bookbtn" style="--cover:${TIERS[tier].cover}"><i class="bk"></i><b>シールちょう</b><small>${stickers.length}まい</small></button>
         <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
       </header>
+      <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
       ${resume}
       <h2>えを えらぶ</h2>
       <div class="thumbs" id="thumbs">
         ${PZ.art.map((a) => `<button class="th${sel('art', a.id)}" data-k="art" data-id="${a.id}"><img alt="${a.name}" src="${PZ.svgUrl(a)}"></button>`).join('')}
         <button class="th wide${sel('collage')}" data-k="collage"><img alt="どうぶつ ぜんいん" src="${cUrl}"></button>
-        ${photos.map((p) => `<button class="th${sel('photo', p.id)}" data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" src="${blobUrl(p.id, p.blob)}"></button>`).join('')}
+        ${photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('')}
         <button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>
       </div>
       <h2>ピースの かず</h2>
@@ -103,6 +110,7 @@
     $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
     const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
     $('#goBook').onclick = () => openBook();
+    $('#goHelp').onclick = openHelp;
     $('#goSet').onclick = async () => { if (await PZ.parentGate('せっていは おとなの かた用です')) openSettings(); };
   }
   async function play(o) {
@@ -160,6 +168,36 @@
     $('#cNext', box).onclick = () => { closeSheet(); Engine.exit(); };
     PZ.snd.ok();
   };
+
+
+  /* ------------------------------------------------------------- あそびかた */
+  const IC = {
+    pick:  '<svg viewBox="0 0 64 64"><rect x="12" y="12" width="32" height="32" rx="7" fill="#ffb066" stroke="#fff" stroke-width="3"/><rect x="12" y="12" width="32" height="32" rx="7" fill="none" stroke="#ffe14d" stroke-width="4"/><circle cx="46" cy="46" r="11" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/><circle cx="46" cy="46" r="3.5" fill="#ff8a3c"/></svg>',
+    place: '<svg viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="6" fill="#fdf1d8" stroke="#b9925a" stroke-width="2.5"/><path d="M8 24h48M8 40h48M24 8v48M40 8v48" stroke="#d7bb8a" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="25" y="25" width="14" height="14" rx="3" fill="#ffb066" stroke="#fff" stroke-width="2"/><circle cx="46" cy="46" r="9" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/></svg>',
+    join:  '<svg viewBox="0 0 64 64"><rect x="8" y="22" width="22" height="22" rx="5" fill="#ffb066" stroke="#fff" stroke-width="3"/><rect x="34" y="22" width="22" height="22" rx="5" fill="#8ed8ff" stroke="#fff" stroke-width="3"/><path d="M28 33h8" stroke="#3ec598" stroke-width="5" stroke-linecap="round"/><circle cx="19" cy="52" r="7" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/></svg>',
+    table: '<svg viewBox="0 0 64 64"><rect x="6" y="6" width="52" height="52" rx="8" fill="none" stroke="#b9925a" stroke-width="3" stroke-dasharray="6 5"/><rect x="21" y="21" width="22" height="22" rx="3" fill="#fdf1d8" stroke="#b9925a" stroke-width="2"/><rect x="9" y="44" width="11" height="11" rx="3" fill="#ffb066" stroke="#fff" stroke-width="2"/><rect x="22" y="44" width="11" height="11" rx="3" fill="#8ed8ff" stroke="#fff" stroke-width="2"/></svg>',
+    zoom:  '<svg viewBox="0 0 64 64"><path d="M14 50 26 38M50 14 38 26" stroke="#7a4b16" stroke-width="5" stroke-linecap="round"/><path d="M14 36v14h14M50 28V14H36" fill="none" stroke="#7a4b16" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="50" r="5" fill="#ff8a3c"/><circle cx="50" cy="14" r="5" fill="#ff8a3c"/></svg>',
+    ref:   '<svg viewBox="0 0 64 64"><rect x="26" y="8" width="30" height="22" rx="4" fill="#bfe6ff" stroke="#fff" stroke-width="3"/><circle cx="40" cy="19" r="5" fill="#ffd93d"/><path d="M26 30l10-8 8 6 12-8" fill="none" stroke="#3ec598" stroke-width="3"/><circle cx="46" cy="42" r="10" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/><circle cx="46" cy="42" r="3" fill="#ff8a3c"/></svg>',
+    hint:  '<svg viewBox="0 0 64 64"><rect x="8" y="30" width="28" height="22" rx="11" fill="#ff8a3c"/><path d="M42 14l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#ffd93d" stroke="#e8a100" stroke-width="2" stroke-linejoin="round"/><path d="M48 40l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="#ffd93d"/></svg>',
+    rot:   '<svg viewBox="0 0 64 64"><rect x="18" y="18" width="28" height="28" rx="6" fill="#ffb066" stroke="#fff" stroke-width="3"/><path d="M14 30a20 20 0 0 1 34-12" fill="none" stroke="#7e57c2" stroke-width="5" stroke-linecap="round"/><path d="M50 8v12H38" fill="none" stroke="#7e57c2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  };
+  const HELP = [
+    ['pick',  'えらぶ',               '下の ピースを タップすると、左上に 大きく 出ます。もういちど タップすると やめられます。'],
+    ['place', 'おく',                 '盤面の、そのピースが はまる ばしょを タップ。あっていれば ぱちっと はまります。まちがえても だいじょうぶ。'],
+    ['join',  'くっつける',           'えらんだ ピースが つながる ピースを タップ。となりどうしなら、そこに くっつきます。'],
+    ['table', 'テーブル',             '盤面の まわりの 点線の中の あいている ところを タップすると、ピースを いったん おいておけます。くっついた かたまりは、タップで もちあげて、盤面の あう ばしょを タップすると まとめて はまります。もちあげたあと「おきばへ もどす」で ピース置き場に もどせます。'],
+    ['zoom',  '大きく・小さく',       '2本の ゆびで ひろげる／つまむ。1本の ゆびで うごかします。右上の ⤢ ボタンは、盤面ぜんたい → もう一度で テーブルぜんたい。'],
+    ['ref',   'みほん',               '右上の 小さな 絵を タップすると 大きく 見えます。もう一度 タップで とじます。'],
+    ['hint',  'ヒント・ふち・なか',   '「ヒント」は、つぎに おけるピースを ひからせます。「ふち」「なか」で ピース置き場を しぼれます。'],
+    ['rot',   'ちょうむずかしい',     'ピースが まわっています。えらんだピース（左上の 大きな ピース）を タップして、むきを そろえてから おきます。'],
+  ];
+  function openHelp() {
+    const box = openSheet(`<h2>あそびかた</h2>${HELP.map(([k, t, d]) => `<div class="hrow">${IC[k]}<div><b>${t}</b><p>${d}</p></div></div>`).join('')}
+      <p class="note">とちゅうで やめても「つづきから」で つづけられます。写真は この たんまつの 中だけで つかいます。</p>
+      <div class="row"><button class="btn go" id="hClose" type="button">わかった</button></div>`, 'helpbox');
+    $('#hClose', box).onclick = closeSheet;
+  }
+  $('#gHelp').onclick = openHelp;
 
   /* --------------------------------------------------------------- シール帳 */
   async function openBook(fromClear) {

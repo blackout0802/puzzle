@@ -76,7 +76,7 @@
     ui = {
       game: $('#game'), view: $('#view'), world: $('#world'), board: $('#board'), ring: $('#ring'), table: $('#table'),
       tray: $('#tray'), filters: $('#filters'), timer: $('#timer'), left: $('#left'),
-      hand: $('#hand'), ref: $('#ref'), refImg: $('#ref img'), peek: $('#peek'), peekImg: $('#peek img'), loading: $('#loading'), toast: $('#toast'),
+      hand: $('#hand'), back: $('#back2tray'), ref: $('#ref'), refImg: $('#ref img'), peek: $('#peek'), peekImg: $('#peek img'), loading: $('#loading'), toast: $('#toast'),
     };
     return ui;
   }
@@ -131,7 +131,7 @@
     let pinch = null, multi = false;
     const local = (e) => { const r = v.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
     v.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#hand,#peek,#ref,.zoom')) return;
+      if (e.target.closest('#hand,#back2tray,#peek,#ref,.zoom')) return;
       try { v.setPointerCapture(e.pointerId); } catch (_) { }
       const p = local(e); ptrs.set(e.pointerId, { ...p, sx: p.x, sy: p.y, moved: false });
       if (ptrs.size === 2) {
@@ -186,7 +186,7 @@
       desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
       srcC, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
       started: !!(o.save && ((o.save.placed && o.save.placed.length) || (o.save.groups && o.save.groups.length))), over: false, filter: 'all',
-      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, timerId: 0, lastTick: 0, destroyed: false,
+      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, opos: new Map(order.map((i, k) => [i, k])), timerId: 0, lastTick: 0, destroyed: false,
     };
     // 盤面とテーブル
     const b = ui.board; b.width = Math.ceil(W * RES); b.height = Math.ceil(H * RES); b.style.width = W + 'px'; b.style.height = H + 'px';
@@ -241,6 +241,20 @@
     const x = ui.board.getContext('2d');
     x.setTransform(G.RES, 0, 0, G.RES, 0, 0);
     x.drawImage(p.cv, p.c * CELL - G.pad, p.r * CELL - G.pad, G.S, G.S);
+  }
+  /* ピース置き場の「もとの並び順」の位置に、ピースを戻す */
+  function insertTp(p) {
+    const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
+    tp.style.width = tp.style.height = G.S * TS + 8 + 'px';
+    p.cv.style.transform = `rotate(${p.deg}deg)`; tp.appendChild(p.cv); p.tp = tp;
+    const next = [...ui.tray.children].find((t) => G.opos.get(+t.dataset.i) > G.opos.get(p.i));
+    ui.tray.insertBefore(tp, next || null);
+  }
+  function returnToTray(g) {                                                  // テーブルのかたまりを、ピース置き場へ戻す
+    const ms = [...g.ms]; removeGroup(g);
+    ms.forEach((i) => { const p = G.pieces[i]; p.g = null; p.state = 'tray'; insertTp(p); });
+    G.sel = null; ui.hand.classList.remove('on'); ui.back.classList.remove('on'); ui.ring.classList.remove('on');
+    PZ.snd.drop(); updateLabels(); setFilter(G.filter); persist();
   }
   function buildTp(p) {
     const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
@@ -305,13 +319,13 @@
   }
   function selectGroup(g) {
     deselect(); G.sel = { from: 'table', g }; g.el.classList.add('sel'); PZ.snd.pick();
-    showHand(); startSelect();
+    showHand(); startSelect(); ui.back.classList.add('on');
     if (G.L.assist) { const p = G.pieces[[...g.ms][0]]; pulseCell(p.r, p.c, 0); }
   }
   function deselect() {
     if (!G || !G.sel) return;
     const U = G.sel; if (U.from === 'tray') U.p.tp && U.p.tp.classList.remove('sel'); else U.g.el && U.g.el.classList.remove('sel');
-    G.sel = null; ui.hand.classList.remove('on'); ui.ring.classList.remove('on');
+    G.sel = null; ui.hand.classList.remove('on'); ui.back.classList.remove('on'); ui.ring.classList.remove('on');
   }
   function showHand() {
     const U = G.sel, h = ui.hand; h.innerHTML = ''; const c = document.createElement('canvas');
@@ -438,7 +452,7 @@
   function showTimer() { ui.timer.textContent = fmt(G.elapsed); }
   function tick() {
     if (!G) return; const now = performance.now(), dt = now - G.lastTick; G.lastTick = now;
-    if (G.started && !G.over && !document.hidden) { G.elapsed += Math.min(dt, 2000); showTimer(); }
+    if (G.started && !G.over && !document.hidden && !document.querySelector('#sheet.on')) { G.elapsed += Math.min(dt, 2000); showTimer(); }
   }
   let saveT = 0;
   function persist(now) {
@@ -478,7 +492,7 @@
     G.destroyed = true; clearInterval(G.timerId); clearTimeout(saveT);
     ui.tray.innerHTML = ''; ui.hand.classList.remove('on'); ui.ring.classList.remove('on'); ui.peek.classList.remove('on');
     ui.world.querySelectorAll('.final,.pop,.grp').forEach((e) => e.remove());
-    ui.game.classList.remove('on', 'hasTable'); G = null;
+    ui.game.classList.remove('on', 'hasTable'); ui.back.classList.remove('on'); G = null;
   }
   function exit() { persist(true); destroy(); E.on.exit && E.on.exit(); }
 
@@ -489,6 +503,7 @@
       const tp = e.target.closest('.tp'); if (!tp || !G) return; selectTray(G.pieces[+tp.dataset.i]);
     });
     ui.hand.addEventListener('click', () => { if (!G || !G.sel) return; if (G.sel.from === 'tray' && G.L.rot) rotate(G.sel.p); else deselect(); });
+    ui.back.addEventListener('click', () => { if (G && G.sel && G.sel.from === 'table') returnToTray(G.sel.g); });
     ui.filters.addEventListener('click', (e) => { const b = e.target.closest('button[data-f]'); if (b && G) setFilter(b.dataset.f); });
     $('#gBack').onclick = exit;
     $('#gHint').onclick = hint;
