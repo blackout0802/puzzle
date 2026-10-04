@@ -285,3 +285,20 @@ button{font-family:inherit;color:inherit}
 .prow input{flex:1;min-width:0;height:44px;border-radius:12px;border:2px solid var(--line);padding:0 10px;font-size:16px;background:#fff;color:var(--ink)}
 .prow .pdel{flex:none;width:auto;padding:0 12px;height:44px;margin:0}
 .prow .pdel:disabled{opacity:.35}
+
+/* えを かく */
+.drawbox{width:min(94vw,420px);max-height:94vh;overflow:auto}
+.drawstage{margin:4px auto 8px;width:max-content;max-width:100%;border-radius:12px;overflow:hidden;box-shadow:0 0 0 3px var(--line);background:#fff}
+.drawstage canvas{display:block;touch-action:none;cursor:crosshair}
+.dcolors{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:4px 0}
+.dcolors button{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line);padding:0}
+.dcolors button.on{box-shadow:0 0 0 4px var(--accent)}
+.dcolors .era{background:#fff;font-size:18px;line-height:1}
+.dtools{display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0}
+.dtools .lbl{font-size:11px;color:var(--muted);margin-left:6px}
+.dtools button[data-w]{width:38px;height:38px;border-radius:12px;border:2px solid var(--line);background:#fff;display:grid;place-items:center;padding:0}
+.dtools button[data-w] i{display:block;border-radius:50%;background:#444}
+.dtools button.on{border-color:var(--accent);background:#fff2e4}
+#drBg{display:inline-flex;gap:4px}
+#drBg button{width:28px;height:28px;border-radius:8px;border:2px solid var(--line);padding:0}
+#drBg button.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}

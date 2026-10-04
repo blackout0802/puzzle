@@ -55,7 +55,7 @@
           if (img.close) try { img.close(); } catch (e3) { }
           img = cc; aspect = clamp(cc.width / cc.height, 0.5, 2);
         }
-        info = { img, aspect, name: 'わたしの しゃしん', say: 'できたね' };
+        info = { img, aspect, name: rec.drawn ? 'わたしの え' : 'わたしの しゃしん', say: 'できたね' };
       }
       if (desc.k !== 'photo') Sources.cache[key] = info;
       return info;

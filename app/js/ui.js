@@ -99,7 +99,7 @@
     return collageUrls[id];
   }
   const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
-  const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
+  const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : ((photos || []).find((p) => p.id === src.id) || {}).drawn ? 'わたしの え' : 'わたしの しゃしん');
   const tabOf = (src) => (src.k === 'photo' ? 'photo' : src.k === 'collage' ? ((src.id || 'animals') === 'vehicles' ? 'vehicle' : 'nature') : ((PZ.art.find((a) => a.id === src.id) || {}).cat === 'vehicle' ? 'vehicle' : 'nature'));
   /* おすすめ：さいごに あそんだ記録から「つぎは これ」を決める。
      かんたんに終われたら 1だん上げ（ピースの数→むずかしさ の順に、交互に）。たいへんそうなら 1だん下げる。まだ集めていない絵を すすめる */
@@ -138,7 +138,7 @@
     let thumbs = '';
     if (S.tab === 'vehicle') thumbs = PZ.art.filter((a) => a.cat === 'vehicle').map(artBtn).join('') + await colBtn('vehicles', 1);
     else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 4 / 3);
-    else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>';
+    else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button><button class="th add" id="addDraw"><span>✏️</span><small>えを かく</small></button>';
 
     const rec = recommend(stickers);
     const recHtml = rec ? `<button class="recbox" id="recBtn" type="button">${rec.art ? `<img alt="" src="${PZ.svgUrl(rec.art)}">` : '<span class="star">★</span>'}<span><b>つぎは これ！</b><small>${rec.art ? rec.art.name + ' ・ ' : ''}${rec.target}ピース ・ ${LV[rec.level].name}</small><small class="why">${rec.why}</small></span></button>` : '';
@@ -184,6 +184,7 @@
     $('#thumbs').onclick = (e) => {
       const b = e.target.closest('.th'); if (!b) return;
       if (b.id === 'addPhoto') return addPhoto();
+      if (b.id === 'addDraw') return openDraw();
       S.src = { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
     };
     const rb = $('#recBtn'); if (rb) rb.onclick = () => { S.target = rec.target; S.level = rec.level; if (rec.art) { S.src = { k: 'art', id: rec.art.id }; S.tab = rec.art.cat === 'vehicle' ? 'vehicle' : 'nature'; } Store.saveSettings(); PZ.snd.pick(); renderHome(); };
@@ -294,6 +295,53 @@
       : ok ? `${ok}まい ついか、${bad.length}まいは ${bad[0]}` : `しゃしんを とりこめませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
     renderHome();
     if (ok === 1 && !bad.length && S.src.k === 'photo') openCrop(S.src.id);          // 1枚だけ追加したときは、そのまま きりとり画面へ
+  }
+
+  /* ------------------------------------------------------------- えを かく
+     ゆびで かいた えを パズルにする。かいた絵は「しゃしん」と同じ形で保存するので、きりとり・パズルは そのまま使える */
+  function openDraw() {
+    const COLORS = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#6d4c41', '#212121'];
+    const BGS = ['#ffffff', '#e3f2fd', '#e8f5e9', '#fff8e1', '#fce4ec'];
+    const box = openSheet(`<h2>えを かこう</h2>
+      <div class="drawstage"><canvas id="drCv"></canvas></div>
+      <div class="dcolors" id="drCol">${COLORS.map((c, i) => `<button type="button" data-c="${c}" style="background:${c}" class="${i === 0 ? 'on' : ''}" aria-label="いろ"></button>`).join('')}<button type="button" data-c="eraser" class="era" aria-label="けしゴム">🧽</button></div>
+      <div class="dtools"><span class="lbl">ふとさ</span>${[6, 14, 28].map((w, i) => `<button type="button" data-w="${w}" class="${i === 1 ? 'on' : ''}"><i style="width:${w * .7 + 4}px;height:${w * .7 + 4}px"></i></button>`).join('')}
+        <span class="lbl">せなか</span><span id="drBg">${BGS.map((c, i) => `<button type="button" data-bg="${c}" style="background:${c}" class="${i === 0 ? 'on' : ''}" aria-label="はいけい"></button>`).join('')}</span></div>
+      <div class="row"><button class="btn" id="drUndo" type="button">↩ もどす</button><button class="btn" id="drClear" type="button">ぜんぶ けす</button></div>
+      <div class="row"><button class="btn" id="drCancel" type="button">やめる</button><button class="btn go" id="drOk" type="button">パズルにする</button></div>`, 'drawbox');
+    const cv = $('#drCv', box), IW = 960, IH = 720, sw = Math.round(Math.min(innerWidth * 0.88 - 36, 360, (innerHeight * 0.38) * 4 / 3));
+    cv.width = IW; cv.height = IH; cv.style.width = sw + 'px'; cv.style.height = Math.round(sw * 3 / 4) + 'px'; cv.style.touchAction = 'none';
+    const x = cv.getContext('2d'); let bg = BGS[0], col = COLORS[0], lw = 14, last = null, hist = [], touched = false;
+    const paintBg = () => { x.fillStyle = bg; x.fillRect(0, 0, IW, IH); };
+    paintBg(); x.lineCap = 'round'; x.lineJoin = 'round';
+    const snap = () => { hist.push(x.getImageData(0, 0, IW, IH)); if (hist.length > 15) hist.shift(); };
+    const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * IW / r.width, y: (e.clientY - r.top) * IH / r.height }; };
+    cv.addEventListener('pointerdown', (e) => { try { cv.setPointerCapture(e.pointerId); } catch (_) { } snap(); last = pt(e); touched = true; x.strokeStyle = col === 'eraser' ? bg : col; x.fillStyle = x.strokeStyle; x.lineWidth = lw * (col === 'eraser' ? 1.6 : 1) * IW / 360 / 1.3; x.beginPath(); x.arc(last.x, last.y, x.lineWidth / 2, 0, 7); x.fill(); });
+    cv.addEventListener('pointermove', (e) => { if (!last) return; const p = pt(e); x.beginPath(); x.moveTo(last.x, last.y); x.lineTo(p.x, p.y); x.stroke(); last = p; });
+    const end = () => { last = null; };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    $('#drCol', box).onclick = (e) => { const b = e.target.closest('button[data-c]'); if (!b) return; col = b.dataset.c; box.querySelectorAll('#drCol button').forEach((y) => y.classList.toggle('on', y === b)); };
+    box.querySelectorAll('.dtools button[data-w]').forEach((b) => b.onclick = () => { lw = +b.dataset.w; box.querySelectorAll('.dtools button[data-w]').forEach((y) => y.classList.toggle('on', y === b)); });
+    $('#drBg', box).onclick = (e) => {                                               // せなかの いろを かえる（かいた線は のこす）
+      const b = e.target.closest('button[data-bg]'); if (!b) return; snap();
+      const old = bg, nb = b.dataset.bg, im = x.getImageData(0, 0, IW, IH), d = im.data, o = [parseInt(old.slice(1, 3), 16), parseInt(old.slice(3, 5), 16), parseInt(old.slice(5, 7), 16)], n = [parseInt(nb.slice(1, 3), 16), parseInt(nb.slice(3, 5), 16), parseInt(nb.slice(5, 7), 16)];
+      for (let i = 0; i < d.length; i += 4) if (d[i] === o[0] && d[i + 1] === o[1] && d[i + 2] === o[2]) { d[i] = n[0]; d[i + 1] = n[1]; d[i + 2] = n[2]; }
+      x.putImageData(im, 0, 0); bg = nb; box.querySelectorAll('#drBg button').forEach((y) => y.classList.toggle('on', y === b));
+    };
+    $('#drUndo', box).onclick = () => { const h = hist.pop(); if (h) x.putImageData(h, 0, 0); };
+    $('#drClear', box).onclick = () => { snap(); paintBg(); touched = false; };
+    $('#drCancel', box).onclick = closeSheet;
+    $('#drOk', box).onclick = async () => {
+      if (!touched) { flash('まず えを かいてね'); return; }
+      try {
+        const blob = await toJpegBlob(cv), id = 'p' + Date.now() + '_d';
+        const rec = { id, ts: Date.now(), w: IW, h: IH, type: 'image/jpeg', buf: await Store.toBuf(blob), drawn: true };
+        const tc = document.createElement('canvas'); tc.width = 240; tc.height = 180; tc.getContext('2d').drawImage(cv, 0, 0, 240, 180); rec.tbuf = await Store.toBuf(await toJpegBlob(tc));
+        const r = await Store.put('photos', rec);
+        S.src = { k: 'photo', id }; S.tab = 'photo'; if (S.target > 100) S.target = 48;
+        Store.saveSettings(); closeSheet(); flash(r === 'mem' ? 'えを ほぞんできないため、いまだけ つかえます' : 'えが できたよ！ かず（ピース）を えらんで はじめよう', 3500); renderHome();
+      } catch (err) { logErr('えを かく', err); flash('ほぞん できませんでした'); }
+    };
   }
 
   /* ---------------------------------------------------------- 写真の きりとり */
