@@ -213,3 +213,6 @@ button{font-family:inherit;color:inherit}
 /* しゃしんを えらぶ（ゲートのあとに出す、本物のファイル選択ボタン） */
 .filebtn{position:relative;display:grid;place-items:center;height:76px;margin-top:14px;border-radius:20px;background:var(--go);color:#fff;font-size:22px;font-weight:900;box-shadow:0 6px 0 #249a74;overflow:hidden}
 .filebtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:60px}
+
+.logbox{max-height:160px;overflow-y:auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:6px;touch-action:pan-y}
+.logbox p{margin:3px 0;font-size:11px;line-height:1.5;word-break:break-all;color:#5a4220}

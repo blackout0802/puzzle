@@ -22,6 +22,15 @@
   /* ---------------------------------------------------------------- 共通 */
   const urls = {};
   function blobUrl(id, blob) { return urls[id] || (urls[id] = URL.createObjectURL(blob)); }
+  /* 失敗の理由を、端末の中に最大8件 記録する（おとなの設定から見られる。原因調べ用） */
+  function logErr(tag, err, extra) {
+    try {
+      console.error(tag, err);
+      const d = new Date(), t = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+      S.log = (S.log || []).concat(`${t} ${tag} ${(err && (err.name || '')) || ''} ${(err && err.message) || ''} ${extra || ''}`.replace(/\s+/g, ' ').trim()).slice(-8);
+      Store.saveSettings();
+    } catch (e) { }
+  }
   function flash(msg, ms) { const f = $('#flash'); f.textContent = msg; f.classList.add('on'); clearTimeout(flash.t); flash.t = setTimeout(() => f.classList.remove('on'), ms || 2200); }
   function loading(on, msg) { const l = $('#loading'); l.classList.toggle('on', on); if (msg) l.querySelector('span').textContent = msg; }
   function show(id) { document.querySelectorAll('.scr').forEach((s) => s.classList.toggle('on', s.id === id)); }
@@ -125,7 +134,7 @@
   async function play(o) {
     $('#flash').classList.remove('on');
     try { await Engine.start(o); show('game'); }
-    catch (e) { loading(false); flash('この えは ひらけませんでした'); renderHome(); }
+    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
   }
   Engine.on.exit = () => { show('home'); renderHome(); };
 
@@ -142,15 +151,18 @@
   }
   /* 写真を読みこむ：いくつかの方法を順番に試す（機種・ブラウザによって、使える方法がちがうため） */
   async function decodePhoto(file) {
+    const errs = [];
     const tries = [
-      () => createImageBitmap(file, { imageOrientation: 'from-image' }),
-      async () => { const u = URL.createObjectURL(file); try { return await PZ.loadImage(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 8000); } },
-      () => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => PZ.loadImage(fr.result).then(res, rej); fr.onerror = () => rej(fr.error || new Error('read')); fr.readAsDataURL(file); }),
-      () => createImageBitmap(file),
+      ['img', async () => { const u = URL.createObjectURL(file); try { return await PZ.loadImage(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 8000); } }],   // 向きは ブラウザが自動で反映
+      ['bitmap+向き', () => createImageBitmap(file, { imageOrientation: 'from-image' })],
+      ['reader', () => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => PZ.loadImage(fr.result).then(res, rej); fr.onerror = () => rej(fr.error || new Error('read')); fr.readAsDataURL(file); })],
+      ['bitmap', () => createImageBitmap(file)],
     ];
-    let last;
-    for (const t of tries) { try { const img = await t(); if ((img.naturalWidth || img.width) > 0) return img; } catch (e) { last = e; } }
-    throw Object.assign(new Error((last && last.message) || 'decode'), { stage: 'ひらけません（しゃしんの かたちが ちがうかも）' });
+    for (const [name, t] of tries) {
+      try { const img = await t(); if ((img.naturalWidth || img.width) > 0) return img; errs.push(name + ':0px'); }
+      catch (e) { errs.push(name + ':' + ((e && e.name) || 'err')); }
+    }
+    throw Object.assign(new Error(errs.join(',')), { stage: 'ひらけません（しゃしんの かたちが ちがうかも）' });
   }
   async function toJpegBlob(cv) {
     const b = await new Promise((r) => { try { cv.toBlob(r, 'image/jpeg', 0.88); } catch (e) { r(null); } });
@@ -173,7 +185,10 @@
         const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, blob };
         if ((await Store.put('photos', rec)) === 'mem') vol = true;
         S.src = { k: 'photo', id: rec.id }; ok++;
-      } catch (err) { console.error(err); bad.push((err && err.stage) || 'とりこめません'); }
+      } catch (err) {
+        const f = files[i], info = `[${f.type || '?'} ${(f.size / 1048576).toFixed(1)}MB]`;
+        logErr('しゃしん取りこみ', err, info); bad.push(((err && err.stage) || 'とりこめません') + ' ' + info);
+      }
     }
     S.tab = 'photo'; Store.saveSettings(); loading(false);
     flash(!bad.length ? `しゃしんを ${ok}まい ついかしました${vol ? '（この たんまつでは ほぞんできないため、いまだけ つかえます）' : ''}`
@@ -291,6 +306,8 @@
       <h3>きろく</h3>
       <button class="dng" id="rBest">ベストタイムを けす</button>
       <button class="dng" id="rStk">シールを ぜんぶ けす</button>
+      <h3>もんだいが あったとき</h3>
+      ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">きろくを けす</button>` : '<p class="note">エラーの きろくは ありません</p>'}
       <p class="note">写真・シール・きろくは、この たんまつの中だけに保存されます。インターネットには送りません。${persistent ? '' : '<br><b>いまは一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
       <div class="row"><button class="btn" id="sClose">とじる</button></div>`, 'setbox');
     box.querySelectorAll('#sSound button').forEach((b) => b.onclick = () => {
@@ -298,6 +315,7 @@
       box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
     });
     box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); const sv = await Store.get('saves', 'current'); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', 'current'); closeSheet(); openSettings(); }));
+    const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };
     armedButton($('#rBest', box), 'ベストタイムを けす', () => { S.best = {}; Store.saveSettings(); flash('けしました'); });
     armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { await Store.clear('stickers'); flash('けしました'); });
     $('#sClose', box).onclick = () => { closeSheet(); renderHome(); };
