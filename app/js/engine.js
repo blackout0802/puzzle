@@ -6,10 +6,10 @@
   const CELL = 60;            // 盤面の1マス（ワールド座標）
   const TS = 0.88;            // ピース置き場での表示倍率
   const LEVELS = {
-    easy:   { name: 'やさしい',         desc: 'ヒントのひかり・くっつきやすい', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.8 },
-    normal: { name: 'ふつう',           desc: 'ふつうの くっつきかた',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    hard:   { name: 'むずかしい',       desc: 'くっつく はんいが せまい',        ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.42 },
-    expert: { name: 'ちょうむずかしい', desc: 'さらに、ピースがまわっている',ghost: 0.14, grid: true,  assist: false, rot: true, snap: 0.35 },
+    easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
+    normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
+    hard:   { name: 'むずかしい',       desc: 'ヒントなし',        ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
+    expert: { name: 'ちょうむずかしい', desc: 'ピースがまわっている',ghost: 0.14, grid: true,  assist: false, rot: true, snap: 0.55 },
   };
   const $ = (s) => document.querySelector(s);
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
