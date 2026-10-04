@@ -191,7 +191,38 @@
     try { await Engine.start(o); show('game'); }
     catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); if (e && e.name === 'PhotoBroken') { flash('この しゃしんは こわれていて ひらけません。おとなの せっていで けして、もういちど ついかしてください', 9000); renderHome(); return; } flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
   }
-  Engine.on.exit = () => { show('home'); renderHome(); };
+  Engine.on.exit = () => { contMs = 0; show('home'); renderHome(); };
+
+  /* ---------------------------------------------------- あそんだ記録と きゅうけい */
+  const dayKey = (d) => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const BREAKS = [[0, 'なし'], [10, '10ぷん'], [15, '15ふん'], [20, '20ぷん'], [30, '30ぷん']];
+  let contMs = 0, saveAcc = 0;
+  Engine.on.tick = (d) => {
+    const k = dayKey(); S.play = S.play || {}; S.play[k] = (S.play[k] || 0) + d; saveAcc += d;
+    if (saveAcc > 10000) { saveAcc = 0; Store.saveSettings(); }
+    contMs += d;
+    const lim = (S.breakMin === undefined ? 15 : S.breakMin) * 60000;
+    if (lim && contMs >= lim && !document.querySelector('#sheet.on')) { contMs = 0; breakTime(); }
+  };
+  function breakTime() {
+    Store.saveSettings();
+    const box = openSheet(`<div class="clear"><div class="rest">☕</div><h2>ちょっと きゅうけい しよう</h2>
+      <p class="fact">めを やすめて、とおくを みてみよう。<br>おみずを のんでも いいね。</p>
+      <div class="row"><button class="btn" id="bkEnd" type="button">ここで おわる</button><button class="btn go" id="bkGo" type="button">もうすこし あそぶ</button></div></div>`, 'clearbox');
+    PZ.sayV('ちょっと きゅうけい しよう。おめめを やすめてね', true);
+    $('#bkGo', box).onclick = closeSheet;
+    $('#bkEnd', box).onclick = () => { closeSheet(); Engine.exit(); };
+  }
+  function playReport(stickers) {
+    const play = S.play || {}, days = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push({ k: dayKey(d), w: '日月火水木金土'[d.getDay()], m: (play[dayKey(d)] || 0) / 60000 }); }
+    const max = Math.max(15, ...days.map((x) => x.m)), tot = days.reduce((a, x) => a + x.m, 0);
+    const wk = stickers.filter((s) => s.ts > Date.now() - 7 * 864e5), byN = {};
+    wk.forEach((s) => { byN[s.n] = (byN[s.n] || 0) + 1; });
+    const top = Object.entries(byN).sort((a, b) => b[1] - a[1])[0];
+    return `<div class="rep"><div class="bars">${days.map((x) => `<div class="b"><i style="height:${Math.round(x.m / max * 100)}%"></i><small>${Math.round(x.m)}</small><span>${x.w}</span></div>`).join('')}</div>
+      <p class="note">さいきん7にち：あそんだ じかん ${Math.round(tot)}ふん ・ クリア ${wk.length}かい${top ? ` ・ よくあそぶ かず ${top[0]}ピース` : ''}<br>きょう：${Math.round(days[6].m)}ふん ／ ぜんぶで クリア ${stickers.length}かい</p></div>`;
+  }
 
   /* -------------------------------------------------------------- 写真の追加 */
   async function addPhoto() {
@@ -461,11 +492,16 @@
 
   /* ------------------------------------------------------------- 保護者設定 */
   async function openSettings() {
-    const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent();
+    const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent(), allStickers = await Store.all('stickers');
     const box = openSheet(`
       <h2>おとなの せってい</h2>
       <h3>おと</h3>
       <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
+      <h3>あそんだ きろく（おとな用）</h3>
+      ${playReport(allStickers)}
+      <h3>きゅうけいの おしらせ</h3>
+      <div class="seg" id="sBreak">${BREAKS.map(([m, t]) => `<button data-m="${m}" class="${(S.breakMin === undefined ? 15 : S.breakMin) === m ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <p class="note">つづけて あそんだ じかんが たつと、「ちょっと きゅうけい しよう」と おしらせします。</p>
       <h3>こえの ガイド（ひらがなで はなしかけます）</h3>
       <div class="seg" id="sVoice"><button data-s="1" class="${S.voice !== 0 ? 'on' : ''}">あり</button><button data-s="0" class="${S.voice !== 0 ? '' : 'on'}">なし</button></div>
       <p class="note">「おと」を なしにすると、こえも でません。この たんまつの 読み上げ機能を つかいます。</p>
@@ -482,6 +518,9 @@
     box.querySelectorAll('#sSound button').forEach((b) => b.onclick = () => {
       S.sound = +b.dataset.s; PZ.muted = !S.sound; Store.saveSettings();
       box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
+    });
+    box.querySelectorAll('#sBreak button').forEach((b) => b.onclick = () => {
+      S.breakMin = +b.dataset.m; contMs = 0; Store.saveSettings(); box.querySelectorAll('#sBreak button').forEach((x) => x.classList.toggle('on', x === b));
     });
     box.querySelectorAll('#sVoice button').forEach((b) => b.onclick = () => {
       S.voice = +b.dataset.s; PZ.voice = S.voice !== 0; Store.saveSettings();

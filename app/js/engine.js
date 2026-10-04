@@ -322,7 +322,7 @@
     await nextFrame(); fitCam(false);
     G.lastTick = performance.now(); G.timerId = setInterval(tick, 500);
     if (G.placed === G.n) win(true);
-    else setTimeout(() => PZ.sayV(o.save ? 'つづきから はじめよう' : (G.info.name === 'わたしの しゃしん' ? 'わたしの しゃしんの パズルだよ' : G.info.name + 'の パズルだよ。ピースを えらんでね'), true), 700);
+    else setTimeout(() => G && PZ.sayV(o.save ? 'つづきから はじめよう' : (G.info.name === 'わたしの しゃしん' ? 'わたしの しゃしんの パズルだよ' : G.info.name + 'の パズルだよ。ピースを えらんでね'), true), 700);
   }
   function shuffleSeed(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -570,7 +570,7 @@
   function showTimer() { ui.timer.textContent = fmt(G.elapsed); }
   function tick() {
     if (!G) return; const now = performance.now(), dt = now - G.lastTick; G.lastTick = now;
-    if (G.started && !G.over && !document.hidden && !document.querySelector('#sheet.on')) { G.elapsed += Math.min(dt, 2000); showTimer(); }
+    if (G.started && !G.over && !document.hidden && !document.querySelector('#sheet.on')) { const d = Math.min(dt, 2000); G.elapsed += d; showTimer(); E.on.tick && E.on.tick(d); }
   }
   let saveT = 0;
   function persist(now) {
@@ -601,7 +601,7 @@
     fitCam(true);
     PZ.confetti(90); PZ.snd.win();
     const stats = { time: G.elapsed, misses: G.misses, n: G.n, level: G.level, key: G.key, desc: G.desc, name: G.info.name, say: G.info.say, srcC: G.srcC, W: G.W, H: G.H };
-    setTimeout(() => PZ.sayV(G.info.say, true), 600);
+    setTimeout(() => G && PZ.sayV(G.info.say, true), 600);
     if (E.on.win) setTimeout(() => E.on.win(stats), 2400);
   }
 
