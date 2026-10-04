@@ -1,0 +1,1926 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ジグソー">
+<meta name="theme-color" content="#7a4b16">
+<title>ジグソーシール帳</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
+  font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
+canvas,img{display:block;-webkit-user-drag:none}
+
+/* 左上の「ギャラリーへもどる」ボタン */
+.home{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;z-index:50;width:44px;height:44px;
+  border-radius:50%;background:rgba(255,255,255,.88);display:grid;place-items:center;
+  text-decoration:none;color:#444;font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+
+/* ごほうび */
+.confetti-piece{position:fixed;top:-24px;width:12px;height:18px;z-index:200;pointer-events:none;
+  animation:cf 2.6s ease-in forwards}
+@keyframes cf{to{transform:translate(var(--dx),112vh) rotate(var(--rot))}}
+.banner{position:fixed;left:0;right:0;bottom:24%;z-index:210;text-align:center;pointer-events:none;white-space:nowrap;
+  font-size:min(12.5vw,76px);font-weight:900;color:#fff;letter-spacing:.04em;
+  text-shadow:0 4px 0 #ff7a59,0 8px 14px rgba(0,0,0,.3);animation:ban 2.2s ease forwards}
+@keyframes ban{0%{transform:scale(.2) rotate(-8deg);opacity:0}15%{transform:scale(1.15) rotate(3deg);opacity:1}
+  25%{transform:scale(1) rotate(0)}85%{opacity:1}100%{transform:scale(1);opacity:0}}
+
+/* 保護者ゲート */
+.gate-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:grid;place-items:center}
+.gate{background:#fff;border-radius:22px;padding:22px 20px 14px;width:min(88vw,340px);text-align:center;color:#333}
+.gate h2{margin:0 0 4px;font-size:18px}
+.gate p{margin:0 0 10px;color:#666;font-size:13px}
+.gate .q{font-size:34px;font-weight:800;margin:6px 0 14px}
+.gate .ans{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gate .ans button{padding:14px;font-size:26px;border-radius:14px;border:2px solid #ddd;background:#f6f6f6}
+.gate .ans button:active{background:#e8f0ff}
+.gate .cancel{margin-top:10px;background:none;border:0;color:#888;font-size:14px;padding:8px 14px}
+
+/* ドラッグ中のピース */
+.drag{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35)) !important;cursor:grabbing}
+
+</style>
+<style>
+/* 木の机・紙のカード。02「ほんもの風ジグソー」の世界観をアプリ全体に広げる */
+:root{
+  --wood1:#d9a566; --wood2:#c58f4f; --wood-dark:#7a4b16; --wood-deep:#5f3a10;
+  --paper:#fff6e0; --paper2:#fffaf0; --ink:#4a2f10; --muted:#8a6a3c; --line:#ecd9b0;
+  --accent:#ff8a3c; --go:#3ec598; --gold:#e8a100;
+}
+body{background:var(--wood2);color:var(--ink)}
+#app{position:fixed;inset:0;overflow:hidden}
+.scr{position:absolute;inset:0;display:none}
+.scr.on{display:block}
+button{font-family:inherit;color:inherit}
+.wood{background:repeating-linear-gradient(90deg,rgba(0,0,0,.035) 0 3px,transparent 3px 11px),linear-gradient(var(--wood1),var(--wood2))}
+
+/* ============================== ホーム ============================== */
+#home{overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.035) 0 3px,transparent 3px 11px),linear-gradient(var(--wood1),var(--wood2))}
+.hwrap{max-width:560px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+.hhead{display:flex;align-items:center;gap:10px}
+.hhead h1{flex:1;margin:0;font-size:21px;white-space:nowrap;line-height:1.2;font-weight:900;color:#fff;text-shadow:0 2px 0 var(--wood-dark),0 4px 10px rgba(0,0,0,.25)}
+.bookbtn{display:grid;grid-template-columns:auto auto;align-items:center;column-gap:8px;border:0;border-radius:18px;background:var(--paper);padding:8px 12px;box-shadow:0 4px 0 var(--wood-dark);text-align:left}
+.bookbtn .bk{grid-row:1/3;width:30px;height:38px;border-radius:5px 9px 9px 5px;background:var(--cover,#ffb74d);box-shadow:inset 6px 0 0 rgba(0,0,0,.18),inset -2px 0 0 rgba(255,255,255,.4)}
+.bookbtn b{font-size:14px;line-height:1.1}
+.bookbtn small{font-size:12px;color:var(--muted)}
+.gear{width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.85);font-size:22px;box-shadow:0 3px 0 var(--wood-dark)}
+.hwrap h2{margin:8px 0 0;font-size:16px;color:#fff;text-shadow:0 1px 0 var(--wood-dark);letter-spacing:.04em}
+.resume{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;border:0;border-radius:18px;padding:12px 16px;background:var(--go);color:#fff;box-shadow:0 4px 0 #249a74;text-align:left}
+.resume b{font-size:18px}.resume span{font-size:13px;opacity:.95}
+.thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.th{aspect-ratio:1;border:4px solid transparent;border-radius:14px;background:#fff;padding:0;overflow:hidden;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.th img{width:100%;height:100%;object-fit:cover}
+.th.wide{grid-column:span 2;aspect-ratio:2/1}
+.th.on{border-color:var(--accent);box-shadow:0 0 0 3px #fff,0 3px 0 rgba(0,0,0,.2)}
+.th.add{background:rgba(255,255,255,.35);border:3px dashed #fff;display:grid;place-content:center;color:#fff;text-shadow:0 1px 0 var(--wood-dark)}
+.th.add span{font-size:30px;line-height:1}.th.add small{font-size:12px;font-weight:700}
+.cnts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cn{border:0;border-radius:14px;background:var(--paper);padding:8px 4px;box-shadow:0 3px 0 var(--wood-dark);display:flex;flex-direction:column;align-items:center}
+.cn b{font-size:24px;line-height:1.1}.cn small{font-size:11px;color:var(--muted)}
+.cn.on{background:var(--accent);color:#fff;box-shadow:0 3px 0 #c9631a}.cn.on small{color:#ffe9d6}
+.lvs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lv{border:0;border-radius:14px;background:var(--paper);padding:10px 12px;box-shadow:0 3px 0 var(--wood-dark);text-align:left;display:grid;gap:1px}
+.lv b{font-size:15px}.lv .st{color:var(--gold);font-size:13px;letter-spacing:1px}.lv small{font-size:11.5px;color:var(--muted);line-height:1.35}
+.lv.on{background:var(--accent);color:#fff;box-shadow:0 3px 0 #c9631a}.lv.on .st{color:#fff3b0}.lv.on small{color:#ffe9d6}
+.start{position:sticky;bottom:max(12px,env(safe-area-inset-bottom));z-index:5;margin-top:6px;height:68px;border:0;border-radius:20px;background:var(--go);color:#fff;font-size:26px;font-weight:900;box-shadow:0 6px 0 #249a74}
+.start:active{transform:translateY(3px);box-shadow:0 3px 0 #249a74}
+.hfoot{text-align:center;margin-top:6px}.hfoot a{color:#fff;font-size:13px;opacity:.85}
+
+/* ============================== ゲーム ============================== */
+#game.on{display:grid;grid-template-columns:100%;grid-template-rows:52px minmax(0,1fr) auto;grid-template-areas:"bar" "view" "tray"}
+#bar{grid-area:bar;display:flex;align-items:center;gap:5px;padding:0 8px;padding-top:env(safe-area-inset-top);background:var(--wood-dark);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);z-index:5}
+#bar button{height:40px;min-width:40px;border:0;border-radius:20px;background:#fff6e0;color:var(--wood-dark);font-size:20px;font-weight:900;box-shadow:0 2px 0 rgba(0,0,0,.3);padding:0 10px}
+#bar button{flex:none;white-space:nowrap}
+#bar button.wide{font-size:15px;padding:0 12px;background:var(--accent);color:#fff}
+#bar .sp{flex:1}
+#timer{font-weight:900;font-size:18px;font-variant-numeric:tabular-nums;min-width:3.2em;text-align:center}
+#left{font-size:13px;opacity:.9;white-space:nowrap;min-width:0}
+#view{grid-area:view;position:relative;overflow:hidden;touch-action:none;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.04) 0 3px,transparent 3px 11px),linear-gradient(var(--wood1),var(--wood2))}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;--inv:1}
+#table{position:absolute;z-index:0;pointer-events:none;border:calc(3px*var(--inv)) dashed rgba(255,255,255,.5);border-radius:calc(18px*var(--inv));background:rgba(70,40,10,.10)}
+#board{position:relative;z-index:1;display:block;border-radius:2px;box-shadow:0 calc(8px*var(--inv)) calc(26px*var(--inv)) rgba(0,0,0,.5)}
+.final{position:absolute;left:0;top:0;z-index:2;opacity:0;transition:opacity 1.1s ease;pointer-events:none;border-radius:2px}
+.final.on{opacity:1}
+.pop{position:absolute;pointer-events:none;z-index:100000;animation:popin .5s ease-out forwards;filter:drop-shadow(0 0 calc(10px*var(--inv)) #fff5b0)}
+@keyframes popin{0%{transform:scale(1.5);opacity:.2}55%{transform:scale(.96);opacity:1}100%{transform:scale(1);opacity:0}}
+#ring{position:absolute;display:none;pointer-events:none;border:calc(5px*var(--inv)) solid #ffe14d;border-radius:calc(8px*var(--inv));box-shadow:0 0 calc(14px*var(--inv)) #fff,inset 0 0 calc(10px*var(--inv)) #fff;z-index:99999}
+#ring.on{display:block;animation:ringp .55s ease-in-out infinite alternate}
+@keyframes ringp{to{transform:scale(1.12);opacity:.6}}
+
+/* 右上の見本 */
+#ref{position:absolute;top:8px;right:8px;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+#ref .pic{border:3px solid #fff;border-radius:8px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.4);overflow:hidden}
+#ref img{display:block;width:100%;height:100%;object-fit:fill}
+#ref .zm{font-size:11px;font-weight:800;color:#fff;background:rgba(40,25,10,.78);border-radius:10px;padding:1px 9px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+#peek{position:absolute;inset:0;z-index:20;display:none;place-items:center;background:rgba(30,18,6,.85)}
+#peek.on{display:grid}
+#peek img{max-width:94%;max-height:94%;border:6px solid #fff;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+
+/* いま持っているピース */
+#hand{position:absolute;left:10px;top:8px;width:112px;height:112px;z-index:6;display:none;place-items:center;background:rgba(255,246,224,.94);border:3px solid var(--accent);border-radius:20px;box-shadow:0 5px 14px rgba(0,0,0,.4)}
+#hand.on{display:grid}
+#hand canvas{width:100%;height:100%;object-fit:contain;transition:transform .2s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+#hand.rot:after{content:"↻";position:absolute;right:-8px;top:-10px;width:30px;height:30px;line-height:30px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;font-size:20px;font-weight:900}
+#hand.wob{animation:wob .4s}
+@keyframes wob{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#toast{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);max-width:92%;white-space:normal;text-align:center;line-height:1.5;z-index:8;background:rgba(40,25,10,.88);color:#fff;border-radius:20px;padding:8px 16px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+
+/* ピース置き場 */
+#trayWrap{grid-area:tray;background:var(--wood-dark);border-top:3px solid var(--wood-deep);display:flex;flex-direction:column;min-width:0;padding-bottom:env(safe-area-inset-bottom)}
+#filters{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px 2px}
+#filters button{white-space:nowrap;height:30px;border:0;border-radius:15px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;padding:0 12px}
+#filters button.on{background:#fff6e0;color:var(--wood-dark)}
+#tray{position:relative;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,93px);gap:2px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;padding:4px 8px 8px;height:204px;-webkit-overflow-scrolling:touch}
+.tp{display:grid;place-items:center;border-radius:16px;touch-action:pan-x;transition:background .15s}
+.tp canvas{display:block;pointer-events:none;transition:transform .2s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
+.tp.hide{display:none}
+.tp.sel{background:rgba(255,225,77,.55);box-shadow:0 0 0 3px #ffe14d inset;animation:bob .6s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-5px)}}
+
+/* 横向き：ピース置き場は右 */
+@media (orientation:landscape){
+  #game.on{grid-template-columns:minmax(0,1fr) 214px;grid-template-rows:48px minmax(0,1fr);grid-template-areas:"bar bar" "view tray"}
+  #trayWrap{border-top:0;border-left:3px solid var(--wood-deep);min-height:0}
+  #tray{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,93px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;height:auto;flex:1;align-content:start}
+  .tp{touch-action:pan-y}
+  #hand{width:92px;height:92px}
+  #filters{gap:4px;padding:6px 6px 2px}
+  #filters button{padding:0 9px;font-size:12px}
+}
+
+/* ============================== 読み込み・通知 ============================== */
+#loading{position:fixed;inset:0;z-index:400;display:none;place-content:center;justify-items:center;gap:14px;background:rgba(40,25,10,.78);color:#fff;font-weight:800}
+#loading.on{display:grid}
+.spin{width:44px;height:44px;border-radius:50%;border:5px solid rgba(255,255,255,.3);border-top-color:#fff;animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#flash{position:fixed;left:50%;top:max(16px,env(safe-area-inset-top));transform:translate(-50%,-20px);z-index:420;max-width:92vw;text-align:center;line-height:1.5;background:#fff6e0;color:var(--ink);padding:10px 18px;border-radius:22px;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:all .25s;font-weight:800;font-size:14px}
+#flash.on{opacity:1;transform:translate(-50%,0)}
+
+/* ============================== シート（クリア・設定） ============================== */
+#sheet{position:fixed;inset:0;z-index:250;display:none;place-items:center;background:rgba(30,18,6,.6);padding:16px}
+#sheet.on{display:grid}
+.box{background:var(--paper);border-radius:24px;padding:20px;width:min(94vw,420px);max-height:92vh;overflow-y:auto;touch-action:pan-y;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.box h2{margin:0 0 6px;font-size:21px;text-align:center}
+.box h3{margin:16px 0 6px;font-size:14px;color:var(--muted)}
+.row{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;height:52px;border:0;border-radius:16px;background:#fff;color:var(--ink);font-size:15px;font-weight:900;box-shadow:0 3px 0 var(--line);border:2px solid var(--line)}
+.btn.go{background:var(--go);color:#fff;border-color:var(--go);box-shadow:0 3px 0 #249a74}
+.clear{text-align:center}
+.meta{margin:6px 0 0;font-size:16px;font-weight:800}.meta.sub{font-size:13px;color:var(--muted);font-weight:600;line-height:1.6}
+.gold{color:var(--gold)}
+.grow{margin:12px 0 0;padding:10px;border-radius:14px;background:linear-gradient(110deg,#fff3b0,#ffd0e6);font-size:14px;font-weight:800;line-height:1.5}
+.grow b{font-size:17px}
+.seg{display:flex;gap:8px}.seg button{flex:1;height:44px;border-radius:12px;border:2px solid var(--line);background:#fff;font-weight:800}.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.plist{display:flex;flex-wrap:wrap;gap:8px}
+.pi{width:84px;text-align:center}.pi img{width:84px;height:84px;object-fit:cover;border-radius:10px;display:block}
+.pi .del,.dng{margin-top:4px;border:0;border-radius:10px;background:#ffe3e3;color:#c92a2a;font-weight:800;font-size:12px;padding:6px 4px;width:100%}
+.dng{display:block;font-size:14px;padding:12px;margin:6px 0}
+.armed{background:#c92a2a !important;color:#fff !important}
+.note{font-size:12.5px;color:var(--muted);line-height:1.7}
+
+/* ============================== シール ============================== */
+.stk{position:relative;width:100%;aspect-ratio:1;max-width:150px;margin:0 auto;transform:rotate(var(--r,0deg))}
+.stk.big{max-width:210px;margin:12px auto 4px;animation:stick .8s cubic-bezier(.3,1.6,.5,1)}
+.stk .ring{width:100%;height:100%;border-radius:50%;padding:6px;background:#fff;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.stk img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.stk.f1 .ring{background:linear-gradient(135deg,#f5f7fa,#aab4c2,#f5f7fa)}
+.stk.f2 .ring{background:linear-gradient(135deg,#fff1a8,#e8a100,#fff1a8);box-shadow:0 4px 10px rgba(0,0,0,.35),0 0 12px rgba(255,200,40,.6)}
+.stk.f3 .ring{background:conic-gradient(#ff5a5f,#ffc61a,#3ec598,#3b8bff,#a56bff,#ff5a5f);box-shadow:0 4px 10px rgba(0,0,0,.35),0 0 14px rgba(255,255,255,.8)}
+.stk .cap{position:absolute;right:-4px;bottom:-2px;background:#fff;border-radius:12px;padding:1px 8px;font-size:12px;font-weight:900;box-shadow:0 2px 4px rgba(0,0,0,.3);color:var(--ink)}
+.stk .cap small{color:var(--gold);margin-left:3px;font-size:10px}
+@keyframes stick{from{transform:scale(2.4) rotate(25deg);opacity:0}}
+
+/* ============================== シール帳 ============================== */
+#book{--page:#fff6e0;--cover:#ffb74d;background:var(--cover);padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));flex-direction:column}
+#book.on{display:flex}
+.bkhead{display:flex;align-items:center;gap:10px;padding:2px 2px 10px}
+.rb{width:46px;height:46px;border:0;border-radius:50%;background:#fff;font-size:22px;font-weight:900;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.bkt{flex:1;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35);display:grid;gap:1px}.bkt b{font-size:18px}.bkt small{font-size:12px}
+.bkt .bar{height:8px;border-radius:4px;background:rgba(255,255,255,.35);overflow:hidden;margin-top:3px}.bkt .bar i{display:block;height:100%;background:#fff;border-radius:4px}
+.pages{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;touch-action:pan-x;background:var(--page);border-radius:20px;box-shadow:inset 8px 0 0 rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.3)}
+.pg{flex:0 0 100%;scroll-snap-align:center;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:10px;padding:16px 16px 12px 22px;min-width:0}
+@media (orientation:landscape){.pg{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}}
+.slot{min-height:0;border:0;background:none;padding:6px;display:grid;place-items:center}
+.slot.empty{border:3px dashed rgba(120,90,40,.28);border-radius:20px;margin:4px}
+.slot.empty.next{border-color:var(--accent);animation:nx 1.2s ease-in-out infinite alternate}
+.slot.empty span{font-size:34px;font-weight:900;color:var(--accent)}
+@keyframes nx{to{background:rgba(255,138,60,.14)}}
+.dots{display:flex;justify-content:center;gap:6px;padding-top:8px;flex-wrap:wrap}
+.dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.45)}.dots i.on{background:#fff;transform:scale(1.25)}
+#book.night .slot.empty{border-color:rgba(255,255,255,.3)}
+#book.night .pages{background:radial-gradient(circle at 20% 20%,#3a3f9a,#232766 60%)}
+
+/* 小さいスマホ（幅360px前後）でもバーが収まるように */
+@media (max-width:380px){
+  #bar{gap:4px;padding:0 6px}
+  #bar button{height:36px;min-width:36px;padding:0 6px;font-size:18px}
+  #bar button.wide{font-size:14px;padding:0 10px}
+  #timer{font-size:16px;min-width:2.8em}
+  #left{font-size:12px}
+}
+
+/* テーブルに置いたピース／かたまり */
+.grp{position:absolute;pointer-events:none;filter:drop-shadow(0 calc(3px*var(--inv)) calc(5px*var(--inv)) rgba(0,0,0,.5))}
+.grp.sel{filter:drop-shadow(0 0 calc(5px*var(--inv)) #ffe14d) drop-shadow(0 0 calc(2px*var(--inv)) #ffe14d)}
+.grp.joined{animation:joined .45s ease-out}
+@keyframes joined{0%{transform:scale(1.06)}100%{transform:scale(1)}}
+
+/* あそびかた・もどす */
+#filters .help{margin-left:auto;background:#fff6e0;color:var(--wood-dark)}
+#back2tray{position:absolute;left:10px;top:128px;z-index:6;display:none;border:0;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;box-shadow:0 3px 0 #c9631a}
+#back2tray.on{display:block}
+@media (orientation:landscape){#back2tray{top:108px}}
+.helpbtn{border:0;border-radius:20px;background:rgba(255,255,255,.88);color:var(--wood-dark);font-weight:800;font-size:14px;padding:10px 16px;box-shadow:0 3px 0 var(--wood-dark)}
+.helpbox{width:min(94vw,460px)}
+.helpbox h2{margin-bottom:10px}
+.hrow{display:grid;grid-template-columns:58px 1fr;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.hrow:first-of-type{border-top:0}
+.hrow svg{width:58px;height:58px;background:#fff;border-radius:14px;border:2px solid var(--line)}
+.hrow b{display:block;font-size:15px;margin-bottom:2px}
+.hrow p{margin:0;font-size:13px;line-height:1.65;color:#5a4220}
+
+/* 写真のサムネイル：パズルと同じ縦横比 */
+.th.photo{display:grid;place-items:center;background:#fff}
+.th.photo img{object-fit:fill;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+
+/* えをえらぶ：見出し（のりもの／どうぶつ・しぜん／しゃしん） */
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.55);color:var(--wood-dark);font-size:14px;font-weight:800;white-space:nowrap;padding:0 4px}
+.tabs button.on{background:var(--paper);box-shadow:0 3px 0 var(--wood-dark)}
+.picked{margin:0;color:#fff;font-size:13px;text-shadow:0 1px 0 var(--wood-dark)}
+.picked b{font-size:15px}
+
+/* しゃしんを えらぶ（ゲートのあとに出す、本物のファイル選択ボタン） */
+.filebtn{position:relative;display:grid;place-items:center;height:76px;margin-top:14px;border-radius:20px;background:var(--go);color:#fff;font-size:22px;font-weight:900;box-shadow:0 6px 0 #249a74;overflow:hidden}
+.filebtn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:60px}
+
+.logbox{max-height:160px;overflow-y:auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:6px;touch-action:pan-y}
+.logbox p{margin:3px 0;font-size:11px;line-height:1.5;word-break:break-all;color:#5a4220}
+
+.brokenph{display:grid;place-items:center;width:100%;height:100%;min-height:60px;padding:4px;text-align:center;font-size:11px;font-weight:800;line-height:1.3;color:#c92a2a;background:#ffe3e3;border-radius:8px}
+.th.photo .brokenph{aspect-ratio:1}
+
+</style>
+</head><body>
+<main id="app">
+  <!-- ホーム -->
+  <section id="home" class="scr on"></section>
+
+  <!-- ゲーム：上=ボタン / 中=盤面（拡大・移動できる） / 下=ピース置き場 -->
+  <section id="game" class="scr">
+    <header id="bar">
+      <button id="gBack" aria-label="ホームへ">←</button>
+      <span id="timer">0:00</span>
+      <span id="left">のこり 0</span>
+      <span class="sp"></span>
+      <button id="gHint" class="wide">ヒント</button>
+      <button id="zOut" aria-label="ちいさく">−</button>
+      <button id="zIn" aria-label="おおきく">＋</button>
+      <button id="zFit" aria-label="ぜんたい">⤢</button>
+    </header>
+    <div id="view">
+      <div id="world"><div id="table"></div><canvas id="board"></canvas><div id="ring"></div></div>
+      <div id="ref" role="button" aria-label="みほん"><div class="pic"><img alt="みほん"></div><span class="zm">＋ おおきく</span></div>
+      <div id="hand" aria-label="いま えらんでいるピース"></div>
+      <button id="back2tray" type="button">おきばへ もどす</button>
+      <div id="peek"><img alt="みほん（おおきく）"></div>
+      <div id="toast"></div>
+    </div>
+    <aside id="trayWrap">
+      <div id="filters"><button data-f="all">ぜんぶ</button><button data-f="edge">ふち</button><button data-f="mid">なか</button><button id="gHelp" class="help" type="button">？ あそびかた</button></div>
+      <div id="tray"></div>
+    </aside>
+  </section>
+
+  <!-- シール帳 -->
+  <section id="book" class="scr"></section>
+
+  <div id="sheet"></div>
+  <div id="loading"><div class="spin"></div><span></span></div>
+  <div id="flash"></div>
+</main>
+<script>
+/* ====================================================================
+   common.js  ― 10本の試作で共通に使う部品
+   ・絵（SVGで描いた8枚）  ・効果音（Web Audioで生成。音声ファイル不要）
+   ・ジグソー形状の生成   ・ドラッグ＆吸着   ・ごほうび   ・保護者ゲート
+   ==================================================================== */
+(function () {
+  'use strict';
+  const PZ = (window.PZ = {});
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  PZ.dpr = DPR;
+  PZ.$ = (s, r) => (r || document).querySelector(s);
+  PZ.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  PZ.el = (tag, cls, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; if (parent) parent.appendChild(e); return e; };
+  PZ.rng = (seed) => () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  PZ.shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  PZ.pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  /* ---------------------------------------------------------------- 絵 */
+  const S = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">${inner}</svg>`;
+  const flower = (x, y, pc, cc, d, r) => {
+    let s = `<g transform="translate(${x},${y})" fill="${pc}">`;
+    for (let i = 0; i < 6; i++) s += `<circle cy="${-d}" r="${r}" transform="rotate(${i * 60})"/>`;
+    return s + `</g><circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="${cc}"/>`;
+  };
+  PZ.art = [
+    { id: 'neko', name: 'ねこ', say: 'ねこ', svg: S(`
+      <rect width="400" height="400" fill="#bfe6ff"/><circle cx="335" cy="65" r="38" fill="#ffe14d"/>
+      <ellipse cx="90" cy="70" rx="48" ry="20" fill="#fff"/><ellipse cx="122" cy="58" rx="34" ry="20" fill="#fff"/><ellipse cx="62" cy="62" rx="26" ry="16" fill="#fff"/>
+      <rect y="310" width="400" height="90" fill="#9be08a"/>
+      <path d="M300 300 C372 285 384 220 346 198" stroke="#ff9a3c" stroke-width="26" fill="none" stroke-linecap="round"/>
+      <ellipse cx="200" cy="295" rx="92" ry="78" fill="#ffb066"/><ellipse cx="200" cy="318" rx="52" ry="52" fill="#fff0d9"/>
+      <polygon points="125,150 135,70 195,115" fill="#ffb066"/><polygon points="275,150 265,70 205,115" fill="#ffb066"/>
+      <polygon points="140,128 143,92 172,114" fill="#ff9fb5"/><polygon points="260,128 257,92 228,114" fill="#ff9fb5"/>
+      <circle cx="200" cy="185" r="86" fill="#ffb066"/>
+      <path d="M185 112 L190 140 M200 108 L200 140 M215 112 L210 140" stroke="#e07d2e" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="165" cy="182" rx="17" ry="21" fill="#fff"/><ellipse cx="235" cy="182" rx="17" ry="21" fill="#fff"/>
+      <circle cx="168" cy="186" r="11" fill="#2b2b2b"/><circle cx="232" cy="186" r="11" fill="#2b2b2b"/>
+      <circle cx="172" cy="181" r="4" fill="#fff"/><circle cx="236" cy="181" r="4" fill="#fff"/>
+      <polygon points="190,208 210,208 200,220" fill="#ff7a93"/>
+      <path d="M200 220 Q190 238 175 232 M200 220 Q210 238 225 232" stroke="#6b3b1a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M135 212 L95 205 M135 222 L96 228 M265 212 L305 205 M265 222 L304 228" stroke="#6b3b1a" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="70" cy="345" r="32" fill="#ff6b6b"/><path d="M48 335 Q70 350 92 332 M45 350 Q70 365 95 350" stroke="#d94a4a" stroke-width="4" fill="none"/>
+      <circle cx="330" cy="350" r="9" fill="#fff"/><circle cx="330" cy="350" r="4" fill="#ffd54d"/><circle cx="300" cy="372" r="9" fill="#fff"/><circle cx="300" cy="372" r="4" fill="#ffd54d"/>`) },
+    { id: 'kuma', name: 'くま', say: 'くま', svg: S(`
+      <rect width="400" height="400" fill="#ffe9b8"/>
+      <g fill="#ffd98a"><circle cx="30" cy="40" r="14"/><circle cx="150" cy="24" r="10"/><circle cx="250" cy="40" r="12"/><circle cx="385" cy="150" r="14"/><circle cx="20" cy="190" r="12"/><circle cx="380" cy="260" r="10"/><circle cx="40" cy="270" r="9"/></g>
+      <path d="M55 118 L68 250" stroke="#999" stroke-width="2.5"/><ellipse cx="55" cy="80" rx="30" ry="38" fill="#ff6b6b"/><ellipse cx="45" cy="66" rx="7" ry="11" fill="#fff" opacity=".5"/>
+      <path d="M350 106 L336 240" stroke="#999" stroke-width="2.5"/><ellipse cx="350" cy="70" rx="28" ry="36" fill="#5aa9ff"/><ellipse cx="341" cy="57" rx="6" ry="10" fill="#fff" opacity=".5"/>
+      <circle cx="115" cy="120" r="42" fill="#a86a3c"/><circle cx="115" cy="120" r="22" fill="#e8b98a"/>
+      <circle cx="285" cy="120" r="42" fill="#a86a3c"/><circle cx="285" cy="120" r="22" fill="#e8b98a"/>
+      <circle cx="200" cy="205" r="108" fill="#b97a4a"/><ellipse cx="200" cy="242" rx="55" ry="42" fill="#efc9a0"/>
+      <circle cx="160" cy="185" r="12" fill="#2b1a0e"/><circle cx="240" cy="185" r="12" fill="#2b1a0e"/>
+      <circle cx="164" cy="180" r="4" fill="#fff"/><circle cx="244" cy="180" r="4" fill="#fff"/>
+      <ellipse cx="200" cy="222" rx="17" ry="12" fill="#4a2c17"/>
+      <path d="M200 234 L200 246 M180 252 Q200 270 220 252" stroke="#4a2c17" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <circle cx="132" cy="228" r="16" fill="#ff9fb5" opacity=".6"/><circle cx="268" cy="228" r="16" fill="#ff9fb5" opacity=".6"/>
+      <rect x="35" y="338" width="72" height="52" rx="18" fill="#e89a2c"/><rect x="40" y="326" width="62" height="18" rx="7" fill="#fff3c9"/><path d="M48 342 q0 24 11 24 q11 0 11 -24" fill="#ffd54d"/>
+      <ellipse cx="330" cy="345" rx="24" ry="17" fill="#ffd54d"/><path d="M322 330 V360 M336 330 V360" stroke="#333" stroke-width="6"/>
+      <ellipse cx="322" cy="324" rx="12" ry="8" fill="#fff" opacity=".8"/><ellipse cx="342" cy="324" rx="12" ry="8" fill="#fff" opacity=".8"/><circle cx="350" cy="342" r="3" fill="#222"/>`) },
+    { id: 'sakana', name: 'さかな', say: 'さかな', svg: S(`
+      <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fe0ff"/><stop offset="1" stop-color="#1f7fd6"/></linearGradient></defs>
+      <rect width="400" height="400" fill="url(#g)"/>
+      <polygon points="60,0 100,0 170,400 40,400" fill="#fff" opacity=".12"/><polygon points="250,0 300,0 390,400 270,400" fill="#fff" opacity=".1"/>
+      <ellipse cx="200" cy="415" rx="270" ry="58" fill="#f3d9a0"/>
+      <path d="M55 400 C25 340 90 320 60 262 C40 222 72 200 66 168" stroke="#2e9b4f" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M345 400 C375 350 320 330 350 290 C368 262 345 245 352 225" stroke="#2e9b4f" stroke-width="12" fill="none" stroke-linecap="round"/>
+      <polygon points="115,200 50,138 50,262" fill="#ff8a3c"/>
+      <ellipse cx="210" cy="200" rx="115" ry="72" fill="#ff9f43"/><ellipse cx="215" cy="228" rx="85" ry="33" fill="#ffd9a8"/>
+      <path d="M175 138 Q158 200 172 262 M235 134 Q220 200 235 266" stroke="#fff" stroke-width="14" fill="none" opacity=".8"/>
+      <path d="M170 135 Q220 78 275 142Z" fill="#ff7a1f"/>
+      <circle cx="285" cy="185" r="17" fill="#fff"/><circle cx="289" cy="185" r="8" fill="#222"/><circle cx="292" cy="182" r="3" fill="#fff"/>
+      <path d="M318 215 Q305 226 294 218" stroke="#a24b00" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <g fill="none" stroke="#fff" stroke-width="3" opacity=".85"><circle cx="335" cy="115" r="14"/><circle cx="358" cy="78" r="9"/><circle cx="318" cy="62" r="6"/></g>
+      <g transform="translate(70,70)"><polygon points="-30,0 -52,-14 -52,14" fill="#7c5cff"/><ellipse rx="30" ry="17" fill="#9b82ff"/><circle cx="14" cy="-3" r="4" fill="#fff"/><circle cx="15" cy="-3" r="2" fill="#222"/></g>
+      <polygon points="330,318 338,342 362,342 343,356 350,380 330,366 310,380 317,356 298,342 322,342" fill="#ff6b8a"/>`) },
+    { id: 'kuruma', name: 'くるま', say: 'ぶーぶー', svg: S(`
+      <rect width="400" height="400" fill="#a8e0ff"/>
+      <g stroke="#ffd93d" stroke-width="6" stroke-linecap="round"><path d="M70 14V28M70 112V126M14 70H28M112 70H126M30 30L40 40M100 100L110 110M110 30L100 40M30 110L40 100"/></g>
+      <circle cx="70" cy="70" r="34" fill="#ffd93d"/>
+      <ellipse cx="300" cy="66" rx="46" ry="19" fill="#fff"/><ellipse cx="330" cy="54" rx="30" ry="18" fill="#fff"/>
+      <ellipse cx="100" cy="300" rx="190" ry="95" fill="#7fd36b"/><ellipse cx="335" cy="312" rx="170" ry="82" fill="#5cbf5c"/>
+      <rect x="345" y="215" width="14" height="70" fill="#8b5a2b"/><circle cx="352" cy="198" r="38" fill="#2f9e44"/><circle cx="330" cy="222" r="26" fill="#2f9e44"/>
+      <rect y="296" width="400" height="104" fill="#5b6270"/><rect y="292" width="400" height="9" fill="#c9ced6"/>
+      <path d="M0 358 H400" stroke="#fff" stroke-width="8" stroke-dasharray="40 26"/>
+      <rect x="70" y="215" width="260" height="85" rx="26" fill="#ff4d4d"/>
+      <path d="M125 218 L155 160 H265 L295 218Z" fill="#ff4d4d"/>
+      <path d="M140 214 L162 170 H198 V214Z" fill="#cfefff"/><path d="M208 214 V170 H258 L278 214Z" fill="#cfefff"/>
+      <rect x="70" y="250" width="260" height="10" fill="#fff" opacity=".55"/>
+      <circle cx="322" cy="238" r="10" fill="#fff3a0"/><rect x="72" y="232" width="12" height="20" rx="4" fill="#ffb3b3"/>
+      <circle cx="130" cy="300" r="34" fill="#2b2b2b"/><circle cx="130" cy="300" r="14" fill="#bbb"/>
+      <circle cx="270" cy="300" r="34" fill="#2b2b2b"/><circle cx="270" cy="300" r="14" fill="#bbb"/>`) },
+    { id: 'ie', name: 'おうち', say: 'おうち', svg: S(`
+      <rect width="400" height="400" fill="#b8e6ff"/><circle cx="335" cy="58" r="34" fill="#ffd93d"/>
+      <ellipse cx="90" cy="66" rx="46" ry="18" fill="#fff"/><ellipse cx="118" cy="54" rx="30" ry="17" fill="#fff"/>
+      <rect y="290" width="400" height="110" fill="#8fd96b"/>
+      <path d="M170 400 Q200 345 215 300 L255 300 Q250 352 305 400Z" fill="#f0d9a8"/>
+      <rect x="250" y="92" width="26" height="62" fill="#a9442f"/>
+      <rect x="110" y="170" width="190" height="135" fill="#ffe0b3"/>
+      <polygon points="88,176 205,78 322,176" fill="#e5533d"/>
+      <circle cx="205" cy="140" r="17" fill="#bfeaff" stroke="#fff" stroke-width="5"/>
+      <rect x="185" y="225" width="46" height="80" rx="6" fill="#8b5a2b"/><circle cx="220" cy="268" r="4" fill="#ffd93d"/>
+      <rect x="128" y="205" width="42" height="42" fill="#bfeaff" stroke="#fff" stroke-width="5"/><path d="M149 205V247M128 226H170" stroke="#fff" stroke-width="4"/>
+      <rect x="244" y="205" width="42" height="42" fill="#bfeaff" stroke="#fff" stroke-width="5"/><path d="M265 205V247M244 226H286" stroke="#fff" stroke-width="4"/>
+      <rect x="40" y="222" width="18" height="92" fill="#8b5a2b"/><circle cx="49" cy="200" r="46" fill="#34a853"/><circle cx="20" cy="228" r="30" fill="#34a853"/><circle cx="80" cy="228" r="30" fill="#34a853"/>
+      <g stroke="#2e9b4f" stroke-width="3"><path d="M335 345V370M365 365V385M120 350V372"/></g>
+      <circle cx="335" cy="342" r="9" fill="#ff7eb6"/><circle cx="365" cy="362" r="9" fill="#fff"/><circle cx="120" cy="347" r="9" fill="#ffd93d"/>`) },
+    { id: 'hana', name: 'おはな', say: 'おはな', svg: S(`
+      <rect width="400" height="400" fill="#d9f7c4"/><ellipse cx="200" cy="420" rx="300" ry="70" fill="#a5e07a"/>
+      <g stroke="#2e9b4f" stroke-width="10" fill="none" stroke-linecap="round"><path d="M110 165 C100 250 122 320 115 400"/><path d="M290 200 C302 280 280 340 285 400"/><path d="M195 310 C190 350 200 380 196 400"/></g>
+      <ellipse cx="85" cy="270" rx="30" ry="12" fill="#2e9b4f" transform="rotate(-30 85 270)"/><ellipse cx="315" cy="300" rx="30" ry="12" fill="#2e9b4f" transform="rotate(30 315 300)"/>
+      ${flower(110, 125, '#ff7eb6', '#ffd93d', 42, 28)}
+      ${flower(290, 165, '#ffd54d', '#ff9f43', 34, 24)}
+      ${flower(195, 285, '#b388ff', '#fff3a0', 28, 20)}
+      <g transform="translate(325,60)"><ellipse cx="-20" cy="-8" rx="24" ry="16" fill="#ff9f43" transform="rotate(-20 -20 -8)"/><ellipse cx="20" cy="-8" rx="24" ry="16" fill="#ff9f43" transform="rotate(20 20 -8)"/><ellipse cx="-14" cy="14" rx="14" ry="10" fill="#ffd39a"/><ellipse cx="14" cy="14" rx="14" ry="10" fill="#ffd39a"/><rect x="-3" y="-14" width="6" height="34" rx="3" fill="#4a2c17"/></g>
+      <circle cx="58" cy="345" r="20" fill="#ff4d4d"/><path d="M58 325V365" stroke="#222" stroke-width="3"/><circle cx="50" cy="340" r="4" fill="#222"/><circle cx="66" cy="350" r="4" fill="#222"/><circle cx="58" cy="323" r="9" fill="#222"/>`) },
+    { id: 'roketto', name: 'ロケット', say: 'ロケット', svg: S(`
+      <rect width="400" height="400" fill="#1b2a6b"/>
+      <g fill="#fff"><circle cx="30" cy="30" r="2.5"/><circle cx="160" cy="40" r="2"/><circle cx="250" cy="25" r="3"/><circle cx="360" cy="80" r="2.5"/><circle cx="20" cy="190" r="2"/><circle cx="55" cy="290" r="3"/><circle cx="340" cy="200" r="2"/><circle cx="130" cy="350" r="2"/><circle cx="380" cy="300" r="2"/><circle cx="300" cy="120" r="2"/></g>
+      <g fill="#ffe14d"><polygon points="300,40 305,52 318,54 308,62 311,75 300,68 289,75 292,62 282,54 295,52"/><polygon points="40,240 44,249 54,251 46,257 49,267 40,262 31,267 34,257 26,251 36,249"/></g>
+      <circle cx="85" cy="90" r="42" fill="#b388ff"/><ellipse cx="85" cy="90" rx="72" ry="14" fill="none" stroke="#ffd1ff" stroke-width="8" transform="rotate(-20 85 90)"/>
+      <circle cx="335" cy="375" r="85" fill="#d9dbe8"/><circle cx="305" cy="345" r="15" fill="#b9bdd2"/><circle cx="355" cy="335" r="9" fill="#b9bdd2"/><circle cx="340" cy="385" r="13" fill="#b9bdd2"/>
+      <path d="M175 300 Q200 385 225 300Z" fill="#ff9f1c"/><path d="M186 300 Q200 352 214 300Z" fill="#ffe14d"/>
+      <path d="M158 250 L118 308 L166 292Z" fill="#ff4d4d"/><path d="M242 250 L282 308 L234 292Z" fill="#ff4d4d"/>
+      <path d="M200 68 C252 110 246 220 236 302 H164 C154 220 148 110 200 68Z" fill="#f4f6ff"/>
+      <path d="M200 68 C224 88 236 110 241 136 H159 C164 110 176 88 200 68Z" fill="#ff4d4d"/>
+      <circle cx="200" cy="188" r="27" fill="#6ec6ff" stroke="#c9d3ff" stroke-width="8"/><circle cx="192" cy="180" r="7" fill="#fff" opacity=".7"/>
+      <rect x="163" y="250" width="74" height="14" fill="#ff4d4d"/>`) },
+    { id: 'pengin', name: 'ペンギン', say: 'ペンギン', svg: S(`
+      <rect width="400" height="400" fill="#d6f1ff"/>
+      <path d="M0 305 Q80 225 165 305Z" fill="#b9e4fa"/><path d="M225 305 Q320 205 400 305Z" fill="#b9e4fa"/>
+      <ellipse cx="200" cy="410" rx="320" ry="100" fill="#fff"/>
+      <g fill="#fff"><circle cx="40" cy="50" r="6"/><circle cx="120" cy="90" r="4"/><circle cx="300" cy="40" r="6"/><circle cx="360" cy="120" r="4"/><circle cx="60" cy="170" r="5"/><circle cx="350" cy="230" r="5"/></g>
+      <ellipse cx="108" cy="250" rx="20" ry="58" fill="#1a2c52" transform="rotate(15 108 250)"/><ellipse cx="292" cy="250" rx="20" ry="58" fill="#1a2c52" transform="rotate(-15 292 250)"/>
+      <ellipse cx="200" cy="240" rx="95" ry="122" fill="#243b6b"/><ellipse cx="200" cy="265" rx="62" ry="92" fill="#fff"/>
+      <ellipse cx="170" cy="168" rx="19" ry="21" fill="#fff"/><ellipse cx="230" cy="168" rx="19" ry="21" fill="#fff"/>
+      <circle cx="173" cy="171" r="9" fill="#111"/><circle cx="227" cy="171" r="9" fill="#111"/><circle cx="176" cy="167" r="3" fill="#fff"/><circle cx="230" cy="167" r="3" fill="#fff"/>
+      <polygon points="180,192 220,192 200,220" fill="#ff9f1c"/>
+      <circle cx="146" cy="196" r="12" fill="#ff9fb5" opacity=".7"/><circle cx="254" cy="196" r="12" fill="#ff9fb5" opacity=".7"/>
+      <path d="M136 212 Q200 240 264 212 L261 234 Q200 260 139 234Z" fill="#ff4d4d"/><rect x="232" y="226" width="24" height="56" rx="7" fill="#ff4d4d"/>
+      <ellipse cx="165" cy="364" rx="34" ry="12" fill="#ff9f1c"/><ellipse cx="235" cy="364" rx="34" ry="12" fill="#ff9f1c"/>
+      <ellipse cx="62" cy="372" rx="30" ry="14" fill="#ff7a7a"/><polygon points="92,372 112,358 112,386" fill="#ff7a7a"/><circle cx="48" cy="368" r="3" fill="#222"/>`) },
+  ];
+
+  /* ------------------------------------------------------------ 画像 */
+  PZ.svgUrl = (a) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg);
+  PZ.loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  const imgCache = {};
+  PZ.artImage = (a) => imgCache[a.id] || (imgCache[a.id] = PZ.loadImage(PZ.svgUrl(a)));
+  /* 画像(Image/ImageBitmap)を W×H にぴったり「cover」で切り抜いたcanvasにする */
+  PZ.coverCanvas = (img, W, H) => {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const c = document.createElement('canvas'); c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+    c.style.width = W + 'px'; c.style.height = H + 'px';
+    const s = Math.max(W / iw, H / ih), dw = iw * s, dh = ih * s;
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(img, (W - dw) / 2 * DPR, (H - dh) / 2 * DPR, dw * DPR, dh * DPR);
+    return c;
+  };
+  PZ.artCanvas = async (a, W, H) => PZ.coverCanvas(await PZ.artImage(a), W, H);
+  /* 端末の写真ファイル → canvas（向き補正つき。サーバーには送らない） */
+  PZ.fileImage = async (file) => {
+    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e) { const u = URL.createObjectURL(file); try { return await PZ.loadImage(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 3000); } }
+  };
+
+  /* ----------------------------------------------------- グリッド計算 */
+  const G = { 2: [1, 2], 3: [1, 3], 4: [2, 2], 6: [2, 3], 8: [2, 4], 9: [3, 3], 12: [3, 4], 16: [4, 4], 20: [4, 5] };
+  PZ.grid = (n, portrait) => { const [a, b] = G[n]; return portrait ? [b, a] : [a, b]; }; // [rows, cols]
+  PZ.fitCell = (rows, cols, maxW, maxH) => Math.max(20, Math.floor(Math.min(maxW / cols, maxH / rows)));
+  PZ.isPortrait = () => innerHeight >= innerWidth;
+
+  /* ------------------------------------------------ ジグソーの形を作る */
+  PZ.edges = (rows, cols, seed) => {
+    const r = PZ.rng(seed || 1);
+    const h = [], v = [];
+    for (let i = 0; i < rows; i++) { h.push([]); v.push([]); for (let j = 0; j < cols; j++) { h[i].push(r() < .5 ? 1 : -1); v[i].push(r() < .5 ? 1 : -1); } }
+    return { h, v };
+  };
+  PZ.pad = (w, h, flat) => (flat ? 0 : Math.ceil(0.3 * Math.max(w, h)));
+  function side(p, ax, ay, bx, by, nx, ny, s) {
+    if (!s) { p.lineTo(bx, by); return; }
+    const L = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / L, uy = (by - ay) / L, K = 0.85;
+    const P = (t, hh) => [ax + ux * L * t + nx * L * hh * s * K, ay + uy * L * t + ny * L * hh * s * K];
+    p.lineTo(...P(.34, 0));
+    p.bezierCurveTo(...P(.34, .10), ...P(.26, .14), ...P(.28, .24));
+    p.bezierCurveTo(...P(.30, .36), ...P(.70, .36), ...P(.72, .24));
+    p.bezierCurveTo(...P(.74, .14), ...P(.66, .10), ...P(.66, 0));
+    p.lineTo(bx, by);
+  }
+  PZ.piecePath = (r, c, rows, cols, w, h, E, flat) => {
+    const p = new Path2D();
+    if (flat || !E) { p.rect(0, 0, w, h); return p; }
+    const top = r > 0 ? -E.h[r - 1][c] : 0, bottom = r < rows - 1 ? E.h[r][c] : 0;
+    const left = c > 0 ? -E.v[r][c - 1] : 0, right = c < cols - 1 ? E.v[r][c] : 0;
+    p.moveTo(0, 0);
+    side(p, 0, 0, w, 0, 0, -1, top);
+    side(p, w, 0, w, h, 1, 0, right);
+    side(p, w, h, 0, h, 0, 1, bottom);
+    side(p, 0, h, 0, 0, -1, 0, left);
+    p.closePath();
+    return p;
+  };
+  /* src(canvas, 盤面全体の絵) から、(r,c) のピースのcanvasを作る */
+  PZ.pieceCanvas = (src, r, c, rows, cols, w, h, E, flat) => {
+    const pad = PZ.pad(w, h, flat), W = w + pad * 2, H = h + pad * 2;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(W * DPR); cv.height = Math.ceil(H * DPR);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px'; cv.pad = pad;
+    const x = cv.getContext('2d'); x.scale(DPR, DPR); x.translate(pad, pad);
+    const path = PZ.piecePath(r, c, rows, cols, w, h, E, flat);
+    x.save(); x.clip(path); x.drawImage(src, -c * w, -r * h, cols * w, rows * h); x.restore();
+    x.lineJoin = 'round'; x.strokeStyle = 'rgba(0,0,0,.28)'; x.lineWidth = 5; x.stroke(path);
+    x.strokeStyle = 'rgba(255,255,255,.95)'; x.lineWidth = 2.5; x.stroke(path);
+    return cv;
+  };
+
+  /* ---------------------------------------------------------------- 音 */
+  let actx = null;
+  PZ.muted = false;
+  function ac() {
+    try {
+      if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (C) actx = new C(); }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) { /* 音が出なくても遊べる */ }
+    return actx;
+  }
+  ['pointerdown', 'touchstart', 'keydown'].forEach((ev) => addEventListener(ev, ac, { passive: true }));
+  function tone(f, t = 0, d = .15, type = 'sine', v = .18) {
+    if (PZ.muted) return; const c = ac(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain(), t1 = c.currentTime + t;
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t1); g.gain.linearRampToValueAtTime(v, t1 + .012); g.gain.exponentialRampToValueAtTime(.0001, t1 + d);
+    o.connect(g); g.connect(c.destination); o.start(t1); o.stop(t1 + d + .03);
+  }
+  function noise(d = .12, v = .25) {
+    if (PZ.muted) return; const c = ac(); if (!c) return;
+    const n = Math.floor(c.sampleRate * d), b = c.createBuffer(1, n, c.sampleRate), a = b.getChannelData(0);
+    for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+    const s = c.createBufferSource(), g = c.createGain(); g.gain.value = v; s.buffer = b; s.connect(g); g.connect(c.destination); s.start();
+  }
+  PZ.snd = {
+    pick() { tone(620, 0, .09); },
+    drop() { tone(330, 0, .1, 'triangle', .14); },
+    ok() { tone(784, 0, .1, 'triangle'); tone(1175, .08, .2, 'triangle'); },
+    soft() { tone(260, 0, .16, 'sine', .09); },          // まちがい：やさしい音（叱らない）
+    pop() { noise(.14, .3); tone(500, 0, .05, 'square', .06); },
+    win() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i * .11, .3, 'triangle', .2)); },
+  };
+  PZ.say = (text) => {
+    if (PZ.muted || !('speechSynthesis' in window)) return;
+    try { const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; u.rate = .9; u.pitch = 1.35; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { }
+  };
+
+  /* ------------------------------------------------------ ごほうび演出 */
+  PZ.confetti = (n = 70) => {
+    const cols = ['#ff6b6b', '#ffd93d', '#6bcB77', '#4d96ff', '#ff9ff3', '#ff9f43'];
+    for (let i = 0; i < n; i++) {
+      const e = document.createElement('div'); e.className = 'confetti-piece';
+      e.style.left = Math.random() * 100 + 'vw'; e.style.background = cols[i % cols.length];
+      e.style.setProperty('--dx', (Math.random() * 160 - 80) + 'px'); e.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+      e.style.animationDelay = Math.random() * .6 + 's'; e.style.animationDuration = 2 + Math.random() * 1.4 + 's';
+      document.body.appendChild(e); setTimeout(() => e.remove(), 4200);
+    }
+  };
+  PZ.win = (opt = {}) => {
+    PZ.confetti(opt.n || 70); PZ.snd.win();
+    const word = opt.text || PZ.pick(['できた！', 'すごい！', 'やったね！', 'じょうず！']);
+    const b = document.createElement('div'); b.className = 'banner'; b.textContent = word; document.body.appendChild(b); setTimeout(() => b.remove(), 2300);
+    if (opt.say) setTimeout(() => PZ.say(opt.say), 500);
+  };
+
+  /* ------------------------------------------------------- 保護者ゲート */
+  PZ.parentGate = (why) => new Promise((resolve) => {
+    const a = 3 + Math.floor(Math.random() * 6), b = 3 + Math.floor(Math.random() * 6), ans = a + b;
+    const opts = PZ.shuffle([ans, ans + 2, ans - 3, ans + 5]);
+    const back = PZ.el('div', 'gate-back', document.body), g = PZ.el('div', 'gate', back);
+    g.innerHTML = `<h2>おとなの かたへ</h2><p>${why || 'この さきは ほごしゃの かた用です'}</p><div class="q">${a} + ${b} = ?</div><div class="ans"></div><button class="cancel">やめる</button>`;
+    const done = (ok) => { back.remove(); resolve(ok); };
+    opts.forEach((o) => { const bt = PZ.el('button', '', PZ.$('.ans', g)); bt.textContent = o; bt.onclick = () => done(o === ans); });
+    PZ.$('.cancel', g).onclick = () => done(false);
+  });
+
+  /* ------------------------------------------- 画面の向き変更時に再開始 */
+  PZ.onLayoutChange = (fn) => {
+    let lw = innerWidth, lh = innerHeight, t;
+    addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const flip = (innerWidth >= innerHeight) !== (lw >= lh), big = Math.abs(innerWidth - lw) / lw > .15;
+        if (flip || big) { lw = innerWidth; lh = innerHeight; fn(); }
+      }, 250);
+    });
+  };
+
+  /* -------------------------------------------- ドラッグ（ポインタ共通） */
+  PZ.drag = (el, h) => {
+    el.style.touchAction = 'none';
+    el.addEventListener('pointerdown', (e) => {
+      if (h.canStart && !h.canStart(el, e)) return;
+      e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (_) { }
+      const sx = e.clientX, sy = e.clientY;
+      h.start && h.start(el, e);
+      const mv = (ev) => h.move && h.move(el, ev.clientX - sx, ev.clientY - sy, ev);
+      const up = (ev) => {
+        el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+        h.end && h.end(el, ev.clientX - sx, ev.clientY - sy, ev);
+      };
+      el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
+  };
+
+  /* n個のピース(幅pw,高さph)を area 内に「ゆらぎつきグリッド」で散らす。重なりを最小にする */
+  PZ.scatter = (n, area, pw, ph) => {
+    const W = Math.max(1, area.x1 - area.x0), H = Math.max(1, area.y1 - area.y0);
+    let best = null;
+    for (let cols = 1; cols <= n; cols++) {
+      const rows = Math.ceil(n / cols), score = Math.min(W / cols / pw, H / rows / ph);
+      if (!best || score > best.score) best = {cols, rows, score};
+    }
+    const cw = W / best.cols, rh = H / best.rows;
+    return PZ.shuffle([...Array(best.cols * best.rows).keys()]).slice(0, n).map((k) => {
+      const c = k % best.cols, r = Math.floor(k / best.cols);
+      const jx = (Math.random() - .5) * Math.min(24, Math.abs(cw - pw) * .8), jy = (Math.random() - .5) * Math.min(24, Math.abs(rh - ph) * .8);
+      const x = area.x0 + c * cw + (cw - pw) / 2 + jx, y = area.y0 + r * rh + (rh - ph) / 2 + jy;
+      return {x: Math.min(Math.max(x, area.x0), Math.max(area.x0, area.x1 - pw)), y: Math.min(Math.max(y, area.y0), Math.max(area.y0, area.y1 - ph))};
+    });
+  };
+
+  /* ----------------------------- 「ドラッグして、近づくと吸い付く」共通部品
+     pieces: [{el, tx, ty}]  el は position:absolute。left/top(px) が現在位置、tx/ty が正解位置。
+     opt.snap(p) 吸着距離 / opt.onPlace(p) / opt.onWin()                           */
+  PZ.snapDrag = (pieces, opt) => {
+    let z = 10, placed = 0;
+    const api = {
+      count: () => placed,
+      place(p, quiet) {
+        if (p.placed) return;
+        p.placed = true; p.el.style.transition = 'left .18s ease-out, top .18s ease-out';
+        p.el.style.left = p.tx + 'px'; p.el.style.top = p.ty + 'px';
+        p.el.classList.add('placed'); p.el.style.zIndex = 1; p.el.style.pointerEvents = 'none';
+        if (!quiet) PZ.snd.ok();
+        opt.onPlace && opt.onPlace(p);
+        if (++placed === pieces.length) opt.onWin && setTimeout(opt.onWin, 250);
+      },
+    };
+    pieces.forEach((p) => PZ.drag(p.el, {
+      canStart: () => !p.placed,
+      start() { p.x0 = parseFloat(p.el.style.left); p.y0 = parseFloat(p.el.style.top); p.el.style.zIndex = ++z; p.el.style.transition = 'none'; p.el.classList.add('drag'); PZ.snd.pick(); },
+      move(el, dx, dy) { el.style.left = p.x0 + dx + 'px'; el.style.top = p.y0 + dy + 'px'; },
+      end(el, dx, dy) {
+        el.classList.remove('drag');
+        const x = p.x0 + dx, y = p.y0 + dy;
+        if (Math.hypot(x - p.tx, y - p.ty) <= opt.snap(p)) { api.place(p); return; }
+        const w = el.offsetWidth, h = el.offsetHeight, m = 8;                       // 画面の外に出ないよう戻す
+        const cx = Math.min(Math.max(x, m - w * .35), innerWidth - w * .65 - m), cy = Math.min(Math.max(y, m - h * .35), innerHeight - h * .65 - m);
+        el.style.transition = 'left .15s, top .15s'; el.style.left = cx + 'px'; el.style.top = cy + 'px'; PZ.snd.drop();
+      },
+    }));
+    return api;
+  };
+})();
+
+</script>
+<script>
+/* art-vehicles.js ― のりものの絵（SVG）。背景まで描き込んで、どのピースにも手がかりがあるようにする。
+   common.js の PZ.art に追加し、既存の絵にも「分類(cat)」をつける。 */
+(function () {
+  'use strict';
+  const S = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">${inner}</svg>`;
+  const cloud = (x, y, s = 1, c = '#fff') => `<g transform="translate(${x},${y}) scale(${s})" fill="${c}"><ellipse cx="0" cy="0" rx="46" ry="18"/><ellipse cx="-22" cy="-12" rx="26" ry="18"/><ellipse cx="14" cy="-18" rx="28" ry="20"/></g>`;
+  const wheel = (x, y, r = 30) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#2b2b2b"/><circle cx="${x}" cy="${y}" r="${r * 0.5}" fill="#cbd5e1"/><circle cx="${x}" cy="${y}" r="${r * 0.16}" fill="#64748b"/>`;
+  const sun = (x, y, r = 28) => `<g stroke="#ffd93d" stroke-width="5" stroke-linecap="round">${[0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<path d="M${x + Math.cos(a * Math.PI / 180) * (r + 8)} ${y + Math.sin(a * Math.PI / 180) * (r + 8)} L${x + Math.cos(a * Math.PI / 180) * (r + 18)} ${y + Math.sin(a * Math.PI / 180) * (r + 18)}"/>`).join('')}</g><circle cx="${x}" cy="${y}" r="${r}" fill="#ffd93d"/>`;
+  const tree = (x, y, s = 1, c = '#2f9e44') => `<g transform="translate(${x},${y}) scale(${s})"><rect x="-5" y="0" width="10" height="40" fill="#8b5a2b"/><circle cx="0" cy="-8" r="26" fill="${c}"/><circle cx="-17" cy="8" r="18" fill="#37b24d"/><circle cx="17" cy="8" r="18" fill="#37b24d"/></g>`;
+  const cone = (x, y, s = 1) => `<g transform="translate(${x},${y}) scale(${s})"><polygon points="-10,0 10,0 5,-26 -5,-26" fill="#ff7a1a"/><rect x="-7" y="-14" width="14" height="5" fill="#fff"/><rect x="-14" y="0" width="28" height="5" rx="2" fill="#333"/></g>`;
+  const windows = (x, y, w, h, cols, rows, c = '#ffe9a8', gap = 8) => {
+    const ww = (w - gap * (cols + 1)) / cols, hh = (h - gap * (rows + 1)) / rows; let o = '';
+    for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) o += `<rect x="${(x + gap + k * (ww + gap)).toFixed(1)}" y="${(y + gap + r * (hh + gap)).toFixed(1)}" width="${ww.toFixed(1)}" height="${hh.toFixed(1)}" rx="2" fill="${(r + k) % 3 === 0 ? '#bfe6ff' : c}"/>`;
+    return o;
+  };
+  const road = (y, c = '#5b6270') => `<rect y="${y}" width="400" height="${400 - y}" fill="${c}"/><rect y="${y - 6}" width="400" height="8" fill="#cbd5e1"/><path d="M0 ${y + (400 - y) * 0.55} H400" stroke="#fff" stroke-width="7" stroke-dasharray="38 26"/>`;
+  const hills = (y) => `<ellipse cx="90" cy="${y}" rx="190" ry="70" fill="#86d36f"/><ellipse cx="330" cy="${y + 10}" rx="170" ry="60" fill="#5cbf5c"/>`;
+  const sky = '<rect width="400" height="400" fill="#bfe6ff"/>';
+
+  const add = [
+    { id: 'shoubousha', name: 'しょうぼうしゃ', say: 'しょうぼうしゃ', cat: 'vehicle', svg: S(`${sky}${sun(340, 50, 26)}${cloud(90, 50, 1)}${cloud(230, 90, 0.7)}
+      <rect x="0" y="100" width="150" height="205" fill="#d9534f"/><rect x="0" y="88" width="150" height="16" fill="#7f1d1d"/>${windows(8, 112, 134, 60, 4, 1, '#ffe9a8')}
+      <path d="M22 305 V240 a53 53 0 0 1 106 0 V305Z" fill="#f1f5f9"/><path d="M22 262 H128 M22 284 H128" stroke="#cbd5e1" stroke-width="3"/>
+      ${tree(360, 235, 0.9)}${tree(325, 250, 0.7, '#2b8a3e')}
+      ${road(300)}
+      <rect x="70" y="212" width="270" height="82" rx="10" fill="#e63946"/><path d="M262 172 H318 Q338 172 338 192 V294 H262Z" fill="#e63946"/>
+      <rect x="270" y="180" width="54" height="42" rx="6" fill="#cfefff"/><rect x="266" y="150" width="62" height="14" rx="4" fill="#475569"/><rect x="272" y="140" width="22" height="12" rx="3" fill="#ef4444"/><rect x="300" y="140" width="22" height="12" rx="3" fill="#3b82f6"/>
+      <rect x="70" y="226" width="190" height="9" fill="#fff"/><rect x="84" y="244" width="48" height="40" rx="4" fill="#cbd5e1"/><rect x="138" y="244" width="48" height="40" rx="4" fill="#cbd5e1"/><rect x="192" y="244" width="48" height="40" rx="4" fill="#cbd5e1"/>
+      <path d="M84 244h48M138 244h48M192 244h48" stroke="#94a3b8" stroke-width="3"/>
+      <path d="M78 207 L255 178 L255 164 L78 193Z" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/><g stroke="#64748b" stroke-width="3">${[100, 125, 150, 175, 200, 225].map((x) => `<path d="M${x} ${205 - (x - 78) * 0.165} v-14"/>`).join('')}</g>
+      <circle cx="330" cy="262" r="8" fill="#fde68a"/>${wheel(125, 296)}${wheel(205, 296)}${wheel(295, 296)}`) },
+    { id: 'patoka', name: 'パトカー', say: 'パトカー', cat: 'vehicle', svg: S(`<rect width="400" height="400" fill="#cfe8ff"/>${cloud(80, 45, 0.9)}${cloud(300, 70, 0.8)}
+      <rect x="10" y="130" width="80" height="170" fill="#94a3b8"/>${windows(10, 130, 80, 170, 3, 5, '#e2e8f0', 7)}
+      <rect x="100" y="80" width="70" height="220" fill="#64748b"/>${windows(100, 80, 70, 220, 3, 6, '#fde68a', 7)}
+      <rect x="180" y="150" width="90" height="150" fill="#a8b5c7"/>${windows(180, 150, 90, 150, 4, 4, '#e2e8f0', 7)}
+      <rect x="282" y="110" width="80" height="190" fill="#7c8da4"/>${windows(282, 110, 80, 190, 3, 5, '#fde68a', 7)}
+      ${road(300, '#4b5563')}<g fill="#fff">${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${i * 70 + 8}" y="318" width="38" height="16"/>`).join('')}</g>
+      <rect x="72" y="222" width="256" height="76" rx="26" fill="#f8fafc"/><path d="M128 226 L158 176 H258 L292 226Z" fill="#f8fafc"/>
+      <path d="M142 222 L164 184 H200 V222Z" fill="#bfe6ff"/><path d="M210 222 V184 H254 L276 222Z" fill="#bfe6ff"/>
+      <rect x="72" y="256" width="256" height="40" rx="14" fill="#1f2937"/><rect x="190" y="152" width="28" height="22" rx="4" fill="#ef4444"/><rect x="218" y="152" width="28" height="22" rx="4" fill="#3b82f6"/>
+      <circle cx="205" cy="146" r="14" fill="#ef4444" opacity=".25"/><circle cx="233" cy="146" r="14" fill="#3b82f6" opacity=".25"/>
+      <polygon points="152,247 156,258 168,258 158,265 162,276 152,269 142,276 146,265 136,258 148,258" fill="#facc15"/>
+      <rect x="318" y="238" width="14" height="14" rx="4" fill="#fde68a"/>${wheel(130, 298)}${wheel(272, 298)}${cone(362, 335, 1.1)}`) },
+    { id: 'kyuukyuusha', name: 'きゅうきゅうしゃ', say: 'きゅうきゅうしゃ', cat: 'vehicle', svg: S(`${sky}${sun(60, 50, 24)}${cloud(240, 60, 0.9)}
+      <rect x="205" y="90" width="195" height="210" fill="#f1f5f9"/><rect x="205" y="82" width="195" height="12" fill="#94a3b8"/>${windows(205, 100, 195, 100, 5, 2, '#bfe6ff', 8)}
+      <rect x="282" y="210" width="40" height="90" rx="4" fill="#94a3b8"/><path d="M288 130 h28 v-22 h22 v-22 h-22 v-22 h-28 v22 h-22 v22 h22z" transform="translate(0 6)" fill="#ef4444"/>
+      ${tree(40, 255, 0.9)}${tree(165, 262, 0.7)}${road(300)}
+      <rect x="64" y="168" width="200" height="124" rx="14" fill="#f8fafc"/><path d="M264 200 H312 Q336 200 336 224 V292 H264Z" fill="#f8fafc"/>
+      <path d="M274 208 H308 L326 232 H274Z" fill="#cfefff"/><rect x="64" y="236" width="200" height="14" fill="#ef4444"/><rect x="64" y="236" width="272" height="0" fill="#ef4444"/>
+      <path d="M142 184 h24 v22 h22 v24 h-22 v22 h-24 v-22 h-22 v-24 h22z" fill="#ef4444" transform="translate(0 -4)"/>
+      <rect x="150" y="150" width="60" height="20" rx="6" fill="#ef4444"/><rect x="156" y="142" width="18" height="10" rx="3" fill="#3b82f6"/><rect x="186" y="142" width="18" height="10" rx="3" fill="#ef4444"/>
+      <circle cx="330" cy="268" r="8" fill="#fde68a"/>${wheel(118, 296)}${wheel(290, 296)}`) },
+    { id: 'shoberu', name: 'ショベルカー', say: 'ショベルカー', cat: 'vehicle', svg: S(`${sky}${sun(340, 48, 24)}${cloud(100, 52, 1)}${cloud(250, 95, 0.7)}
+      <path d="M0 300 Q70 210 160 262 Q230 300 300 245 Q350 215 400 262 V400 H0Z" fill="#c08a4a"/><path d="M0 330 Q120 300 240 336 T400 322 V400 H0Z" fill="#a8743a"/>
+      <g fill="#8a5a28">${[[40, 340, 14], [120, 360, 10], [200, 345, 12], [300, 365, 16], [360, 338, 9], [250, 380, 8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
+      <g transform="translate(10 30)">${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${i * 62}" y="218" width="50" height="34" fill="${i % 2 ? '#fff' : '#ff7a1a'}" stroke="#555" stroke-width="2"/>`).join('')}</g>
+      <rect x="60" y="298" width="210" height="46" rx="23" fill="#334155"/><circle cx="86" cy="321" r="16" fill="#64748b"/><circle cx="165" cy="321" r="16" fill="#64748b"/><circle cx="244" cy="321" r="16" fill="#64748b"/>
+      <rect x="95" y="262" width="150" height="40" rx="8" fill="#f59e0b"/><rect x="170" y="212" width="82" height="56" rx="8" fill="#fbbf24"/><rect x="104" y="206" width="70" height="60" rx="8" fill="#fbbf24"/><rect x="112" y="214" width="54" height="36" rx="4" fill="#cfefff"/>
+      <path d="M118 222 L70 150 L40 190" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/><path d="M118 222 L70 150 L40 190" fill="none" stroke="#fbbf24" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M40 190 L22 232 L62 246 L74 214Z" fill="#6b7280" stroke="#374151" stroke-width="3" stroke-linejoin="round"/><circle cx="70" cy="150" r="7" fill="#374151"/><circle cx="118" cy="222" r="7" fill="#374151"/>
+      ${cone(300, 300, 1.2)}${cone(330, 306, 1)}`) },
+    { id: 'shinkansen', name: 'しんかんせん', say: 'しんかんせん', cat: 'vehicle', svg: S(`<rect width="400" height="400" fill="#a5d8ff"/>${sun(340, 52, 24)}${cloud(80, 56, 1)}${cloud(215, 100, 0.7)}
+      <path d="M40 270 L160 90 Q200 38 240 90 L360 270Z" fill="#6b84b8"/><path d="M160 90 Q200 38 240 90 L226 108 L206 92 L190 112 L172 98Z" fill="#fff"/><path d="M110 270 L190 150 L230 220 L270 270Z" fill="#5b74a8" opacity=".55"/>
+      <rect y="262" width="400" height="140" fill="#86d36f"/>
+      ${[[40, 245], [110, 240], [300, 243], [365, 238]].map(([x, y], i) => `<g transform="translate(${x},${y})"><rect x="-4" y="6" width="8" height="26" fill="#8b5a2b"/><circle cx="0" cy="0" r="20" fill="${i % 2 ? '#fbcfe8' : '#f9a8d4'}"/><circle cx="-12" cy="8" r="13" fill="#fbcfe8"/><circle cx="12" cy="8" r="13" fill="#f9a8d4"/></g>`).join('')}
+      <rect y="318" width="400" height="14" fill="#9ca3af"/><rect y="332" width="400" height="68" fill="#6b7280"/><g fill="#475569">${Array.from({ length: 14 }, (_, i) => `<rect x="${i * 30 - 6}" y="338" width="14" height="40"/>`).join('')}</g><path d="M0 346 H400 M0 366 H400" stroke="#e5e7eb" stroke-width="4"/>
+      <path d="M26 234 H250 C310 234 352 262 372 300 H26Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><path d="M26 276 H372 L360 290 H26Z" fill="#1d4ed8"/><path d="M26 268 H366" stroke="#60a5fa" stroke-width="4"/>
+      ${Array.from({ length: 8 }, (_, i) => `<rect x="${40 + i * 30}" y="246" width="20" height="16" rx="3" fill="#1e3a8a"/>`).join('')}
+      <path d="M268 244 C300 244 330 262 348 276 H270Z" fill="#1e3a8a"/><rect x="26" y="300" width="340" height="10" fill="#334155"/>${Array.from({ length: 6 }, (_, i) => `<circle cx="${60 + i * 56}" cy="312" r="7" fill="#1f2937"/>`).join('')}`) },
+    { id: 'dump', name: 'ダンプカー', say: 'ダンプカー', cat: 'vehicle', svg: S(`${sky}${sun(60, 50, 24)}${cloud(250, 60, 1)}${cloud(330, 120, 0.6)}
+      <path d="M0 260 Q90 190 190 250 Q280 300 400 220 V400 H0Z" fill="#d6a15a"/><path d="M0 310 Q150 270 400 320 V400 H0Z" fill="#b9843f"/>
+      <g fill="#9a6a2c">${[[30, 350, 12], [110, 372, 10], [210, 358, 14], [330, 372, 11], [380, 340, 8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('')}</g>
+      <path d="M96 270 L130 150 L282 150 L292 270Z" transform="rotate(-14 292 270)" fill="#f59e0b" stroke="#b45309" stroke-width="4" stroke-linejoin="round"/>
+      <g transform="rotate(-14 292 270)"><path d="M118 156 Q140 112 175 128 Q200 100 230 125 Q262 106 278 152Z" fill="#8b6f47"/><g fill="#6b5233"><circle cx="150" cy="140" r="6"/><circle cx="206" cy="130" r="7"/><circle cx="248" cy="138" r="6"/></g></g>
+      <rect x="86" y="268" width="260" height="30" rx="8" fill="#334155"/><path d="M290 214 H330 Q350 214 350 236 V288 H290Z" fill="#fbbf24" stroke="#b45309" stroke-width="3"/><path d="M298 222 H326 L340 244 H298Z" fill="#cfefff"/><circle cx="344" cy="268" r="7" fill="#fde68a"/>
+      ${wheel(140, 300, 32)}${wheel(220, 300, 32)}${wheel(318, 300, 30)}${cone(46, 330, 1.3)}${cone(80, 342, 1)}`) },
+    { id: 'basu', name: 'バス', say: 'バス', cat: 'vehicle', svg: S(`${sky}${sun(340, 46, 22)}${cloud(70, 56, 0.9)}${cloud(220, 38, 0.6)}
+      <rect x="0" y="130" width="90" height="170" fill="#fbcfe8"/>${windows(0, 130, 90, 170, 3, 4, '#fff', 8)}<rect x="300" y="110" width="100" height="190" fill="#c7d2fe"/>${windows(300, 110, 100, 190, 3, 5, '#fff', 8)}
+      ${tree(120, 250, 0.9)}${tree(280, 258, 0.8)}
+      ${road(300)}
+      <rect x="44" y="172" width="312" height="124" rx="22" fill="#22c55e"/><rect x="44" y="238" width="312" height="14" fill="#fde047"/>
+      ${Array.from({ length: 5 }, (_, i) => `<rect x="${58 + i * 52}" y="186" width="42" height="44" rx="7" fill="#cfefff"/>${i % 2 === 0 ? `<circle cx="${79 + i * 52}" cy="208" r="9" fill="#fb923c"/>` : ''}`).join('')}
+      <rect x="318" y="186" width="30" height="64" rx="6" fill="#cfefff"/><rect x="56" y="150" width="120" height="20" rx="5" fill="#16a34a"/><circle cx="346" cy="272" r="8" fill="#fde68a"/>${wheel(110, 298)}${wheel(280, 298)}`) },
+    { id: 'hikouki', name: 'ひこうき', say: 'ひこうき', cat: 'vehicle', svg: S(`<defs><linearGradient id="hk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eb3ff"/><stop offset="1" stop-color="#cdeaff"/></linearGradient></defs><rect width="400" height="400" fill="url(#hk)"/>${sun(70, 60, 26)}${cloud(300, 70, 1.1)}${cloud(60, 160, 0.8)}${cloud(330, 190, 0.7)}
+      <g fill="#fff" opacity=".9"><ellipse cx="90" cy="302" rx="90" ry="24"/><ellipse cx="260" cy="312" rx="110" ry="26"/></g>
+      <rect y="320" width="400" height="80" fill="#86d36f"/>${[[0, 326, 70, 34, '#fde68a'], [70, 326, 60, 34, '#86d36f'], [130, 326, 80, 34, '#fbbf24'], [210, 326, 70, 34, '#bbf7d0'], [280, 326, 120, 34, '#fde68a'], [0, 360, 120, 40, '#bbf7d0'], [120, 360, 90, 40, '#fbbf24'], [210, 360, 100, 40, '#86d36f'], [310, 360, 90, 40, '#fde68a']].map(([x, y, w, h, c]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" stroke="#4d9d4d" stroke-width="2"/>`).join('')}
+      <path d="M60 170 L40 120 Q38 112 48 112 H70 L112 168Z" fill="#ef4444"/>
+      <path d="M60 188 C60 168 120 168 270 172 C340 174 372 190 372 204 C372 220 340 232 270 234 C130 238 60 232 60 214Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/>
+      <path d="M62 212 C120 218 300 220 370 208 L372 204 C372 210 340 224 270 226 C130 230 70 226 62 218Z" fill="#ef4444"/>
+      <path d="M180 206 L250 292 L232 296 L130 210Z" fill="#94a3b8" stroke="#64748b" stroke-width="3" stroke-linejoin="round"/><path d="M190 186 L240 124 L254 126 L226 190Z" fill="#94a3b8" stroke="#64748b" stroke-width="3" stroke-linejoin="round"/>
+      ${Array.from({ length: 9 }, (_, i) => `<circle cx="${100 + i * 22}" cy="194" r="5" fill="#1e3a8a"/>`).join('')}
+      <path d="M326 184 C348 186 362 192 364 200 H322Z" fill="#1e3a8a"/><ellipse cx="226" cy="236" rx="18" ry="9" fill="#64748b"/>
+      <path d="M312 70 q8-10 16 0 q8-10 16 0 M120 100 q6-8 12 0 q6-8 12 0" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round"/>`) },
+  ];
+
+  /* ---------------------------------------------------------------- 追加分（のりもの＋どうぶつ・きょうりゅう） */
+  const bamboo = (x, h = 400) => `<g><rect x="${x}" y="0" width="22" height="${h}" fill="#7bc96f"/><g fill="#5aa84f">${Array.from({ length: 8 }, (_, i) => `<rect x="${x - 2}" y="${i * 52 + 20}" width="26" height="7" rx="3"/>`).join('')}</g></g>`;
+  const grassTop = (y, c = '#86d36f') => `<path d="M0 ${y} Q50 ${y - 14} 100 ${y} T200 ${y} T300 ${y} T400 ${y} V400 H0Z" fill="${c}"/>`;
+  const fern = (x, y, s = 1) => `<g transform="translate(${x},${y}) scale(${s})" stroke="#2f9e44" stroke-width="5" stroke-linecap="round" fill="none"><path d="M0 0 Q-4 -30 6 -60"/>${[-48, -36, -24, -12].map((yy) => `<path d="M${(yy + 60) * 0.1 - 2} ${yy} l-16 -8 M${(yy + 60) * 0.1 - 2} ${yy} l16 -8"/>`).join('')}</g>`;
+  const add2 = [
+    { id: 'gomi', name: 'ごみしゅうしゅうしゃ', say: 'ごみしゅうしゅうしゃ', cat: 'vehicle', svg: S(`${sky}${sun(60, 48, 24)}${cloud(250, 55, 0.9)}
+      <g>${[[10, 200, '#fda4af', '#be123c'], [100, 215, '#fde68a', '#b45309'], [320, 205, '#bbf7d0', '#15803d']].map(([x, y, w, r]) => `<rect x="${x}" y="${y}" width="70" height="95" fill="${w}"/><polygon points="${x - 6},${y} ${x + 35},${y - 38} ${x + 76},${y}" fill="${r}"/><rect x="${x + 24}" y="${y + 40}" width="22" height="55" fill="#8b5a2b"/>`).join('')}</g>
+      ${tree(250, 245, 0.8)}${road(300)}
+      <rect x="62" y="172" width="222" height="124" rx="12" fill="#22a14a"/><rect x="62" y="236" width="222" height="12" fill="#fde047"/>
+      <path d="M284 196 H322 Q344 196 344 218 V296 H284Z" fill="#22a14a"/><path d="M292 204 H322 Q332 204 334 216 V240 H292Z" fill="#cfefff"/>
+      <rect x="44" y="190" width="34" height="106" rx="8" fill="#15803d"/><rect x="50" y="248" width="22" height="40" rx="4" fill="#111827"/><path d="M60 166 H100 V190" fill="none" stroke="#475569" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="170" cy="204" r="22" fill="#fff"/><path d="M158 206 l8 -12 l6 8 M182 202 l-8 12 l-6 -8" fill="none" stroke="#22a14a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="338" cy="268" r="8" fill="#fde68a"/>
+      <g><ellipse cx="22" cy="288" rx="22" ry="20" fill="#14532d"/><rect x="15" y="262" width="14" height="10" rx="4" fill="#14532d"/></g>${wheel(130, 298)}${wheel(310, 298)}`) },
+    { id: 'mixer', name: 'ミキサーしゃ', say: 'ミキサーしゃ', cat: 'vehicle', svg: S(`${sky}${sun(340, 50, 24)}${cloud(100, 50, 1)}
+      <g stroke="#475569" stroke-width="5" fill="none"><rect x="10" y="90" width="120" height="210"/>${[0, 1, 2, 3].map((i) => `<path d="M10 ${90 + i * 52} H130"/>`).join('')}<path d="M10 90 L130 142 M130 90 L10 142 M10 194 L130 246 M130 194 L10 246"/><path d="M70 90 V300"/></g>
+      <rect x="0" y="80" width="140" height="12" fill="#f59e0b"/>
+      <path d="M0 300 Q120 270 400 310 V400 H0Z" fill="#c9a36a"/>${road(310, '#6b7280')}
+      <rect x="64" y="270" width="272" height="26" rx="6" fill="#334155"/>
+      <g transform="rotate(-16 170 215)"><ellipse cx="170" cy="215" rx="100" ry="55" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/><path d="M78 190 Q130 160 175 214 T270 240" fill="none" stroke="#f97316" stroke-width="14"/><path d="M92 236 Q140 200 190 258" fill="none" stroke="#f97316" stroke-width="12"/><path d="M270 195 L295 215 L270 238Z" fill="#94a3b8"/><ellipse cx="82" cy="215" rx="10" ry="26" fill="#94a3b8"/></g>
+      <path d="M276 214 H320 Q342 214 342 236 V296 H276Z" fill="#2563eb"/><path d="M284 222 H316 L330 244 H284Z" fill="#cfefff"/><rect x="266" y="204" width="10" height="92" fill="#1d4ed8"/>${wheel(110, 300, 30)}${wheel(190, 300, 30)}${wheel(310, 300, 28)}${cone(380, 340, 1.2)}`) },
+    { id: 'crane', name: 'クレーンしゃ', say: 'クレーンしゃ', cat: 'vehicle', svg: S(`${sky}${sun(60, 54, 24)}${cloud(250, 40, 0.9)}${cloud(120, 140, 0.6)}
+      <g><rect x="250" y="150" width="120" height="150" fill="#94a3b8"/>${windows(250, 150, 120, 150, 4, 5, '#e2e8f0', 7)}<rect x="300" y="100" width="70" height="52" fill="#a8b5c7"/>${windows(300, 100, 70, 52, 3, 2, '#e2e8f0', 6)}<path d="M360 100 V40 M345 40 H395" stroke="#f59e0b" stroke-width="5"/></g>
+      ${road(300)}
+      <rect x="40" y="252" width="270" height="44" rx="8" fill="#f59e0b"/><g fill="#111827">${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${52 + i * 42}" y="278" width="22" height="6" opacity=".7"/>`).join('')}</g>
+      <path d="M262 214 H294 Q314 214 314 234 V296 H262Z" fill="#f59e0b"/><path d="M268 222 H292 L304 242 H268Z" fill="#cfefff"/>
+      <path d="M100 252 L310 56 L322 70 L118 262Z" fill="#ef4444" stroke="#991b1b" stroke-width="3" stroke-linejoin="round"/><path d="M180 188 L312 62 L322 72 L192 196Z" fill="#fbbf24" stroke="#b45309" stroke-width="2"/><circle cx="108" cy="256" r="12" fill="#475569"/>
+      <path d="M316 66 V164" stroke="#334155" stroke-width="3"/><path d="M310 164 h14 v12 a7 7 0 1 1 -14 0z" fill="#475569"/><rect x="296" y="176" width="40" height="22" fill="#fb923c" stroke="#9a3412" stroke-width="2"/>
+      <path d="M60 296 V318 M290 296 V318" stroke="#475569" stroke-width="8"/><rect x="40" y="318" width="40" height="8" rx="3" fill="#475569"/><rect x="270" y="318" width="40" height="8" rx="3" fill="#475569"/>${wheel(100, 296, 24)}${wheel(170, 296, 24)}${wheel(240, 296, 24)}`) },
+    { id: 'tractor', name: 'トラクター', say: 'トラクター', cat: 'vehicle', svg: S(`${sky}${sun(340, 50, 26)}${cloud(80, 56, 1)}${cloud(230, 100, 0.7)}
+      <path d="M0 210 Q100 150 200 205 T400 190 V400 H0Z" fill="#86d36f"/>
+      <g><rect x="270" y="150" width="110" height="100" fill="#dc2626"/><polygon points="262,150 325,100 388,150" fill="#7f1d1d"/><rect x="305" y="190" width="40" height="60" fill="#fff"/><path d="M305 190 L345 250 M345 190 L305 250" stroke="#dc2626" stroke-width="5"/></g>
+      <path d="M0 255 L400 255" stroke="#a16207" stroke-width="3"/>${Array.from({ length: 14 }, (_, i) => `<path d="M${i * 30 - 10} 255 v-22 M${i * 30 + 6} 255 v-22" stroke="#a16207" stroke-width="4"/>`).join('')}
+      <rect y="262" width="400" height="140" fill="#a16207"/>${[280, 310, 340, 370].map((y, i) => `<path d="M0 ${y} Q100 ${y - 14} 200 ${y} T400 ${y}" fill="none" stroke="${i % 2 ? '#854d0e' : '#c28a35'}" stroke-width="12"/>`).join('')}
+      <g transform="translate(40 250)">${[0, 1, 2].map((i) => `<g transform="translate(${i * 30} 0)"><rect x="-2" y="0" width="4" height="30" fill="#2e9b4f"/><circle cx="0" cy="-4" r="11" fill="#facc15"/><circle cx="0" cy="-4" r="5" fill="#92400e"/></g>`).join('')}</g>
+      <rect x="205" y="214" width="112" height="56" rx="10" fill="#dc2626"/><rect x="128" y="168" width="82" height="100" rx="8" fill="#ef4444"/><rect x="138" y="178" width="62" height="48" rx="6" fill="#cfefff"/><rect x="124" y="160" width="90" height="12" rx="4" fill="#991b1b"/>
+      <rect x="296" y="180" width="10" height="42" fill="#475569"/><circle cx="318" cy="242" r="8" fill="#fde68a"/>
+      <circle cx="160" cy="288" r="62" fill="#1f2937"/><circle cx="160" cy="288" r="30" fill="#facc15"/><circle cx="160" cy="288" r="8" fill="#92400e"/><circle cx="270" cy="312" r="36" fill="#1f2937"/><circle cx="270" cy="312" r="16" fill="#facc15"/>`) },
+    { id: 'sl', name: 'SL（じょうききかんしゃ）', say: 'しゅっしゅっぽっぽ', cat: 'vehicle', svg: S(`<rect width="400" height="400" fill="#b9e3ff"/>${sun(70, 56, 26)}${cloud(250, 46, 0.8)}
+      <path d="M0 250 L90 130 L150 210 L220 110 L320 250Z" fill="#7c93bd"/><path d="M200 138 L220 110 L240 140 L222 130Z" fill="#fff"/><path d="M80 150 L90 130 L102 150 L92 144Z" fill="#fff"/>
+      <rect y="246" width="400" height="154" fill="#86d36f"/>${tree(40, 250, 0.8)}${tree(370, 246, 0.7)}
+      <rect y="336" width="400" height="14" fill="#9ca3af"/><g fill="#6b4a2b">${Array.from({ length: 14 }, (_, i) => `<rect x="${i * 30 - 6}" y="344" width="16" height="48"/>`).join('')}</g><path d="M0 354 H400 M0 378 H400" stroke="#d1d5db" stroke-width="5"/>
+      <g fill="#e5e7eb" opacity=".95"><circle cx="318" cy="118" r="20"/><circle cx="342" cy="88" r="26"/><circle cx="376" cy="58" r="30"/><circle cx="300" cy="140" r="14"/></g>
+      <rect x="60" y="156" width="100" height="136" rx="8" fill="#1f2937"/><rect x="50" y="146" width="120" height="14" rx="4" fill="#111827"/><rect x="76" y="172" width="56" height="48" rx="4" fill="#fde68a"/>
+      <rect x="150" y="200" width="150" height="70" rx="20" fill="#2d3748"/><rect x="290" y="206" width="52" height="64" rx="8" fill="#374151"/><path d="M304 150 h26 l8 -12 h-42 z" fill="#111827"/><rect x="310" y="150" width="14" height="60" fill="#111827"/>
+      <ellipse cx="205" cy="196" rx="20" ry="14" fill="#374151"/><rect x="120" y="262" width="220" height="16" fill="#991b1b"/><polygon points="340,268 372,300 340,300" fill="#111827"/><circle cx="342" cy="236" r="9" fill="#fde68a"/>
+      <g><circle cx="120" cy="300" r="40" fill="#dc2626"/><circle cx="215" cy="304" r="34" fill="#dc2626"/><circle cx="290" cy="304" r="34" fill="#dc2626"/><g stroke="#fff" stroke-width="3">${[[120, 300, 40], [215, 304, 34], [290, 304, 34]].map(([x, y, r]) => `<path d="M${x - r * 0.9} ${y} H${x + r * 0.9} M${x} ${y - r * 0.9} V${y + r * 0.9}"/>`).join('')}</g><circle cx="120" cy="300" r="8" fill="#fbbf24"/><circle cx="215" cy="304" r="7" fill="#fbbf24"/><circle cx="290" cy="304" r="7" fill="#fbbf24"/></g>`) },
+    { id: 'heli', name: 'ヘリコプター', say: 'ヘリコプター', cat: 'vehicle', svg: S(`<defs><linearGradient id="hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5eb3ff"/><stop offset="1" stop-color="#d6efff"/></linearGradient></defs><rect width="400" height="400" fill="url(#hl)"/>${sun(330, 60, 26)}${cloud(80, 70, 1)}${cloud(290, 150, 0.7)}${cloud(60, 330, 0.9)}
+      <path d="M0 330 L70 250 L130 310 L210 230 L300 320 L360 270 L400 310 V400 H0Z" fill="#7c93bd"/><path d="M200 240 L210 230 L222 244 L212 240Z M62 262 L70 250 L80 264Z" fill="#fff"/>
+      <rect y="338" width="400" height="62" fill="#86d36f"/>${tree(60, 350, 0.6)}${tree(330, 352, 0.6)}${tree(220, 356, 0.5)}
+      <path d="M52 188 L190 214 L190 244 L52 222Z" fill="#dc2626"/><path d="M44 164 L72 164 L66 222 L44 214Z" fill="#b91c1c"/><circle cx="58" cy="192" r="14" fill="#94a3b8"/><path d="M58 178 V206 M44 192 H72" stroke="#475569" stroke-width="3"/>
+      <ellipse cx="228" cy="236" rx="96" ry="54" fill="#ef4444"/><path d="M262 202 Q320 206 322 240 Q290 262 258 262Z" fill="#cfefff" stroke="#fff" stroke-width="3"/><path d="M160 230 H258" stroke="#fff" stroke-width="8"/><path d="M150 250 H230" stroke="#fff" stroke-width="4" opacity=".8"/>
+      <rect x="216" y="170" width="24" height="26" fill="#475569"/><ellipse cx="228" cy="168" rx="150" ry="10" fill="#334155" opacity=".35"/><rect x="80" y="160" width="296" height="8" rx="4" fill="#334155"/>
+      <path d="M170 296 H320 M196 282 V296 M280 282 V296" stroke="#475569" stroke-width="7" stroke-linecap="round"/><path d="M160 296 Q150 296 150 304 M326 296 Q336 296 336 304" stroke="#475569" stroke-width="7" fill="none" stroke-linecap="round"/>`) },
+    { id: 'tyrano', name: 'ティラノサウルス', say: 'がおー', cat: 'nature', svg: S(`<defs><linearGradient id="ty" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd48a"/><stop offset="1" stop-color="#ffa45b"/></linearGradient></defs><rect width="400" height="400" fill="url(#ty)"/>${sun(70, 70, 30)}${cloud(250, 50, 0.9, '#fff3d6')}
+      <path d="M170 280 L250 110 Q280 60 320 110 L400 280Z" fill="#6b4a3a"/><path d="M262 92 Q285 62 310 92 Q290 100 280 118 Q270 100 262 92Z" fill="#ef4444"/><path d="M280 118 Q276 150 262 176 M280 118 Q290 150 300 180" stroke="#f97316" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <g fill="#fff3d6" opacity=".9"><circle cx="330" cy="70" r="16"/><circle cx="352" cy="46" r="20"/></g>
+      <rect y="300" width="400" height="100" fill="#7bbf5a"/>${fern(30, 330, 1.1)}${fern(370, 330, 1)}${fern(120, 360, 0.8)}
+      <g transform="translate(14 -10)"><path d="M20 276 Q70 262 120 240 L130 210 L220 190 L230 270 Z" fill="#43a047"/><path d="M20 276 Q-10 290 -20 296 Q40 300 130 280Z" fill="#43a047" transform="translate(16 0)"/>
+      <ellipse cx="190" cy="236" rx="96" ry="64" fill="#4caf50"/><ellipse cx="200" cy="258" rx="72" ry="40" fill="#c5e1a5"/>
+      <path d="M118 176 l12 -22 l12 20 l14 -24 l12 22 l16 -22 l8 24" fill="#2e7d32"/>
+      <rect x="150" y="270" width="44" height="52" rx="16" fill="#43a047"/><ellipse cx="170" cy="322" rx="30" ry="9" fill="#2e7d32"/><rect x="210" y="270" width="38" height="48" rx="15" fill="#388e3c"/><ellipse cx="232" cy="318" rx="28" ry="8" fill="#2e7d32"/>
+      <path d="M240 210 Q250 200 262 210 M252 206 l8 6" stroke="#2e7d32" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M226 160 Q236 100 290 96 Q352 96 368 128 Q372 150 340 156 L300 160 Q262 168 244 200Z" fill="#4caf50"/>
+      <path d="M296 148 Q340 152 370 142 L366 162 Q330 178 296 166Z" fill="#388e3c"/><path d="M302 150 l6 14 l6 -12 l8 13 l6 -12 l8 11 l6 -10 l8 8" fill="#fff"/>
+      <circle cx="298" cy="116" r="11" fill="#fff"/><circle cx="302" cy="117" r="6" fill="#222"/><circle cx="355" cy="122" r="4" fill="#1b5e20"/></g>`) },
+    { id: 'tricera', name: 'トリケラトプス', say: 'トリケラトプス', cat: 'nature', svg: S(`${sky}${sun(330, 56, 28)}${cloud(80, 56, 1)}${cloud(220, 100, 0.7)}
+      <path d="M0 250 Q80 200 180 245 T400 230 V400 H0Z" fill="#9bdc7b"/><rect y="300" width="400" height="100" fill="#7bbf5a"/>${fern(40, 340, 1)}${fern(370, 336, 1.1)}${fern(150, 372, 0.8)}
+      <g>${[[60, 316], [330, 360], [200, 380]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-2" y="0" width="4" height="16" fill="#2e9b4f"/><circle cx="0" cy="-3" r="8" fill="#f9a8d4"/><circle cx="0" cy="-3" r="3" fill="#facc15"/></g>`).join('')}</g>
+      <path d="M40 270 Q10 250 8 232 Q60 236 100 252Z" fill="#c2763a"/>
+      <ellipse cx="170" cy="244" rx="98" ry="62" fill="#d98a4a"/><ellipse cx="176" cy="268" rx="74" ry="36" fill="#f3d3a4"/>
+      <rect x="110" y="272" width="36" height="52" rx="14" fill="#c2763a"/><rect x="190" y="276" width="36" height="48" rx="14" fill="#b8692d"/><g fill="#7c4a1e"><ellipse cx="128" cy="324" rx="26" ry="8"/><ellipse cx="208" cy="322" rx="26" ry="8"/></g>
+      <circle cx="288" cy="200" r="74" fill="#ef6c47"/><circle cx="288" cy="200" r="74" fill="none" stroke="#b83b1e" stroke-width="6"/><g fill="#fde68a">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => { const a = -2.6 + i * 0.45; return `<circle cx="${(288 + Math.cos(a) * 62).toFixed(0)}" cy="${(200 + Math.sin(a) * 62).toFixed(0)}" r="7"/>`; }).join('')}</g>
+      <ellipse cx="300" cy="224" rx="58" ry="42" fill="#d98a4a"/><path d="M340 232 Q372 232 378 252 Q360 268 336 258Z" fill="#c2763a"/>
+      <path d="M300 168 L312 112 L322 166Z" fill="#fff7ed" stroke="#d6c3a8" stroke-width="2"/><path d="M270 186 L250 142 L286 176Z" fill="#fff7ed" stroke="#d6c3a8" stroke-width="2"/><path d="M356 218 L388 196 L370 232Z" fill="#fff7ed" stroke="#d6c3a8" stroke-width="2"/>
+      <circle cx="310" cy="212" r="10" fill="#fff"/><circle cx="313" cy="213" r="5" fill="#222"/><path d="M320 244 Q340 252 356 244" stroke="#7c4a1e" stroke-width="4" fill="none" stroke-linecap="round"/>`) },
+    { id: 'lion', name: 'ライオン', say: 'がおー', cat: 'nature', svg: S(`<defs><linearGradient id="ln" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset="1" stop-color="#ffc977"/></linearGradient></defs><rect width="400" height="400" fill="url(#ln)"/>${sun(330, 60, 34)}${cloud(80, 56, 0.8, '#fff7e0')}
+      <path d="M0 270 Q100 240 200 262 T400 250 V400 H0Z" fill="#c9b458"/><rect y="320" width="400" height="80" fill="#b0a040"/>
+      <g><rect x="22" y="170" width="8" height="110" fill="#6b4a2b"/><path d="M0 180 Q30 130 60 180 Q80 140 56 120 Q20 100 0 130Z" fill="#4d7c3a"/></g>
+      <g><rect x="352" y="196" width="8" height="90" fill="#6b4a2b"/><path d="M326 204 Q356 150 388 204 Q404 170 380 150 Q350 130 326 160Z" fill="#4d7c3a"/></g>
+      <g fill="#9a7b2e">${[[60, 350], [150, 372], [260, 356], [330, 380], [30, 384]].map(([x, y]) => `<path d="M${x} ${y} l-6 -16 M${x} ${y} l0 -20 M${x} ${y} l6 -16" stroke="#8a6d25" stroke-width="3" stroke-linecap="round"/>`).join('')}</g>
+      <g fill="#c2410c">${Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8; return `<polygon points="${(200 + Math.cos(a - 0.2) * 110).toFixed(1)},${(220 + Math.sin(a - 0.2) * 110).toFixed(1)} ${(200 + Math.cos(a) * 150).toFixed(1)},${(220 + Math.sin(a) * 150).toFixed(1)} ${(200 + Math.cos(a + 0.2) * 110).toFixed(1)},${(220 + Math.sin(a + 0.2) * 110).toFixed(1)}"/>`; }).join('')}</g>
+      <circle cx="200" cy="220" r="124" fill="#d97706"/><circle cx="200" cy="224" r="98" fill="#f59e0b"/>
+      <circle cx="118" cy="146" r="26" fill="#f59e0b"/><circle cx="118" cy="146" r="14" fill="#fbcfe8"/><circle cx="282" cy="146" r="26" fill="#f59e0b"/><circle cx="282" cy="146" r="14" fill="#fbcfe8"/>
+      <ellipse cx="200" cy="248" rx="54" ry="42" fill="#fde7b0"/><circle cx="166" cy="206" r="13" fill="#fff"/><circle cx="234" cy="206" r="13" fill="#fff"/><circle cx="168" cy="208" r="7" fill="#222"/><circle cx="236" cy="208" r="7" fill="#222"/>
+      <path d="M184 232 L216 232 L200 248Z" fill="#7c2d12"/><path d="M200 248 V262 M176 266 Q200 284 224 266" stroke="#7c2d12" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M150 244 L112 236 M150 256 L112 262 M250 244 L288 236 M250 256 L288 262" stroke="#7c2d12" stroke-width="3" stroke-linecap="round"/>`) },
+    { id: 'zou', name: 'ぞう', say: 'ぱおーん', cat: 'nature', svg: S(`${sky}${sun(70, 56, 28)}${cloud(250, 50, 0.9)}${cloud(330, 120, 0.6)}
+      <path d="M0 240 Q100 200 200 236 T400 226 V400 H0Z" fill="#c9d67a"/><rect y="310" width="400" height="90" fill="#a9b95a"/>
+      <g><rect x="334" y="170" width="8" height="90" fill="#6b4a2b"/><path d="M306 180 Q340 126 380 180 Q398 146 372 124 Q336 104 306 140Z" fill="#4d7c3a"/></g>
+      <path d="M60 290 Q40 270 50 246" stroke="#7b8794" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <ellipse cx="170" cy="240" rx="110" ry="74" fill="#94a3b8"/><rect x="92" y="268" width="46" height="70" rx="18" fill="#8391a5"/><rect x="154" y="274" width="44" height="66" rx="18" fill="#94a3b8"/><rect x="214" y="268" width="46" height="70" rx="18" fill="#8391a5"/>
+      <g fill="#64748b"><ellipse cx="115" cy="338" rx="26" ry="9"/><ellipse cx="176" cy="340" rx="24" ry="8"/><ellipse cx="237" cy="338" rx="26" ry="9"/></g>
+      <circle cx="268" cy="188" r="62" fill="#a3b0c2"/><path d="M226 160 Q172 128 168 196 Q172 252 226 232Z" fill="#8c9bb0" stroke="#7b8794" stroke-width="3"/><path d="M226 172 Q192 166 190 198 Q192 226 222 218Z" fill="#c9a0a8"/>
+      <path d="M296 210 Q352 214 356 268 Q358 306 332 318 Q316 320 322 304 Q332 286 322 262 Q312 244 290 238Z" fill="#a3b0c2" stroke="#8c9bb0" stroke-width="3"/><path d="M308 236 Q330 244 334 270" stroke="#8c9bb0" stroke-width="3" fill="none"/>
+      <path d="M290 222 Q316 236 318 262 Q316 276 306 270" fill="#fff" stroke="#e5e7eb" stroke-width="3"/><circle cx="282" cy="178" r="9" fill="#fff"/><circle cx="285" cy="179" r="5" fill="#222"/>
+      <path d="M310 316 q8 8 16 0 M340 304 q6 10 14 4" stroke="#7ac7ff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M120 120 q8 -8 16 0 q8 -8 16 0 M290 100 q6 -8 12 0 q6 -8 12 0" stroke="#334155" stroke-width="3" fill="none" stroke-linecap="round"/>`) },
+    { id: 'kirin', name: 'きりん', say: 'きりん', cat: 'nature', svg: S(`${sky}${sun(340, 56, 26)}${cloud(70, 90, 0.9)}${cloud(300, 150, 0.6)}
+      <path d="M0 290 Q100 260 200 284 T400 272 V400 H0Z" fill="#a3d977"/><rect y="340" width="400" height="60" fill="#8cc85a"/>
+      <g><rect x="14" y="170" width="10" height="130" fill="#6b4a2b"/><circle cx="19" cy="150" r="44" fill="#3f9b4f"/><circle cx="-6" cy="176" r="28" fill="#4aaa5a"/><circle cx="46" cy="178" r="28" fill="#4aaa5a"/></g>
+      <g><rect x="364" y="196" width="10" height="110" fill="#6b4a2b"/><circle cx="369" cy="180" r="40" fill="#3f9b4f"/><circle cx="346" cy="204" r="26" fill="#4aaa5a"/></g>
+      <rect x="118" y="270" width="16" height="80" rx="6" fill="#f2c14e"/><rect x="154" y="274" width="16" height="78" rx="6" fill="#e6b343"/><rect x="214" y="272" width="16" height="80" rx="6" fill="#f2c14e"/><rect x="246" y="270" width="16" height="78" rx="6" fill="#e6b343"/>
+      <g fill="#5a3a1a"><rect x="116" y="346" width="20" height="10" rx="3"/><rect x="152" y="348" width="20" height="10" rx="3"/><rect x="212" y="346" width="20" height="10" rx="3"/><rect x="244" y="346" width="20" height="10" rx="3"/></g>
+      <path d="M262 258 Q280 270 276 296" stroke="#8a5a2a" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M150 210 L200 70 L238 78 L220 218Z" fill="#f2c14e"/><ellipse cx="192" cy="250" rx="86" ry="46" fill="#f6c95a"/>
+      <ellipse cx="238" cy="62" rx="40" ry="30" fill="#f6c95a" transform="rotate(-18 238 62)"/><ellipse cx="262" cy="74" rx="22" ry="17" fill="#f8d98a" transform="rotate(-18 262 74)"/>
+      <rect x="214" y="22" width="6" height="22" rx="3" fill="#8a5a2a"/><circle cx="217" cy="20" r="6" fill="#5a3a1a"/><rect x="238" y="26" width="6" height="20" rx="3" fill="#8a5a2a"/><circle cx="241" cy="24" r="6" fill="#5a3a1a"/>
+      <circle cx="238" cy="58" r="7" fill="#222"/><circle cx="240" cy="56" r="2" fill="#fff"/><circle cx="270" cy="72" r="2.6" fill="#8a5a2a"/><path d="M252 82 Q262 84 270 80" stroke="#8a5a2a" stroke-width="2.6" fill="none"/>
+      <g fill="#b9772e">${[[176, 232, 18], [212, 246, 16], [150, 258, 14], [236, 268, 14], [180, 270, 15], [196, 170, 13], [186, 120, 12], [206, 100, 11], [200, 144, 12], [170, 196, 11], [142, 232, 10]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.8}"/>`).join('')}</g>`) },
+    { id: 'panda', name: 'パンダ', say: 'パンダ', cat: 'nature', svg: S(`<rect width="400" height="400" fill="#dff5d5"/>${bamboo(18)}${bamboo(70, 400)}${bamboo(330)}${bamboo(372)}
+      <g fill="#5aa84f"><path d="M40 90 q-40 -10 -50 20 q30 10 50 -20z"/><path d="M92 150 q40 -20 60 6 q-36 14 -60 -6z"/><path d="M350 120 q-40 -16 -64 6 q36 20 64 -6z"/><path d="M394 190 q-30 -20 -56 -6 q28 18 56 6z"/></g>
+      <rect y="320" width="400" height="80" fill="#8cc85a"/>
+      <ellipse cx="200" cy="270" rx="92" ry="86" fill="#fff" stroke="#e5e7eb" stroke-width="3"/>
+      <ellipse cx="126" cy="240" rx="28" ry="44" fill="#1f2937" transform="rotate(20 126 240)"/><ellipse cx="274" cy="240" rx="28" ry="44" fill="#1f2937" transform="rotate(-20 274 240)"/>
+      <ellipse cx="154" cy="342" rx="34" ry="22" fill="#1f2937"/><ellipse cx="246" cy="342" rx="34" ry="22" fill="#1f2937"/>
+      <rect x="276" y="150" width="22" height="200" rx="6" fill="#7bc96f"/><rect x="274" y="214" width="26" height="7" rx="3" fill="#5aa84f"/><path d="M298 164 q34 -10 40 14 q-26 8 -40 -14z" fill="#5aa84f"/><ellipse cx="262" cy="244" rx="20" ry="16" fill="#1f2937"/>
+      <circle cx="200" cy="146" r="68" fill="#fff" stroke="#e5e7eb" stroke-width="3"/><circle cx="150" cy="92" r="26" fill="#1f2937"/><circle cx="250" cy="92" r="26" fill="#1f2937"/>
+      <ellipse cx="170" cy="148" rx="19" ry="25" fill="#1f2937" transform="rotate(25 170 148)"/><ellipse cx="230" cy="148" rx="19" ry="25" fill="#1f2937" transform="rotate(-25 230 148)"/>
+      <circle cx="172" cy="146" r="7" fill="#fff"/><circle cx="228" cy="146" r="7" fill="#fff"/><circle cx="173" cy="147" r="3.4" fill="#111"/><circle cx="227" cy="147" r="3.4" fill="#111"/>
+      <ellipse cx="200" cy="172" rx="13" ry="9" fill="#1f2937"/><path d="M200 181 V190 M186 192 Q200 204 214 192" stroke="#1f2937" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="158" cy="180" r="12" fill="#fda4af" opacity=".6"/><circle cx="242" cy="180" r="12" fill="#fda4af" opacity=".6"/>`) },
+  ];
+  add.push(...add2);
+  PZ.art.push(...add);
+  const CATS = { kuruma: 'vehicle', roketto: 'vehicle' };
+  PZ.art.forEach((a) => { if (!a.cat) a.cat = CATS[a.id] || 'nature'; });
+})();
+
+</script>
+<script>
+/* store.js ― 端末の中だけに保存する（写真・シール・途中経過・設定）。サーバーには何も送らない。
+   写真やシールは大きいので IndexedDB、小さな設定は localStorage。どちらも使えない環境では、その場かぎりのメモリに保存する */
+(function () {
+  'use strict';
+  const mem = { photos: [], stickers: [], saves: [] };
+  let db = null;
+  const ready = new Promise((res) => {
+    try {
+      const rq = indexedDB.open('jigsaw-app', 1);
+      rq.onupgradeneeded = () => { ['photos', 'stickers', 'saves'].forEach((n) => rq.result.createObjectStore(n, { keyPath: 'id' })); };
+      rq.onsuccess = () => { db = rq.result; res(true); };
+      rq.onerror = rq.onblocked = () => res(false);
+    } catch (e) { res(false); }
+  });
+
+  const Store = (window.Store = {});
+  Store.persistent = () => ready.then(() => !!db);
+  const toMem = (store, obj) => { const a = mem[store], i = a.findIndex((x) => x.id === obj.id); if (i < 0) a.push(obj); else a[i] = obj; };
+  Store.volatile = false;               // true なら、いま保存できず「このページを開いている間だけ」の保存になっている
+  Store.put = async (store, obj) => {
+    await ready;
+    if (!db) { toMem(store, obj); Store.volatile = true; return 'mem'; }
+    try {
+      await new Promise((res, rej) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(obj); t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error); });
+      return 'db';
+    } catch (e) { toMem(store, obj); Store.volatile = true; return 'mem'; }       // 容量不足・プライベートモードなど
+  };
+  Store.all = async (store) => {
+    await ready;
+    const m = mem[store].slice(); if (!db) return m;
+    const d = await new Promise((res) => { const r = db.transaction(store).objectStore(store).getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); });
+    const ids = new Set(d.map((x) => x.id)); return d.concat(m.filter((x) => !ids.has(x.id)));
+  };
+  Store.get = async (store, id) => {
+    await ready;
+    const m = mem[store].find((x) => x.id === id); if (m || !db) return m || null;
+    return new Promise((res) => { const r = db.transaction(store).objectStore(store).get(id); r.onsuccess = () => res(r.result || null); r.onerror = () => res(null); });
+  };
+  Store.del = async (store, id) => {
+    await ready; mem[store] = mem[store].filter((x) => x.id !== id);
+    if (!db) return;
+    return new Promise((res) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).delete(id); t.oncomplete = () => res(); t.onerror = t.onabort = () => res(); });
+  };
+  Store.clear = async (store) => {
+    await ready; mem[store] = [];
+    if (!db) return;
+    return new Promise((res) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).clear(); t.oncomplete = () => res(); t.onerror = t.onabort = () => res(); });
+  };
+
+  /* 画像の保存形式：Blob のままだと、iPhone では あとで中身が読めなくなることがある。
+     そのため「バイト列(ArrayBuffer)＋種類」で保存し、使うときに Blob にもどす。 */
+  Store.recBlob = (rec) => (rec.buf ? new Blob([rec.buf], { type: rec.type || 'image/jpeg' }) : rec.blob);
+  Store.toBuf = (blob) => (blob.arrayBuffer ? blob.arrayBuffer() : new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsArrayBuffer(blob); }));
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }   // iOS に勝手に消されにくくする（お願いするだけ）
+
+  /* 設定（小さいもの） */
+  const KEY = 'jigsaw-app-settings';
+  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 100, level: 'normal', best: {} };
+  try { Object.assign(cache, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
+  Store.settings = cache;
+  Store.saveSettings = () => { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) { } };
+})();
+
+</script>
+<script>
+/* engine.js ― ジグソー本体
+   操作は「タップ＆タップ」: ピース置き場でピースをタップ → 盤面の置きたい場所をタップ。
+   100枚をこえても遊べるよう、盤面は つまんで拡大／ゆびで移動できる。 */
+(function () {
+  'use strict';
+  const CELL = 60;            // 盤面の1マス（ワールド座標）
+  const TS = 0.88;            // ピース置き場での表示倍率
+  const LEVELS = {
+    easy:   { name: 'やさしい',         desc: 'うすい見本と、ヒントのひかり', ghost: 0.38, grid: true,  assist: true,  rot: false, snap: 0.8 },
+    normal: { name: 'ふつう',           desc: 'うすい見本あり',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
+    hard:   { name: 'むずかしい',       desc: '盤面に見本なし（右上の見本だけ）', ghost: 0,    grid: false, assist: false, rot: false, snap: 0.42 },
+    expert: { name: 'ちょうむずかしい', desc: 'さらに、ピースがまわっている', ghost: 0,  grid: false, assist: false, rot: true, snap: 0.35 },
+  };
+  const $ = (s) => document.querySelector(s);
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
+  /* 複数の絵をタイル状にならべた「ぜんぶ」パズル */
+  const COLLAGES = {
+    animals:  { name: 'どうぶつ・しぜん ぜんぶ', say: 'みんな いるね', cols: 4, ids: () => PZ.art.filter((a) => a.cat === 'nature').map((a) => a.id) },
+    vehicles: { name: 'のりもの ぜんぶ',         say: 'ぶーぶー',     cols: 4, ids: () => PZ.art.filter((a) => a.cat === 'vehicle').map((a) => a.id) },
+  };
+
+  /* ------------------------------------------------------------ 絵の読み込み */
+  const Sources = {
+    cache: {},
+    key: (d) => (d.k === 'art' ? 'a:' + d.id : d.k === 'collage' ? 'c:' + (d.id || 'animals') : 'p:' + d.id),
+    async load(desc) {
+      const key = Sources.key(desc);
+      if (Sources.cache[key]) return Sources.cache[key];
+      let info;
+      if (desc.k === 'art') {
+        const a = PZ.art.find((x) => x.id === desc.id) || PZ.art[0];
+        info = { img: await PZ.artImage(a), aspect: 1, name: a.name, say: a.say };
+      } else if (desc.k === 'collage') {
+        const def = COLLAGES[desc.id || 'animals'] || COLLAGES.animals, ids = def.ids(), cols = def.cols, rows = Math.ceil(ids.length / cols);
+        const cv = document.createElement('canvas'); cv.width = cols * 400; cv.height = rows * 400;
+        const x = cv.getContext('2d');
+        for (let i = 0; i < ids.length; i++) x.drawImage(await PZ.artImage(PZ.art.find((a) => a.id === ids[i])), (i % cols) * 400, Math.floor(i / cols) * 400, 400, 400);
+        info = { img: cv, aspect: cols / rows, name: def.name, say: def.say, tiles: { cols, rows, ids } };
+      } else {
+        const rec = await Store.get('photos', desc.id);
+        if (!rec) throw new Error('photo-missing');
+        let img; const blob = Store.recBlob(rec);
+        try { img = await createImageBitmap(blob); }
+        catch (e1) {
+          try { const u = URL.createObjectURL(blob); img = await PZ.loadImage(u); }
+          catch (e2) { throw Object.assign(new Error('photo-broken'), { name: 'PhotoBroken' }); }       // 保存された写真の中身が読めない
+        }
+        info = { img, aspect: clamp(rec.w / rec.h, 0.5, 2), name: 'わたしの しゃしん', say: 'できたね' };
+      }
+      if (desc.k !== 'photo') Sources.cache[key] = info;
+      return info;
+    },
+    /* 画像を W×H にぴったり「cover」で切り抜く */
+    cover(img, W, H) {
+      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+      const c = document.createElement('canvas'); c.width = Math.round(W); c.height = Math.round(H);
+      const s = Math.max(c.width / iw, c.height / ih), dw = iw * s, dh = ih * s;
+      const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+      x.drawImage(img, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh);
+      return c;
+    },
+  };
+  /* 目標のピース数と絵の縦横比から、いちばん近い 行×列 を決める */
+  function gridFor(target, aspect) {
+    let best = null;
+    for (let r = 2; r <= 40; r++) {
+      const c = Math.max(2, Math.round(target / r)), n = r * c;
+      const score = Math.abs(n - target) / target + Math.abs(Math.log((c / r) / aspect)) * 0.9;
+      if (!best || score < best.score) best = { rows: r, cols: c, n, score };
+    }
+    return best;
+  }
+
+
+  /* ---------------------------------------------------- 「特徴のないピース」をなくす
+     空・水・地面・道路などの「のっぺり」したマスを見つけて、絵に合う小さな絵柄（雲・鳥・泡・花など）を足す。
+     どのピースにも見分ける手がかりがあるようにするため。同じ番号(seed)なら毎回同じ絵柄になる（再開しても同じ）。 */
+  const PAL = {
+    cloud: [['#ffffff']], bird: [['#334155']], balloon: [['#ff6b6b'], ['#ffd93d'], ['#a78bfa'], ['#34d399']],
+    star: [['#ffd93d'], ['#fff3a0'], ['#ffb3d1']], heart: [['#ff6b8b'], ['#ff9fb5']],
+    flower: [['#ff7eb6', '#ffd93d'], ['#ffffff', '#ffb703'], ['#a78bfa', '#fff3a0']],
+    butterfly: [['#ff9f43', '#ffd39a'], ['#7c5cff', '#c4b5fd'], ['#f43f5e', '#fda4af']], ladybug: [['#ef4444']],
+    bubble: [['#ffffff']], fish: [['#ff9f43'], ['#a78bfa'], ['#34d399'], ['#f472b6']], starfish: [['#ff6b8a'], ['#fb923c']],
+    snow: [['#7dd3fc']], planet: [['#a78bfa', '#f5d0fe'], ['#fb923c', '#fde68a']], comet: [['#fff3a0']],
+    crack: [['#000000']], pebble: [['#000000']], dots: [['#ffffff']],
+  };
+  const THEMES = {
+    sky: ['cloud', 'bird', 'balloon', 'cloud', 'bird'], water: ['bubble', 'fish', 'starfish', 'bubble'], grass: ['flower', 'butterfly', 'ladybug', 'flower'],
+    road: ['crack', 'pebble', 'crack', 'dots'], dirt: ['pebble', 'crack', 'pebble'], space: ['star', 'planet', 'comet', 'star'],
+    snow: ['snow', 'star'], party: ['star', 'heart', 'balloon', 'dots'],
+  };
+  const star5 = (x, R, r) => { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r : R; x[i ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); } x.closePath(); };
+  const ell = (x, cx, cy, rx, ry, rot = 0) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, rot, 0, 6.3); x.fill(); };
+  const MOTIF = {
+    cloud(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 13, 6); ell(x, -7, -4, 8, 6); ell(x, 5, -6, 9, 7); },
+    bird(x, c) { x.strokeStyle = c[0]; x.lineWidth = 2.6; x.lineCap = 'round'; x.beginPath(); x.moveTo(-10, 0); x.quadraticCurveTo(-5, -8, 0, 0); x.quadraticCurveTo(5, -8, 10, 0); x.stroke(); },
+    balloon(x, c) { x.fillStyle = c[0]; ell(x, 0, -3, 7, 9); x.strokeStyle = 'rgba(60,60,60,.6)'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(0, 6); x.quadraticCurveTo(-3, 11, 0, 15); x.stroke(); x.fillStyle = 'rgba(255,255,255,.5)'; ell(x, -2.5, -6, 1.8, 3, 0.4); },
+    star(x, c) { x.fillStyle = c[0]; star5(x, 9, 4); x.fill(); x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 1; x.stroke(); },
+    heart(x, c) { x.fillStyle = c[0]; x.beginPath(); x.moveTo(0, 8); x.bezierCurveTo(-14, -2, -8, -12, 0, -5); x.bezierCurveTo(8, -12, 14, -2, 0, 8); x.fill(); },
+    flower(x, c) { x.fillStyle = c[0]; for (let i = 0; i < 5; i++) { const a = i * 1.2566; ell(x, Math.cos(a) * 5.5, Math.sin(a) * 5.5, 4.2, 4.2); } x.fillStyle = c[1]; ell(x, 0, 0, 3.4, 3.4); },
+    butterfly(x, c) { x.fillStyle = c[0]; ell(x, -6, -3, 6, 4.5, -0.4); ell(x, 6, -3, 6, 4.5, 0.4); x.fillStyle = c[1]; ell(x, -5, 4, 4, 3, 0.4); ell(x, 5, 4, 4, 3, -0.4); x.fillStyle = '#4a2c17'; ell(x, 0, 0, 1.4, 6); },
+    ladybug(x, c) { x.fillStyle = '#222'; ell(x, 0, -6, 3.4, 3); x.fillStyle = c[0]; ell(x, 0, 1, 7, 7); x.fillStyle = '#222'; ell(x, -3, -1, 1.5, 1.5); ell(x, 3, 3, 1.5, 1.5); ell(x, -2, 5, 1.2, 1.2); x.fillRect(-0.4, -5, 0.8, 12); },
+    bubble(x, c) { x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 1.8; x.beginPath(); x.arc(0, 0, 6, 0, 6.3); x.stroke(); x.fillStyle = 'rgba(255,255,255,.25)'; ell(x, 0, 0, 6, 6); x.fillStyle = 'rgba(255,255,255,.9)'; ell(x, -2, -2.5, 1.6, 1); x.strokeStyle = 'rgba(255,255,255,.8)'; x.beginPath(); x.arc(9, -7, 2.4, 0, 6.3); x.stroke(); },
+    fish(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 9, 5.5); x.beginPath(); x.moveTo(-7, 0); x.lineTo(-14, -5); x.lineTo(-14, 5); x.closePath(); x.fill(); x.fillStyle = '#fff'; ell(x, 4, -1.4, 1.8, 1.8); x.fillStyle = '#222'; ell(x, 4.4, -1.4, 0.9, 0.9); },
+    starfish(x, c) { x.fillStyle = c[0]; star5(x, 10, 4.4); x.fill(); x.fillStyle = 'rgba(255,255,255,.55)'; ell(x, 0, 0, 1.2, 1.2); },
+    snow(x, c) { x.strokeStyle = c[0]; x.lineWidth = 1.8; x.lineCap = 'round'; for (let i = 0; i < 3; i++) { const a = i * 1.0472; x.beginPath(); x.moveTo(Math.cos(a) * 9, Math.sin(a) * 9); x.lineTo(-Math.cos(a) * 9, -Math.sin(a) * 9); x.stroke(); } },
+    planet(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 6.5, 6.5); x.strokeStyle = c[1]; x.lineWidth = 1.8; x.beginPath(); x.ellipse(0, 0, 11, 3.2, -0.4, 0, 6.3); x.stroke(); },
+    comet(x, c) { x.fillStyle = c[0]; ell(x, 4, 0, 4, 4); x.strokeStyle = 'rgba(255,243,160,.7)'; x.lineWidth = 2; x.lineCap = 'round'; x.beginPath(); x.moveTo(1, -1); x.lineTo(-12, -6); x.moveTo(1, 1); x.lineTo(-12, 5); x.stroke(); },
+    crack(x) { x.strokeStyle = 'rgba(0,0,0,.28)'; x.lineWidth = 1.8; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); x.moveTo(-10, -4); x.lineTo(-3, 0); x.lineTo(-5, 5); x.moveTo(-3, 0); x.lineTo(5, -2); x.lineTo(10, 4); x.stroke(); },
+    pebble(x) { x.fillStyle = 'rgba(0,0,0,.22)'; ell(x, -5, 2, 4.5, 3); ell(x, 4, -3, 3.4, 2.5); x.fillStyle = 'rgba(255,255,255,.18)'; ell(x, 6, 5, 2.6, 2); },
+    dots(x, c) { x.fillStyle = c[0]; x.globalAlpha = 0.55; ell(x, -6, 2, 2.4, 2.4); ell(x, 2, -4, 2.8, 2.8); ell(x, 7, 5, 2, 2); x.globalAlpha = 1; },
+  };
+  const THEME_FORCE = { lion: { party: 'sky' }, tyrano: { party: 'sky' }, tricera: { party: 'sky' } };
+  function themeOf(r, g, b, artId) {
+    const t = themeOf0(r, g, b, artId); return (THEME_FORCE[artId] && THEME_FORCE[artId][t]) || t;
+  }
+  function themeOf0(r, g, b, artId) {
+    const L = 0.299 * r + 0.587 * g + 0.114 * b, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (L < 75 && b >= r) return 'space';
+    if (L > 238 && mx - mn < 14) return 'snow';
+    if (b > r + 22 && b >= g - 12) return artId === 'sakana' ? 'water' : 'sky';
+    if (g > r + 14 && g > b + 14) return 'grass';
+    if (mx - mn < 34) return L > 215 ? 'snow' : 'road';
+    if (r > g && g > b && L < 175) return 'dirt';
+    return 'party';
+  }
+  function enrichSource(srcC, rows, cols, seed, info, desc) {
+    let cx; try { cx = srcC.getContext('2d'); cx.getImageData(0, 0, 1, 1); } catch (e) { return; }
+    const u = srcC.width / cols, uh = srcC.height / rows, rnd = PZ.rng((seed ^ 0x5bd1e995) | 0);
+    const artAt = (fx, fy) => (desc.k === 'collage' ? info.tiles.ids[Math.floor(fy * info.tiles.rows) * info.tiles.cols + Math.floor(fx * info.tiles.cols)] : desc.id);
+    const jobs = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const px = Math.floor(c * u), py = Math.floor(r * uh), w = Math.floor(u), h = Math.floor(uh);
+      let d; try { d = cx.getImageData(px, py, w, h).data; } catch (e) { return; }
+      const step = Math.max(1, Math.floor(w / 12)); let n = 0, sr = 0, sg = 0, sb = 0;
+      for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { const i = (y * w + x) * 4; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++; }
+      const mr = sr / n, mg = sg / n, mb = sb / n; let mad = 0;
+      for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { const i = (y * w + x) * 4; mad += (Math.abs(d[i] - mr) + Math.abs(d[i + 1] - mg) + Math.abs(d[i + 2] - mb)) / 3; }
+      mad /= n;
+      if (mad < 5.5) jobs.push({ r, c, theme: themeOf(mr, mg, mb, artAt((c + 0.5) / cols, (r + 0.5) / rows)) });
+    }
+    const m = u / 60;
+    jobs.forEach((j) => {
+      const list = THEMES[j.theme], count = rnd() < 0.3 ? 2 : 1;
+      for (let k = 0; k < count; k++) {
+        const name = list[(j.r * 7 + j.c * 3 + k * 2 + Math.floor(rnd() * 2)) % list.length], pals = PAL[name], col = pals[(j.r * 5 + j.c * 11 + k) % pals.length];
+        const fx = k ? (rnd() < 0.5 ? 0.25 : 0.75) : 0.35 + rnd() * 0.3, fy = k ? (rnd() < 0.5 ? 0.25 : 0.75) : 0.35 + rnd() * 0.3;
+        cx.save(); cx.translate((j.c + fx) * u, (j.r + fy) * uh); cx.rotate((rnd() - 0.5) * 0.5);
+        const s = m * (k ? 0.85 : 1.15 + rnd() * 0.3); cx.scale(s, s); MOTIF[name](cx, col); cx.restore();
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------------- 状態
+     ピースは3つの場所のどれかにある:  'tray' ピース置き場 / 'table' 盤面の外のテーブル / 'board' 盤面（固定）
+     テーブルのピースは「グループ」にまとまる。グループの位置は (ax, ay) = 盤面の左上(0,0)に相当する点。
+     つまり ピース(r,c) は (ax + c*CELL, ay + r*CELL) にいる。ax=ay=0 なら盤面とぴったり重なる。 */
+  let G = null, ui = null;
+  const cam = { x: 0, y: 0, s: 1 };
+  const E = (window.Engine = { LEVELS, Sources, gridFor, CELL, on: {} });
+
+  function refs() {
+    if (ui) return ui;
+    ui = {
+      game: $('#game'), view: $('#view'), world: $('#world'), board: $('#board'), ring: $('#ring'), table: $('#table'),
+      tray: $('#tray'), filters: $('#filters'), timer: $('#timer'), left: $('#left'),
+      hand: $('#hand'), back: $('#back2tray'), ref: $('#ref'), refImg: $('#ref img'), peek: $('#peek'), peekImg: $('#peek img'), loading: $('#loading'), toast: $('#toast'),
+    };
+    return ui;
+  }
+  const landscape = () => innerWidth > innerHeight;
+
+  /* ------------------------------------------------------------- カメラ */
+  function applyCam(anim) {
+    ui.world.style.transition = anim ? 'transform .45s ease' : 'none';
+    ui.world.style.transform = `translate(${cam.x}px,${cam.y}px) scale(${cam.s})`;
+    ui.world.style.setProperty('--inv', 1 / cam.s);               // 拡大しても枠線の太さが変わらないように
+  }
+  function viewSize() { const r = ui.view.getBoundingClientRect(); return { w: r.width, h: r.height, l: r.left, t: r.top }; }
+  /* 右上の見本は、パズルとまったく同じ縦横比にする（縦長なら縦長、横長なら横長。切り抜かない） */
+  function setRefSize() {
+    const box = landscape() ? 78 : (innerWidth <= 380 ? 80 : 92), a = G.W / G.H;
+    const w = a >= 1 ? box : box * a, h = a >= 1 ? box / a : box;
+    Object.assign(ui.ref.querySelector('.pic').style, { width: w + 'px', height: h + 'px' });
+  }
+  function fitCam(anim) {
+    const v = viewSize(), rr = ui.ref.getBoundingClientRect();
+    const hs = landscape() ? 92 : 112;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
+    let top = 0, left = 0, right = 0;
+    if (landscape()) { left = hs + 16; right = Math.max(0, v.l + v.w - rr.left + 6); }
+    else top = Math.max(hs + 16, rr.bottom - v.t + 6);
+    const aw = v.w - left - right, ah = v.h - top;
+    const s = Math.min(aw * 0.96 / G.W, ah * 0.96 / G.H);
+    G.fit = s; G.sTable = Math.min(v.w / (G.W + 2 * G.M), v.h / (G.H + 2 * G.M)) * 0.94;
+    G.sMin = Math.min(G.sTable, s * 0.8); G.sMax = Math.max(160 / CELL, s * 3);
+    cam.s = s; cam.x = left + (aw - G.W * s) / 2; cam.y = top + (ah - G.H * s) / 2; applyCam(anim);
+  }
+  function fitTable(anim) {                                      // テーブル全体が見えるところまで引く
+    const v = viewSize(); cam.s = G.sTable; cam.x = v.w / 2 - (G.W / 2) * cam.s; cam.y = v.h / 2 - (G.H / 2) * cam.s; applyCam(anim);
+  }
+  function clampCam() {
+    const v = viewSize(), m = 80, M = G.M;
+    cam.x = clamp(cam.x, m - (G.W + M) * cam.s, v.w - m + M * cam.s);
+    cam.y = clamp(cam.y, m - (G.H + M) * cam.s, v.h - m + M * cam.s);
+  }
+  function zoomAt(px, py, s2, anim) {
+    s2 = clamp(s2, G.sMin, G.sMax);
+    const wx = (px - cam.x) / cam.s, wy = (py - cam.y) / cam.s;
+    cam.s = s2; cam.x = px - wx * s2; cam.y = py - wy * s2; clampCam(); applyCam(anim);
+  }
+  function focusWorld(wx, wy, anim) {                            // 指定の場所が画面の真ん中に来るように
+    const v = viewSize(), s = clamp(Math.max(cam.s, 110 / CELL), G.sMin, G.sMax);
+    cam.s = s; cam.x = v.w / 2 - wx * s; cam.y = v.h / 2 - wy * s; clampCam(); applyCam(anim);
+  }
+
+  /* 盤面の指操作：1本=移動 / 2本=拡大縮小 / ちょん=タップ */
+  function bindView() {
+    const v = ui.view, ptrs = new Map();
+    let pinch = null, multi = false;
+    const local = (e) => { const r = v.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    v.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#hand,#back2tray,#peek,#ref,.zoom')) return;
+      try { v.setPointerCapture(e.pointerId); } catch (_) { }
+      const p = local(e); ptrs.set(e.pointerId, { ...p, sx: p.x, sy: p.y, moved: false });
+      if (ptrs.size === 2) {
+        multi = true; const [a, b] = [...ptrs.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, s: cam.s, wx: ((a.x + b.x) / 2 - cam.x) / cam.s, wy: ((a.y + b.y) / 2 - cam.y) / cam.s };
+      }
+    });
+    v.addEventListener('pointermove', (e) => {
+      const q = ptrs.get(e.pointerId); if (!q || !G) return;
+      const p = local(e), dx = p.x - q.x, dy = p.y - q.y;
+      q.x = p.x; q.y = p.y;
+      if (Math.hypot(p.x - q.sx, p.y - q.sy) > 9) q.moved = true;
+      if (ptrs.size === 1 && q.moved) { cam.x += dx; cam.y += dy; clampCam(); applyCam(); }
+      else if (ptrs.size === 2 && pinch) {
+        const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        const s2 = clamp(pinch.s * d / Math.max(1, pinch.d), G.sMin, G.sMax);
+        cam.s = s2; cam.x = cx - pinch.wx * s2; cam.y = cy - pinch.wy * s2; clampCam(); applyCam();
+      }
+    });
+    const up = (e) => {
+      const q = ptrs.get(e.pointerId); if (!q) return;
+      ptrs.delete(e.pointerId);
+      if (e.type === 'pointerup' && !q.moved && !multi && G) onTap(q.x, q.y);
+      if (ptrs.size < 2) pinch = null;
+      if (ptrs.size === 0) multi = false;
+    };
+    v.addEventListener('pointerup', up); v.addEventListener('pointercancel', up);
+    v.addEventListener('wheel', (e) => {
+      if (!G) return; e.preventDefault(); const p = local(e);
+      zoomAt(p.x, p.y, cam.s * (e.deltaY < 0 ? 1.18 : 1 / 1.18));
+    }, { passive: false });
+  }
+
+  /* ------------------------------------------------------------ 組み立て */
+  async function start(o) {
+    refs(); destroy();
+    const L = LEVELS[o.level] || LEVELS.normal;
+    ui.loading.classList.add('on'); ui.loading.querySelector('span').textContent = 'じゅんび中…';
+    let info;
+    try { info = await Sources.load(o.desc); }
+    catch (e) { ui.loading.classList.remove('on'); throw e; }
+    const grid = o.save ? { rows: o.save.rows, cols: o.save.cols } : gridFor(o.target, info.aspect);
+    const rows = grid.rows, cols = grid.cols, n = rows * cols, W = cols * CELL, H = rows * CELL;
+    const RES = Math.max(1, Math.min(2, 4096 / Math.max(W, H)));
+    const pad = Math.ceil(CELL * 0.3), S = CELL + pad * 2, M = Math.round(Math.max(W, H) * 0.5);
+    const seed = o.save ? o.save.seed : (Math.random() * 1e9) | 0;
+    const rnd = PZ.rng(seed), edges = PZ.edges(rows, cols, seed);
+    const order = shuffleSeed([...Array(n).keys()], rnd);
+    const rots = Array.from({ length: n }, () => (L.rot ? 1 + Math.floor(rnd() * 3) : 0));
+    const srcC = Sources.cover(info.img, W * RES, H * RES);
+    if (o.desc.k !== 'photo') enrichSource(srcC, rows, cols, seed, info, o.desc);      // 写真は そのまま（絵だけ、手がかりを足す）
+    G = {
+      desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
+      srcC, edges, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
+      started: !!(o.save && ((o.save.placed && o.save.placed.length) || (o.save.groups && o.save.groups.length))), over: false, filter: 'all',
+      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, opos: new Map(order.map((i, k) => [i, k])), timerId: 0, lastTick: 0, destroyed: false,
+    };
+    // 盤面とテーブル
+    const b = ui.board; b.width = Math.ceil(W * RES); b.height = Math.ceil(H * RES); b.style.width = W + 'px'; b.style.height = H + 'px';
+    ui.world.style.width = W + 'px'; ui.world.style.height = H + 'px';
+    Object.assign(ui.table.style, { left: -M + 'px', top: -M + 'px', width: W + 2 * M + 'px', height: H + 2 * M + 'px' });
+    drawBoardBase();
+    // 見本（右上の小さな見本と、タップで出る大きな見本）
+    const refUrl = PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W).toDataURL('image/jpeg', 0.85);
+    ui.peekImg.src = refUrl; ui.refImg.src = refUrl;
+    setRefSize();
+    // ピース
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(i / cols), c = i % cols;
+      const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(S * RES);
+      cv.style.width = cv.style.height = S * TS + 'px';
+      const x = cv.getContext('2d'); x.scale(RES, RES); x.translate(pad, pad);
+      const path = PZ.piecePath(r, c, rows, cols, CELL, CELL, edges, false);
+      x.save(); x.clip(path); x.drawImage(srcC, -c * CELL, -r * CELL, W, H); x.restore();
+      x.lineJoin = 'round'; x.strokeStyle = 'rgba(0,0,0,.30)'; x.lineWidth = 2.2; x.stroke(path);
+      x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 1.1; x.stroke(path);
+      G.pieces.push({ i, r, c, cv, rot: rots[i], deg: rots[i] * 90, state: 'tray', tp: null, g: null, edge: r === 0 || c === 0 || r === rows - 1 || c === cols - 1 });
+      if (i % 25 === 24) { ui.loading.querySelector('span').textContent = `ピースを つくっています ${Math.round(i / n * 100)}%`; await nextFrame(); if (G.destroyed) return; }
+    }
+    // 保存分の復元：盤面 → テーブルのグループ → 残りはピース置き場へ
+    if (o.save) {
+      (o.save.placed || []).forEach((i) => { const p = G.pieces[i]; if (p) { p.state = 'board'; G.placed++; drawPiece(p); } });
+      (o.save.groups || []).forEach((sg) => { const ms = sg.m.filter((i) => G.pieces[i] && G.pieces[i].state === 'tray'); if (ms.length) newGroup(ms, sg.ax, sg.ay); });
+    }
+    order.forEach((i) => { const p = G.pieces[i]; if (p.state === 'tray') buildTp(p); });
+    updateLabels(); setFilter('all'); showTimer();
+    ui.game.classList.add('on'); ui.loading.classList.remove('on');
+    await nextFrame(); fitCam(false);
+    G.lastTick = performance.now(); G.timerId = setInterval(tick, 500);
+    if (G.placed === G.n) win(true);
+  }
+  function shuffleSeed(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function drawBoardBase() {
+    const x = ui.board.getContext('2d'), { W, H, RES, L, rows, cols } = G;
+    x.setTransform(RES, 0, 0, RES, 0, 0); x.clearRect(0, 0, W, H);
+    x.fillStyle = '#fdf1d8'; x.fillRect(0, 0, W, H);
+    if (L.ghost) { x.globalAlpha = L.ghost; x.drawImage(G.srcC, 0, 0, W, H); x.globalAlpha = 1; }
+    if (L.grid) {                                                // 空のマスは、本物のピースの形の線で見せる
+      x.strokeStyle = 'rgba(122,75,22,.34)'; x.lineWidth = 1.2; x.lineJoin = 'round';
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        x.save(); x.translate(c * CELL, r * CELL); x.stroke(PZ.piecePath(r, c, rows, cols, CELL, CELL, G.edges, false)); x.restore();
+      }
+    }
+    x.strokeStyle = 'rgba(122,75,22,.55)'; x.lineWidth = 3; x.strokeRect(0, 0, W, H);
+  }
+  function drawPiece(p) {
+    const x = ui.board.getContext('2d');
+    x.setTransform(G.RES, 0, 0, G.RES, 0, 0);
+    x.drawImage(p.cv, p.c * CELL - G.pad, p.r * CELL - G.pad, G.S, G.S);
+  }
+  /* ピース置き場の「もとの並び順」の位置に、ピースを戻す */
+  function insertTp(p) {
+    const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
+    tp.style.width = tp.style.height = G.S * TS + 8 + 'px';
+    p.cv.style.transform = `rotate(${p.deg}deg)`; tp.appendChild(p.cv); p.tp = tp;
+    const next = [...ui.tray.children].find((t) => G.opos.get(+t.dataset.i) > G.opos.get(p.i));
+    ui.tray.insertBefore(tp, next || null);
+  }
+  function returnToTray(g) {                                                  // テーブルのかたまりを、ピース置き場へ戻す
+    const ms = [...g.ms]; removeGroup(g);
+    ms.forEach((i) => { const p = G.pieces[i]; p.g = null; p.state = 'tray'; insertTp(p); });
+    G.sel = null; ui.hand.classList.remove('on'); ui.back.classList.remove('on'); ui.ring.classList.remove('on');
+    PZ.snd.drop(); updateLabels(); setFilter(G.filter); persist();
+  }
+  function buildTp(p) {
+    const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
+    tp.style.width = tp.style.height = G.S * TS + 8 + 'px';
+    p.cv.style.transform = `rotate(${p.deg}deg)`; tp.appendChild(p.cv); p.tp = tp; ui.tray.appendChild(tp);
+  }
+
+  /* ----------------------------------------------------------- グループ（テーブルのかたまり） */
+  function newGroup(ms, ax, ay) {
+    const g = { id: ++G.gid, ms: new Set(ms), ax, ay, el: null, z: ++G.z, box: null };
+    ms.forEach((i) => { const p = G.pieces[i]; p.g = g; p.state = 'table'; if (p.tp) { p.tp.remove(); p.tp = null; } });
+    G.groups.push(g); compose(g); return g;
+  }
+  function removeGroup(g) { if (g.el) g.el.remove(); G.groups = G.groups.filter((x) => x !== g); }
+  /* メンバーを1枚のcanvasに描く（かたまりが大きくても、画面の部品は1つ） */
+  function compose(g) {
+    let rmin = 1e9, rmax = -1, cmin = 1e9, cmax = -1;
+    g.ms.forEach((i) => { const p = G.pieces[i]; rmin = Math.min(rmin, p.r); rmax = Math.max(rmax, p.r); cmin = Math.min(cmin, p.c); cmax = Math.max(cmax, p.c); });
+    g.box = { rmin, rmax, cmin, cmax };
+    const w = (cmax - cmin + 1) * CELL + 2 * G.pad, h = (rmax - rmin + 1) * CELL + 2 * G.pad;
+    if (!g.el) { g.el = document.createElement('canvas'); g.el.className = 'grp'; ui.world.appendChild(g.el); }
+    const cv = g.el; cv.width = Math.ceil(w * G.RES); cv.height = Math.ceil(h * G.RES); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    const x = cv.getContext('2d'); x.setTransform(G.RES, 0, 0, G.RES, 0, 0);
+    g.ms.forEach((i) => { const p = G.pieces[i]; x.drawImage(p.cv, (p.c - cmin) * CELL, (p.r - rmin) * CELL, G.S, G.S); });
+    placeGroupEl(g);
+  }
+  function placeGroupEl(g) {
+    g.el.style.left = g.ax + g.box.cmin * CELL - G.pad + 'px'; g.el.style.top = g.ay + g.box.rmin * CELL - G.pad + 'px'; g.el.style.zIndex = g.z;
+  }
+  function hitGroup(wx, wy) {                                      // 指の下にある、いちばん上のグループとピース
+    const gs = G.groups.slice().sort((a, b) => b.z - a.z);
+    for (const g of gs) {
+      const c = Math.floor((wx - g.ax) / CELL), r = Math.floor((wy - g.ay) / CELL);
+      if (r < 0 || c < 0 || r >= G.rows || c >= G.cols) continue;
+      const idx = r * G.cols + c; if (g.ms.has(idx)) return { g, idx };
+    }
+    return null;
+  }
+  function nbrs(i) {
+    const p = G.pieces[i], out = [];
+    if (p.r > 0) out.push(i - G.cols); if (p.r < G.rows - 1) out.push(i + G.cols); if (p.c > 0) out.push(i - 1); if (p.c < G.cols - 1) out.push(i + 1);
+    return out;
+  }
+  const members = (U) => (U.from === 'tray' ? [U.p.i] : [...U.g.ms]);
+  const touches = (U, idx) => members(U).some((i) => nbrs(i).includes(idx));     // 選んだものの誰かが、idx のピースと本当にとなりあっているか
+  const upright = (U) => U.from !== 'tray' || U.p.rot % 4 === 0;
+
+  /* ----------------------------------------------------- 選ぶ・置く・くっつける */
+  function toast(msg) {
+    ui.toast.textContent = msg; ui.toast.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => ui.toast.classList.remove('on'), 2200);
+  }
+  function startSelect() {
+    if (!G.started) G.started = true;
+    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('つなげたい ピースを タップ。あいている ばしょを タップで おけるよ'); }
+  }
+  function selectTray(p) {
+    if (!G || G.over || p.state !== 'tray') return;
+    if (G.sel && G.sel.from === 'tray' && G.sel.p === p) { if (G.L.rot) { rotate(p); return; } deselect(); return; }
+    deselect(); G.sel = { from: 'tray', p }; p.tp.classList.add('sel'); PZ.snd.pick();
+    showHand(); startSelect();
+    if (G.L.assist) pulseCell(p.r, p.c, 0);
+  }
+  function selectGroup(g) {
+    deselect(); G.sel = { from: 'table', g }; g.el.classList.add('sel'); PZ.snd.pick();
+    showHand(); startSelect(); ui.back.classList.add('on');
+    if (G.L.assist) { const p = G.pieces[[...g.ms][0]]; pulseCell(p.r, p.c, 0); }
+  }
+  function deselect() {
+    if (!G || !G.sel) return;
+    const U = G.sel; if (U.from === 'tray') U.p.tp && U.p.tp.classList.remove('sel'); else U.g.el && U.g.el.classList.remove('sel');
+    G.sel = null; ui.hand.classList.remove('on'); ui.back.classList.remove('on'); ui.ring.classList.remove('on');
+  }
+  function showHand() {
+    const U = G.sel, h = ui.hand; h.innerHTML = ''; const c = document.createElement('canvas');
+    const src = U.from === 'tray' ? U.p.cv : U.g.el;
+    c.width = src.width; c.height = src.height; c.getContext('2d').drawImage(src, 0, 0);
+    if (U.from === 'tray') c.style.transform = `rotate(${U.p.deg}deg)`;
+    h.appendChild(c); h.classList.toggle('rot', U.from === 'tray' && G.L.rot); h.classList.add('on');
+  }
+  function rotate(p) {
+    p.rot = (p.rot + 1) % 4; p.deg += 90; PZ.snd.pick();
+    p.cv.style.transform = `rotate(${p.deg}deg)`;
+    const hc = ui.hand.querySelector('canvas'); if (hc) hc.style.transform = `rotate(${p.deg}deg)`;
+  }
+  function pulseAt(wx, wy, ms) {
+    const ring = ui.ring; ring.style.left = wx + 'px'; ring.style.top = wy + 'px'; ring.style.width = ring.style.height = CELL + 'px';
+    ring.classList.remove('on'); void ring.offsetWidth; ring.classList.add('on');
+    clearTimeout(pulseAt.t); if (ms) pulseAt.t = setTimeout(() => ring.classList.remove('on'), ms);
+  }
+  const pulseCell = (r, c, ms) => pulseAt(c * CELL, r * CELL, ms);
+  function wobbleHand() { ui.hand.classList.remove('wob'); void ui.hand.offsetWidth; ui.hand.classList.add('wob'); }
+  function miss() { G.misses++; PZ.snd.soft(); wobbleHand(); }
+  const tol = () => G.L.snap * CELL;
+
+  function onTap(x, y) {
+    if (!G || G.over) return;
+    const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, hit = hitGroup(wx, wy);
+    const U = G.sel;
+    if (!U) { if (hit) selectGroup(hit.g); return; }                         // 何も持っていない時：テーブルのかたまりを持ち上げる
+    if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね'); return; }
+    const inBoard = wx >= 0 && wy >= 0 && wx < G.W && wy < G.H;
+    const bidx = inBoard ? Math.floor(wy / CELL) * G.cols + Math.floor(wx / CELL) : -1;
+    if (inBoard && members(U).includes(bidx)) { toBoard(U); return; }        // 正しいマスをタップ：はまる（上にテーブルのかたまりが重なっていても）
+    if (U.from === 'table' && hit && hit.g === U.g) { deselect(); return; }  // 自分をもう一度タップ：やめる
+    if (hit) {                                                               // ほかのかたまりをタップ：その中のピースととなりあっていればくっつく
+      if (touches(U, hit.idx)) attach(U, hit.g); else miss();
+      return;
+    }
+    if (inBoard) {
+      if (G.pieces[bidx].state === 'board' && touches(U, bidx)) toBoard(U);  // 置いてあるピースをタップ：となりなら、そこにはまる
+      else miss();
+      return;
+    }
+    if (wx >= -G.M && wy >= -G.M && wx < G.W + G.M && wy < G.H + G.M) putDown(U, wx, wy);   // テーブルの空いている所：仮置き
+  }
+
+  function popAt(src, left, top, w, h) {
+    const pop = document.createElement('canvas'); pop.width = src.width; pop.height = src.height; pop.getContext('2d').drawImage(src, 0, 0);
+    pop.className = 'pop'; Object.assign(pop.style, { left: left + 'px', top: top + 'px', width: w + 'px', height: h + 'px' });
+    ui.world.appendChild(pop); setTimeout(() => pop.remove(), 520);
+  }
+  function finishMove() { deselect(); updateLabels(); persist(); }
+
+  function toBoard(U) {                                                       // 盤面に固定する
+    const ms = members(U);
+    if (U.from === 'tray') { const p = U.p; popAt(p.cv, p.c * CELL - G.pad, p.r * CELL - G.pad, G.S, G.S); }
+    else { const g = U.g; popAt(g.el, g.box.cmin * CELL - G.pad, g.box.rmin * CELL - G.pad, parseFloat(g.el.style.width), parseFloat(g.el.style.height)); removeGroup(g); }
+    ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = null; p.state = 'board'; G.placed++; drawPiece(p); });
+    PZ.snd.ok(); finishMove();
+    if (G.placed === G.n) win(false);
+  }
+  function attach(U, T) {                                                     // となりあうかたまりにくっつく（位置はTにそろう）
+    const ms = members(U);
+    if (U.from === 'table') removeGroup(U.g);
+    ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = T; p.state = 'table'; T.ms.add(i); });
+    T.z = ++G.z; compose(T);
+    T.el.classList.remove('joined'); void T.el.offsetWidth; T.el.classList.add('joined');
+    PZ.snd.ok(); finishMove();
+  }
+  function putDown(U, wx, wy) {                                               // テーブルに置く／動かす（近くのとなりに合えば、そのままくっつく）
+    const ms = members(U).map((i) => G.pieces[i]);
+    const rmin = Math.min(...ms.map((p) => p.r)), rmax = Math.max(...ms.map((p) => p.r)), cmin = Math.min(...ms.map((p) => p.c)), cmax = Math.max(...ms.map((p) => p.c));
+    const ax = wx - (cmin + cmax + 1) / 2 * CELL, ay = wy - (rmin + rmax + 1) / 2 * CELL;
+    if (Math.abs(ax) <= tol() && Math.abs(ay) <= tol()) { toBoard(U); return; }          // 盤面のふちにぴったり近い
+    const set = new Set(members(U));
+    for (const T of G.groups) {
+      if (U.from === 'table' && T === U.g) continue;
+      if (Math.abs(ax - T.ax) <= tol() && Math.abs(ay - T.ay) <= tol() && [...set].some((i) => nbrs(i).some((j) => T.ms.has(j)))) { attach(U, T); return; }
+    }
+    if (U.from === 'tray') newGroup([U.p.i], ax, ay);
+    else { U.g.ax = ax; U.g.ay = ay; U.g.z = ++G.z; placeGroupEl(U.g); }
+    PZ.snd.drop(); finishMove();
+  }
+
+  /* ---------------------------------------------------- 絞りこみ・ヒント・表示 */
+  function setFilter(f) {
+    G.filter = f; ui.filters.querySelectorAll('button[data-f]').forEach((b) => b.classList.toggle('on', b.dataset.f === f));
+    G.pieces.forEach((p) => { if (p.tp) p.tp.classList.toggle('hide', !(f === 'all' || (f === 'edge' ? p.edge : !p.edge))); });
+    if (G.sel && G.sel.from === 'tray' && G.sel.p.tp.classList.contains('hide')) deselect();
+  }
+  function updateLabels() {
+    const tray = G.pieces.filter((p) => p.state === 'tray'), onTable = G.pieces.filter((p) => p.state === 'table').length;
+    ui.left.textContent = `あと ${G.n - G.placed}`;
+    ui.filters.querySelector('[data-f="edge"]').textContent = `ふち ${tray.filter((p) => p.edge).length}`;
+    ui.filters.querySelector('[data-f="mid"]').textContent = `なか ${tray.filter((p) => !p.edge).length}`;
+    ui.filters.querySelector('[data-f="all"]').textContent = `ぜんぶ ${tray.length}`;
+    ui.game.classList.toggle('hasTable', onTable > 0);
+  }
+  function hint() {
+    if (!G || G.over) return;
+    const tray = G.pieces.filter((p) => p.state === 'tray'), st = (j) => G.pieces[j].state;
+    if (!tray.length) {                                                      // 置き場が空：テーブルのかたまりを盤面へ
+      const g = G.groups[0]; if (!g) return; const p = G.pieces[[...g.ms][0]];
+      selectGroup(g); pulseCell(p.r, p.c, 4000); focusWorld((p.c + 0.5) * CELL, (p.r + 0.5) * CELL, true); return;
+    }
+    let cand = tray.filter((p) => nbrs(p.i).some((j) => st(j) === 'board')), mode = 'cell';
+    if (!cand.length) { cand = tray.filter((p) => nbrs(p.i).some((j) => st(j) === 'table')); mode = 'table'; }
+    if (!cand.length) { mode = 'cell'; cand = tray.filter((p) => (p.r === 0 || p.r === G.rows - 1) && (p.c === 0 || p.c === G.cols - 1)); }
+    if (!cand.length) cand = tray;
+    const p = PZ.pick(cand);
+    if (G.filter !== 'all') setFilter('all');
+    selectTray(p);
+    const t = ui.tray;
+    if (landscape()) t.scrollTo({ top: p.tp.offsetTop - t.clientHeight / 2 + p.tp.offsetHeight / 2, behavior: 'smooth' });
+    else t.scrollTo({ left: p.tp.offsetLeft - t.clientWidth / 2 + p.tp.offsetWidth / 2, behavior: 'smooth' });
+    if (mode === 'table') {                                                  // となりのピースが、テーブルのかたまりにある → そのピースを光らせる
+      const q = G.pieces[nbrs(p.i).find((j) => st(j) === 'table')], g = q.g, wx = g.ax + q.c * CELL, wy = g.ay + q.r * CELL;
+      pulseAt(wx, wy, 4000); focusWorld(wx + CELL / 2, wy + CELL / 2, true);
+    } else { pulseCell(p.r, p.c, 4000); focusWorld((p.c + 0.5) * CELL, (p.r + 0.5) * CELL, true); }
+  }
+  function setPeek(on) { ui.peek.classList.toggle('on', on); }
+
+  /* ------------------------------------------------------------ 時間と保存 */
+  function fmt(ms) { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  function showTimer() { ui.timer.textContent = fmt(G.elapsed); }
+  function tick() {
+    if (!G) return; const now = performance.now(), dt = now - G.lastTick; G.lastTick = now;
+    if (G.started && !G.over && !document.hidden && !document.querySelector('#sheet.on')) { G.elapsed += Math.min(dt, 2000); showTimer(); }
+  }
+  let saveT = 0;
+  function persist(now) {
+    if (!G || G.over) return;
+    clearTimeout(saveT);
+    const go = () => {
+      if (!G || G.over) return;
+      Store.put('saves', {
+        id: 'current', desc: G.desc, rows: G.rows, cols: G.cols, level: G.level, seed: G.seed,
+        placed: G.pieces.filter((p) => p.state === 'board').map((p) => p.i),
+        groups: G.groups.map((g) => ({ m: [...g.ms], ax: g.ax, ay: g.ay })),
+        elapsed: G.elapsed, misses: G.misses, ts: Date.now(),
+      }).catch(() => { });
+    };
+    if (now) go(); else saveT = setTimeout(go, 400);
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(true); });
+  addEventListener('pagehide', () => persist(true));
+
+  /* ---------------------------------------------------------------- クリア */
+  function win(restoredAlreadyDone) {
+    G.over = true; clearInterval(G.timerId); deselect();
+    Store.del('saves', 'current').catch(() => { });
+    // 完成した絵を、線なしできれいに重ねる
+    const fin = document.createElement('canvas'); fin.width = G.srcC.width; fin.height = G.srcC.height; fin.getContext('2d').drawImage(G.srcC, 0, 0);
+    fin.className = 'final'; fin.style.width = G.W + 'px'; fin.style.height = G.H + 'px'; ui.world.appendChild(fin);
+    requestAnimationFrame(() => requestAnimationFrame(() => fin.classList.add('on')));
+    fitCam(true);
+    PZ.confetti(90); PZ.snd.win();
+    const stats = { time: G.elapsed, misses: G.misses, n: G.n, level: G.level, key: G.key, desc: G.desc, name: G.info.name, say: G.info.say, srcC: G.srcC, W: G.W, H: G.H };
+    setTimeout(() => PZ.say(G.info.say), 600);
+    if (E.on.win) setTimeout(() => E.on.win(stats), 2400);
+  }
+
+  function destroy() {
+    if (!G) return;
+    G.destroyed = true; clearInterval(G.timerId); clearTimeout(saveT);
+    ui.tray.innerHTML = ''; ui.hand.classList.remove('on'); ui.ring.classList.remove('on'); ui.peek.classList.remove('on');
+    ui.world.querySelectorAll('.final,.pop,.grp').forEach((e) => e.remove());
+    ui.game.classList.remove('on', 'hasTable'); ui.back.classList.remove('on'); G = null;
+  }
+  function exit() { persist(true); destroy(); E.on.exit && E.on.exit(); }
+
+  /* ----------------------------------------------------------- ボタンの配線 */
+  function init() {
+    refs(); bindView();
+    ui.tray.addEventListener('click', (e) => {
+      const tp = e.target.closest('.tp'); if (!tp || !G) return; selectTray(G.pieces[+tp.dataset.i]);
+    });
+    ui.hand.addEventListener('click', () => { if (!G || !G.sel) return; if (G.sel.from === 'tray' && G.L.rot) rotate(G.sel.p); else deselect(); });
+    ui.back.addEventListener('click', () => { if (G && G.sel && G.sel.from === 'table') returnToTray(G.sel.g); });
+    ui.filters.addEventListener('click', (e) => { const b = e.target.closest('button[data-f]'); if (b && G) setFilter(b.dataset.f); });
+    $('#gBack').onclick = exit;
+    $('#gHint').onclick = hint;
+    $('#zIn').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s * 1.35, true); };
+    $('#zOut').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s / 1.35, true); };
+    $('#zFit').onclick = () => { if (!G) return; if (Math.abs(cam.s - G.fit) < G.fit * 0.04) fitTable(true); else fitCam(true); };   // 盤面ぜんたい → もう一度でテーブルぜんたい
+    ui.ref.addEventListener('click', () => setPeek(!ui.peek.classList.contains('on')));      // 右上の見本：タップで大きく／もう一度で閉じる
+    ui.peek.addEventListener('click', () => setPeek(false));
+    let rt = 0;
+    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (G) { setRefSize(); fitCam(false); } }, 200); });
+  }
+  E.init = init; E.start = start; E.exit = exit; E.fmt = fmt;
+  E.active = () => !!G;
+  E.debug = () => G;                                              // テスト用：内部状態を覗く
+})();
+
+</script>
+<script>
+/* ui.js ― ホーム・写真の取り込み・クリア演出・シール帳・保護者設定 */
+(function () {
+  'use strict';
+  const $ = (s, r) => (r || document).querySelector(s);
+  const S = Store.settings;
+  const LV = Engine.LEVELS;
+  const LV_STARS = { easy: 1, normal: 2, hard: 3, expert: 4 };
+  const COUNTS = [24, 48, 100, 150, 200, 300];
+  PZ.muted = !S.sound;
+
+  /* ------------------------------------------------------- シール帳の「育ち」 */
+  const TIERS = [
+    { min: 0,  name: 'はじめての シールちょう', page: '#fff6e0', cover: '#ffb74d' },
+    { min: 5,  name: 'みならい シールちょう',   page: '#e6f6ff', cover: '#4fc3f7' },
+    { min: 15, name: 'じょうず シールちょう',   page: '#eafbe6', cover: '#66bb6a' },
+    { min: 30, name: 'めいじん シールちょう',   page: '#fff0fb', cover: '#ec6fbf' },
+    { min: 60, name: 'でんせつの シールちょう', page: '#232766', cover: '#7e57c2', night: true },
+  ];
+  const tierOf = (count) => { let t = 0; TIERS.forEach((x, i) => { if (count >= x.min) t = i; }); return t; };
+  const frameOf = (n) => (n >= 200 ? 3 : n >= 100 ? 2 : n >= 50 ? 1 : 0);
+
+  /* ---------------------------------------------------------------- 共通 */
+  const urls = {};
+  function blobUrl(id, x) { return urls[id] || (urls[id] = URL.createObjectURL(x instanceof Blob ? x : Store.recBlob(x))); }
+  /* 失敗の理由を、端末の中に最大8件 記録する（おとなの設定から見られる。原因調べ用） */
+  function logErr(tag, err, extra) {
+    try {
+      console.error(tag, err);
+      const d = new Date(), t = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+      S.log = (S.log || []).concat(`${t} ${tag} ${(err && (err.name || '')) || ''} ${(err && err.message) || ''} ${extra || ''}`.replace(/\s+/g, ' ').trim()).slice(-8);
+      Store.saveSettings();
+    } catch (e) { }
+  }
+  function flash(msg, ms) { const f = $('#flash'); f.textContent = msg; f.classList.add('on'); clearTimeout(flash.t); flash.t = setTimeout(() => f.classList.remove('on'), ms || 2200); }
+  function loading(on, msg) { const l = $('#loading'); l.classList.toggle('on', on); if (msg) l.querySelector('span').textContent = msg; }
+  function show(id) { document.querySelectorAll('.scr').forEach((s) => s.classList.toggle('on', s.id === id)); }
+  function closeSheet() { $('#sheet').classList.remove('on'); $('#sheet').innerHTML = ''; }
+  function openSheet(html, cls) { const s = $('#sheet'); s.innerHTML = `<div class="box ${cls || ''}">${html}</div>`; s.classList.add('on'); return s.firstChild; }
+  $('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+  function armedButton(btn, label, action) {
+    let armed = false, t;
+    btn.onclick = () => {
+      if (!armed) { armed = true; btn.textContent = 'もういちど おすと けします'; btn.classList.add('armed'); t = setTimeout(() => { armed = false; btn.textContent = label; btn.classList.remove('armed'); }, 3000); }
+      else { clearTimeout(t); armed = false; btn.classList.remove('armed'); btn.textContent = label; action(); }
+    };
+  }
+  const aspectOf = (src, photos) => {
+    if (src.k === 'collage') return (src.id || 'animals') === 'vehicles' ? 1 : 4 / 3;
+    if (src.k === 'photo') { const p = photos.find((x) => x.id === src.id); return p ? Math.min(2, Math.max(0.5, p.w / p.h)) : 1; }
+    return 1;
+  };
+
+  /* 保存された写真の中身が読めないとき（iPhone の保存の都合など）：「？」ではなく、分かる表示にして記録する */
+  const brokenSeen = new Set();
+  document.addEventListener('error', (e) => {
+    const t = e.target; if (!(t instanceof HTMLImageElement) || t.dataset.ph === undefined) return;
+    if (!brokenSeen.has(t.dataset.ph)) { brokenSeen.add(t.dataset.ph); logErr('保存した写真が読めない', { name: 'ImgError', message: t.dataset.ph }, ''); }
+    const sp = document.createElement('span'); sp.className = 'brokenph'; sp.textContent = 'よみこめません'; t.replaceWith(sp);
+  }, true);
+  /* 古い保存形式(Blob)の写真・シールは、読めるうちに新しい形式へ移す */
+  async function migrateLegacy() {
+    for (const store of ['photos', 'stickers']) {
+      for (const r of await Store.all(store)) {
+        if (r.buf || !r.blob) continue;
+        try { const buf = await Store.toBuf(r.blob); if (buf && buf.byteLength) { const n = Object.assign({}, r, { buf, type: r.blob.type || 'image/jpeg' }); delete n.blob; await Store.put(store, n); } } catch (e) { /* 読めないものは そのまま */ }
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------- ホーム */
+  /* 写真のサムネイルは、パズルと同じ縦横比で見せる（縦長は縦長、横長は横長。横にとても長いものは2マス分） */
+  function thumbHtml(p, on) {
+    const a = Math.min(2, Math.max(0.5, p.w / p.h)), wide = a >= 1.6;
+    const iw = wide ? 100 : (a >= 1 ? 100 : 100 * a), ih = wide ? 100 : (a >= 1 ? 100 / a : 100);
+    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" data-ph="${p.id}" src="${blobUrl(p.id, p)}"></button>`;
+  }
+  const collageUrls = {};
+  async function getCollageUrl(id) {
+    if (collageUrls[id]) return collageUrls[id];
+    const info = await Engine.Sources.load({ k: 'collage', id });
+    collageUrls[id] = PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)).toDataURL('image/jpeg', 0.8); return collageUrls[id];
+  }
+  const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
+  const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
+  const tabOf = (src) => (src.k === 'photo' ? 'photo' : src.k === 'collage' ? ((src.id || 'animals') === 'vehicles' ? 'vehicle' : 'nature') : ((PZ.art.find((a) => a.id === src.id) || {}).cat === 'vehicle' ? 'vehicle' : 'nature'));
+  async function renderHome() {
+    const home = $('#home'), scroll = home.scrollTop;
+    const [photos, stickers, save] = await Promise.all([Store.all('photos'), Store.all('stickers'), Store.get('saves', 'current')]);
+    photos.sort((a, b) => a.ts - b.ts);
+    if (S.src.k === 'photo' && !photos.find((p) => p.id === S.src.id)) S.src = { k: 'art', id: 'shoubousha' };
+    const asp = aspectOf(S.src, photos), tier = tierOf(stickers.length);
+    const sel = (k, id) => (S.src.k === k && (id === undefined || S.src.id === id) ? ' on' : '');
+    if (!S.tab) S.tab = tabOf(S.src);
+    const artBtn = (a) => `<button class="th${sel('art', a.id)}" data-k="art" data-id="${a.id}"><img alt="${a.name}" src="${PZ.svgUrl(a)}"></button>`;
+    const colBtn = async (id, aspect) => {
+      const wide = aspect >= 1.6, iw = wide ? 100 : (aspect >= 1 ? 100 : 100 * aspect), ih = wide ? 100 : (aspect >= 1 ? 100 / aspect : 100);
+      return `<button class="th photo${wide ? ' wide' : ''}${S.src.k === 'collage' && (S.src.id || 'animals') === id ? ' on' : ''}"${wide ? ` style="aspect-ratio:${aspect}"` : ''} data-k="collage" data-id="${id}"><img alt="${COLLAGE_NAME[id]}" style="width:${iw}%;height:${ih}%" src="${await getCollageUrl(id)}"></button>`;
+    };
+    let thumbs = '';
+    if (S.tab === 'vehicle') thumbs = PZ.art.filter((a) => a.cat === 'vehicle').map(artBtn).join('') + await colBtn('vehicles', 1);
+    else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 4 / 3);
+    else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>';
+
+    let resume = '';
+    if (save) {
+      let valid = !(save.desc.k === 'photo' && !photos.find((p) => p.id === save.desc.id));
+      if (valid) {
+        const pct = Math.round(save.placed.length / (save.rows * save.cols) * 100);
+        resume = `<button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button>`;
+      }
+    }
+    home.innerHTML = `
+    <div class="hwrap">
+      <header class="hhead">
+        <h1>ジグソー<br>シールちょう</h1>
+        <button id="goBook" class="bookbtn" style="--cover:${TIERS[tier].cover}"><i class="bk"></i><b>シールちょう</b><small>${stickers.length}まい</small></button>
+        <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
+      </header>
+      <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
+      ${resume}
+      <h2>えを えらぶ</h2>
+      <div class="tabs" id="tabs">
+        ${[['vehicle', 'のりもの'], ['nature', 'どうぶつ・しぜん'], ['photo', 'しゃしん']].map(([k, t]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${t}</button>`).join('')}
+      </div>
+      <div class="thumbs" id="thumbs">${thumbs}</div>
+      <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b></p>
+      <h2>ピースの かず</h2>
+      <div class="cnts" id="cnts">
+        ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
+      </div>
+      <h2>むずかしさ</h2>
+      <div class="lvs" id="lvs">
+        ${Object.entries(LV).map(([k, v]) => `<button class="lv${S.level === k ? ' on' : ''}" data-l="${k}"><b>${v.name}</b><span class="st">${'★'.repeat(LV_STARS[k])}</span><small>${v.desc}</small></button>`).join('')}
+      </div>
+      <button id="startBtn" class="start">はじめる ▶</button>
+    </div>`;
+    home.scrollTop = scroll;
+
+    $('#thumbs').onclick = (e) => {
+      const b = e.target.closest('.th'); if (!b) return;
+      if (b.id === 'addPhoto') return addPhoto();
+      S.src = { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
+    };
+    $('#tabs').onclick = (e) => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
+    $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
+    $('#lvs').onclick = (e) => { const b = e.target.closest('.lv'); if (!b) return; S.level = b.dataset.l; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
+    $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
+    const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
+    $('#goBook').onclick = () => openBook();
+    $('#goHelp').onclick = openHelp;
+    $('#goSet').onclick = async () => { if (await PZ.parentGate('せっていは おとなの かた用です')) openSettings(); };
+  }
+  async function play(o) {
+    $('#flash').classList.remove('on');
+    try { await Engine.start(o); show('game'); }
+    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); if (e && e.name === 'PhotoBroken') { flash('この しゃしんは こわれていて ひらけません。おとなの せっていで けして、もういちど ついかしてください', 9000); renderHome(); return; } flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
+  }
+  Engine.on.exit = () => { show('home'); renderHome(); };
+
+  /* -------------------------------------------------------------- 写真の追加 */
+  async function addPhoto() {
+    if (!(await PZ.parentGate('しゃしんを えらぶのは おとなの かたが してください'))) return;
+    // ゲートのあとに「本物の」ファイル選択ボタンを出す。プログラムからの自動オープンは、iPhoneなどで無視されることがあるため。
+    const box = openSheet(`<h2>しゃしんを えらぶ</h2>
+      <p class="note">下の ボタンを おして、しゃしんを えらんでください（まとめて いくつでも えらべます）。<br>しゃしんは この たんまつの 中だけで つかいます。</p>
+      <label class="filebtn">しゃしんを えらぶ<input type="file" id="file" accept="image/*" multiple></label>
+      <div class="row"><button class="btn" id="fCancel" type="button">やめる</button></div>`, 'setbox');
+    $('#fCancel', box).onclick = closeSheet;
+    $('#file', box).onchange = (e) => { const fs = [...e.target.files]; if (fs.length) importPhotos(fs); };
+  }
+  /* 写真を読みこむ：いくつかの方法を順番に試す（機種・ブラウザによって、使える方法がちがうため） */
+  async function decodePhoto(file) {
+    const errs = [];
+    const tries = [
+      ['img', async () => { const u = URL.createObjectURL(file); try { return await PZ.loadImage(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 8000); } }],   // 向きは ブラウザが自動で反映
+      ['bitmap+向き', () => createImageBitmap(file, { imageOrientation: 'from-image' })],
+      ['reader', () => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => PZ.loadImage(fr.result).then(res, rej); fr.onerror = () => rej(fr.error || new Error('read')); fr.readAsDataURL(file); })],
+      ['bitmap', () => createImageBitmap(file)],
+    ];
+    for (const [name, t] of tries) {
+      try { const img = await t(); if ((img.naturalWidth || img.width) > 0) return img; errs.push(name + ':0px'); }
+      catch (e) { errs.push(name + ':' + ((e && e.name) || 'err')); }
+    }
+    throw Object.assign(new Error(errs.join(',')), { stage: 'ひらけません（しゃしんの かたちが ちがうかも）' });
+  }
+  async function toJpegBlob(cv) {
+    const b = await new Promise((r) => { try { cv.toBlob(r, 'image/jpeg', 0.88); } catch (e) { r(null); } });
+    if (b) return b;
+    const d = cv.toDataURL('image/jpeg', 0.88).split(','), bin = atob(d[1]), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: 'image/jpeg' });
+  }
+  async function importPhotos(files) {
+    closeSheet(); let ok = 0, vol = false; const bad = [];
+    for (let i = 0; i < files.length; i++) {
+      loading(true, `しゃしんを とりこみ中… ${i + 1}/${files.length}`);
+      try {
+        const img = await decodePhoto(files[i]), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        const sc = Math.min(1, 1600 / Math.max(iw, ih)), w = Math.max(1, Math.round(iw * sc)), h = Math.max(1, Math.round(ih * sc));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
+        if (img.close) try { img.close(); } catch (e) { }
+        let blob; try { blob = await toJpegBlob(cv); } catch (e) { throw Object.assign(e, { stage: 'ちいさくできません' }); }
+        const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, type: 'image/jpeg', buf: await Store.toBuf(blob) };
+        if ((await Store.put('photos', rec)) === 'mem') vol = true;
+        S.src = { k: 'photo', id: rec.id }; ok++;
+      } catch (err) {
+        const f = files[i], info = `[${f.type || '?'} ${(f.size / 1048576).toFixed(1)}MB]`;
+        logErr('しゃしん取りこみ', err, info); bad.push(((err && err.stage) || 'とりこめません') + ' ' + info);
+      }
+    }
+    S.tab = 'photo'; Store.saveSettings(); loading(false);
+    flash(!bad.length ? `しゃしんを ${ok}まい ついかしました${vol ? '（この たんまつでは ほぞんできないため、いまだけ つかえます）' : ''}`
+      : ok ? `${ok}まい ついか、${bad.length}まいは ${bad[0]}` : `しゃしんを とりこめませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
+    renderHome();
+  }
+
+  /* ----------------------------------------------------------------- クリア */
+  Engine.on.win = async (st) => {
+    const before = (await Store.all('stickers')).length;
+    // シールの絵：完成した絵の真ん中を正方形に切り抜く
+    const side = Math.min(st.srcC.width, st.srcC.height), cv = document.createElement('canvas'); cv.width = cv.height = 240;
+    cv.getContext('2d').drawImage(st.srcC, (st.srcC.width - side) / 2, (st.srcC.height - side) / 2, side, side, 0, 0, 240, 240);
+    const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.82));
+    const rec = { id: 's' + Date.now(), ts: Date.now(), key: st.key, name: st.name, n: st.n, level: st.level, time: st.time, misses: st.misses, type: 'image/jpeg', buf: await Store.toBuf(blob) };
+    try { await Store.put('stickers', rec); } catch (e) { }
+    const bestKey = `${st.key}|${st.n}|${st.level}`, prev = S.best[bestKey], newBest = prev && st.time < prev;
+    if (!prev || st.time < prev) { S.best[bestKey] = st.time; Store.saveSettings(); }
+    const t0 = tierOf(before), t1 = tierOf(before + 1);
+    const url = blobUrl(rec.id, blob);
+    const box = openSheet(`
+      <div class="clear">
+        <h2>シール ゲット！</h2>
+        <div class="stk big f${frameOf(st.n)}"><div class="ring"><img alt="" src="${url}"></div></div>
+        <p class="meta">${st.n}ピース ・ ${LV[st.level].name} ・ ${Engine.fmt(st.time)}</p>
+        <p class="meta sub">まちがい ${st.misses}かい${newBest ? ' ・ <b class="gold">ベストタイム こうしん！</b>' : ''}</p>
+        ${t1 > t0 ? `<div class="grow">シールちょうが そだったよ！<br><b>${TIERS[t1].name}</b></div>` : `<p class="meta sub">${before + 1}まい あつまったよ${TIERS[t1 + 1] ? `（あと ${TIERS[t1 + 1].min - (before + 1)}まいで シールちょうが そだつよ）` : ''}</p>`}
+        <div class="row"><button id="cBook" class="btn">シールちょう</button><button id="cNext" class="btn go">つぎへ ▶</button></div>
+      </div>`, 'clearbox');
+    $('#cBook', box).onclick = () => { closeSheet(); openBook(true); };
+    $('#cNext', box).onclick = () => { closeSheet(); Engine.exit(); };
+    PZ.snd.ok();
+  };
+
+
+  /* ------------------------------------------------------------- あそびかた */
+  const IC = {
+    pick:  '<svg viewBox="0 0 64 64"><rect x="12" y="12" width="32" height="32" rx="7" fill="#ffb066" stroke="#fff" stroke-width="3"/><rect x="12" y="12" width="32" height="32" rx="7" fill="none" stroke="#ffe14d" stroke-width="4"/><circle cx="46" cy="46" r="11" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/><circle cx="46" cy="46" r="3.5" fill="#ff8a3c"/></svg>',
+    place: '<svg viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="6" fill="#fdf1d8" stroke="#b9925a" stroke-width="2.5"/><path d="M8 24h48M8 40h48M24 8v48M40 8v48" stroke="#d7bb8a" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="25" y="25" width="14" height="14" rx="3" fill="#ffb066" stroke="#fff" stroke-width="2"/><circle cx="46" cy="46" r="9" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/></svg>',
+    join:  '<svg viewBox="0 0 64 64"><rect x="8" y="22" width="22" height="22" rx="5" fill="#ffb066" stroke="#fff" stroke-width="3"/><rect x="34" y="22" width="22" height="22" rx="5" fill="#8ed8ff" stroke="#fff" stroke-width="3"/><path d="M28 33h8" stroke="#3ec598" stroke-width="5" stroke-linecap="round"/><circle cx="19" cy="52" r="7" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/></svg>',
+    table: '<svg viewBox="0 0 64 64"><rect x="6" y="6" width="52" height="52" rx="8" fill="none" stroke="#b9925a" stroke-width="3" stroke-dasharray="6 5"/><rect x="21" y="21" width="22" height="22" rx="3" fill="#fdf1d8" stroke="#b9925a" stroke-width="2"/><rect x="9" y="44" width="11" height="11" rx="3" fill="#ffb066" stroke="#fff" stroke-width="2"/><rect x="22" y="44" width="11" height="11" rx="3" fill="#8ed8ff" stroke="#fff" stroke-width="2"/></svg>',
+    zoom:  '<svg viewBox="0 0 64 64"><path d="M14 50 26 38M50 14 38 26" stroke="#7a4b16" stroke-width="5" stroke-linecap="round"/><path d="M14 36v14h14M50 28V14H36" fill="none" stroke="#7a4b16" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="50" r="5" fill="#ff8a3c"/><circle cx="50" cy="14" r="5" fill="#ff8a3c"/></svg>',
+    ref:   '<svg viewBox="0 0 64 64"><rect x="26" y="8" width="30" height="22" rx="4" fill="#bfe6ff" stroke="#fff" stroke-width="3"/><circle cx="40" cy="19" r="5" fill="#ffd93d"/><path d="M26 30l10-8 8 6 12-8" fill="none" stroke="#3ec598" stroke-width="3"/><circle cx="46" cy="42" r="10" fill="rgba(255,138,60,.3)" stroke="#ff8a3c" stroke-width="3"/><circle cx="46" cy="42" r="3" fill="#ff8a3c"/></svg>',
+    hint:  '<svg viewBox="0 0 64 64"><rect x="8" y="30" width="28" height="22" rx="11" fill="#ff8a3c"/><path d="M42 14l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#ffd93d" stroke="#e8a100" stroke-width="2" stroke-linejoin="round"/><path d="M48 40l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="#ffd93d"/></svg>',
+    rot:   '<svg viewBox="0 0 64 64"><rect x="18" y="18" width="28" height="28" rx="6" fill="#ffb066" stroke="#fff" stroke-width="3"/><path d="M14 30a20 20 0 0 1 34-12" fill="none" stroke="#7e57c2" stroke-width="5" stroke-linecap="round"/><path d="M50 8v12H38" fill="none" stroke="#7e57c2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  };
+  const HELP = [
+    ['pick',  'えらぶ',               '下の ピースを タップすると、左上に 大きく 出ます。もういちど タップすると やめられます。'],
+    ['place', 'おく',                 '盤面の、そのピースが はまる ばしょを タップ。あっていれば ぱちっと はまります。まちがえても だいじょうぶ。'],
+    ['join',  'くっつける',           'えらんだ ピースが つながる ピースを タップ。となりどうしなら、そこに くっつきます。'],
+    ['table', 'テーブル',             '盤面の まわりの 点線の中の あいている ところを タップすると、ピースを いったん おいておけます。くっついた かたまりは、タップで もちあげて、盤面の あう ばしょを タップすると まとめて はまります。もちあげたあと「おきばへ もどす」で ピース置き場に もどせます。'],
+    ['zoom',  '大きく・小さく',       '2本の ゆびで ひろげる／つまむ。1本の ゆびで うごかします。右上の ⤢ ボタンは、盤面ぜんたい → もう一度で テーブルぜんたい。'],
+    ['ref',   'みほん',               '右上の 小さな 絵を タップすると 大きく 見えます。もう一度 タップで とじます。'],
+    ['hint',  'ヒント・ふち・なか',   '「ヒント」は、つぎに おけるピースを ひからせます。「ふち」「なか」で ピース置き場を しぼれます。'],
+    ['rot',   'ちょうむずかしい',     'ピースが まわっています。えらんだピース（左上の 大きな ピース）を タップして、むきを そろえてから おきます。'],
+  ];
+  function openHelp() {
+    const box = openSheet(`<h2>あそびかた</h2>${HELP.map(([k, t, d]) => `<div class="hrow">${IC[k]}<div><b>${t}</b><p>${d}</p></div></div>`).join('')}
+      <p class="note">とちゅうで やめても「つづきから」で つづけられます。写真は この たんまつの 中だけで つかいます。</p>
+      <div class="row"><button class="btn go" id="hClose" type="button">わかった</button></div>`, 'helpbox');
+    $('#hClose', box).onclick = closeSheet;
+  }
+  $('#gHelp').onclick = openHelp;
+
+  /* --------------------------------------------------------------- シール帳 */
+  async function openBook(fromClear) {
+    const stickers = (await Store.all('stickers')).sort((a, b) => a.ts - b.ts);
+    const count = stickers.length, ti = tierOf(count), T = TIERS[ti], next = TIERS[ti + 1];
+    const pages = Math.max(1, Math.ceil((count + 1) / 6));
+    const book = $('#book');
+    book.style.setProperty('--page', T.page); book.style.setProperty('--cover', T.cover); book.classList.toggle('night', !!T.night);
+    let slots = '';
+    for (let p = 0; p < pages; p++) {
+      slots += `<div class="pg">`;
+      for (let k = 0; k < 6; k++) {
+        const i = p * 6 + k, s = stickers[i];
+        if (s) slots += `<button class="slot" data-i="${i}"><div class="stk f${frameOf(s.n)}" style="--r:${((i * 37) % 11) - 5}deg"><div class="ring"><img alt="" src="${blobUrl(s.id, s)}"></div><span class="cap">${s.n}<small>${'★'.repeat(LV_STARS[s.level] || 1)}</small></span></div></button>`;
+        else slots += `<div class="slot empty${i === count ? ' next' : ''}"><span>${i === count ? '?' : ''}</span></div>`;
+      }
+      slots += `</div>`;
+    }
+    const prog = next ? Math.round((count - T.min) / (next.min - T.min) * 100) : 100;
+    book.innerHTML = `
+      <header class="bkhead"><button id="bkBack" class="rb">←</button>
+        <div class="bkt"><b>${T.name}</b><small>${count}まい${next ? ` ・ あと ${next.min - count}まいで そだつよ` : ' ・ いちばん そだったよ'}</small>
+        <div class="bar"><i style="width:${prog}%"></i></div></div></header>
+      <div class="pages" id="pages">${slots}</div>
+      <div class="dots">${Array.from({ length: pages }, (_, i) => `<i data-i="${i}"></i>`).join('')}</div>`;
+    show('book');
+    const pg = $('#pages'); pg.scrollLeft = pg.clientWidth * (pages - 1);
+    const dots = book.querySelectorAll('.dots i');
+    const upd = () => { const i = Math.round(pg.scrollLeft / Math.max(1, pg.clientWidth)); dots.forEach((d, j) => d.classList.toggle('on', j === i)); };
+    pg.addEventListener('scroll', upd); setTimeout(upd, 50);
+    $('#bkBack').onclick = () => { if (Engine.active()) show('game'); else { show('home'); renderHome(); } };
+    if (fromClear) { $('#bkBack').onclick = () => { Engine.exit(); }; }
+    pg.onclick = (e) => {
+      const b = e.target.closest('.slot[data-i]'); if (!b) return;
+      const s = stickers[+b.dataset.i], d = new Date(s.ts);
+      const box = openSheet(`<div class="clear"><div class="stk big f${frameOf(s.n)}"><div class="ring"><img alt="" src="${blobUrl(s.id, s)}"></div></div>
+        <p class="meta">${s.name} ・ ${s.n}ピース</p><p class="meta sub">${LV[s.level] ? LV[s.level].name : ''} ・ ${Engine.fmt(s.time)} ・ まちがい ${s.misses}かい<br>${d.getFullYear()}ねん ${d.getMonth() + 1}がつ ${d.getDate()}にち</p>
+        <div class="row"><button class="btn" id="sClose">とじる</button></div></div>`, 'clearbox');
+      $('#sClose', box).onclick = closeSheet;
+    };
+  }
+
+  /* ------------------------------------------------------------- 保護者設定 */
+  async function openSettings() {
+    const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent();
+    const box = openSheet(`
+      <h2>おとなの せってい</h2>
+      <h3>おと・こえ</h3>
+      <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
+      <h3>とりこんだ しゃしん（${photos.length}まい）</h3>
+      ${photos.length ? '<p class="note">「よみこめません」と出る しゃしんは、いったん「けす」で けして、もういちど ついかしてください。</p>' : ''}
+      <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
+      <h3>きろく</h3>
+      <button class="dng" id="rBest">ベストタイムを けす</button>
+      <button class="dng" id="rStk">シールを ぜんぶ けす</button>
+      <h3>もんだいが あったとき</h3>
+      ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">きろくを けす</button>` : '<p class="note">エラーの きろくは ありません</p>'}
+      <p class="note">写真・シール・きろくは、この たんまつの中だけに保存されます。インターネットには送りません。${persistent ? '' : '<br><b>いまは一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
+      <div class="row"><button class="btn" id="sClose">とじる</button></div>`, 'setbox');
+    box.querySelectorAll('#sSound button').forEach((b) => b.onclick = () => {
+      S.sound = +b.dataset.s; PZ.muted = !S.sound; Store.saveSettings();
+      box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
+    });
+    box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); const sv = await Store.get('saves', 'current'); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', 'current'); closeSheet(); openSettings(); }));
+    const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };
+    armedButton($('#rBest', box), 'ベストタイムを けす', () => { S.best = {}; Store.saveSettings(); flash('けしました'); });
+    armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { await Store.clear('stickers'); flash('けしました'); });
+    $('#sClose', box).onclick = () => { closeSheet(); renderHome(); };
+  }
+
+  /* ------------------------------------------------------------------ 起動 */
+  Engine.init();
+  migrateLegacy().catch(() => { }).then(() => renderHome());
+})();
+
+</script>
+</body></html>
