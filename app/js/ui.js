@@ -8,6 +8,18 @@
   const COUNTS = [24, 48, 100, 150, 200, 300];
   PZ.muted = !S.sound; PZ.voice = S.voice !== 0;
 
+  /* ------------------------------------------------- こどもごとの プロフィール
+     シール・つづき・ベストタイム・あそんだ記録は、プロフィールごとに わける（写真は みんなで つかう）。
+     最初の1人 'p0' は、これまでの記録をそのまま引きつぐ。 */
+  const AVATARS = ['🐶', '🐱', '🐰', '🐻', '🐼', '🦁', '🐸', '🐧', '🚒', '🚌'];
+  if (!Array.isArray(S.profiles) || !S.profiles.length) S.profiles = [{ id: 'p0', name: 'わたし', av: 0 }];
+  if (!S.profiles.find((p) => p.id === S.pid)) S.pid = S.profiles[0].id;
+  const curP = () => S.profiles.find((p) => p.id === S.pid) || S.profiles[0];
+  const myStickers = async () => (await Store.all('stickers')).filter((s) => (s.pid || 'p0') === S.pid);
+  const playMap = () => (S.pid === 'p0' ? (S.play = S.play || {}) : ((S.playP = S.playP || {})[S.pid] = S.playP[S.pid] || {}));
+  const bestOf = () => (S.pid === 'p0' ? S.best : ((S.bestP = S.bestP || {})[S.pid] = S.bestP[S.pid] || {}));
+  Engine.saveId = () => (S.pid === 'p0' ? 'current' : 'current:' + S.pid);
+
   /* ------------------------------------------------------- シール帳の「育ち」 */
   const TIERS = [
     { min: 0,  name: 'はじめての シールちょう', page: '#fff6e0', cover: '#ffb74d' },
@@ -112,7 +124,7 @@
   }
   async function renderHome() {
     const home = $('#home'), scroll = home.scrollTop;
-    const [photos, stickers, save] = await Promise.all([Store.all('photos'), Store.all('stickers'), Store.get('saves', 'current')]);
+    const [photos, stickers, save] = await Promise.all([Store.all('photos'), myStickers(), Store.get('saves', Engine.saveId())]);
     photos.sort((a, b) => a.ts - b.ts);
     if (S.src.k === 'photo' && !photos.find((p) => p.id === S.src.id)) S.src = { k: 'art', id: 'shoubousha' };
     const asp = aspectOf(S.src, photos), tier = tierOf(stickers.length);
@@ -146,7 +158,7 @@
         <button id="goZukan" class="zkbtn" aria-label="ずかん"><b>ずかん</b></button>
         <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
       </header>
-      <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
+      <div class="toprow"><button id="goWho" class="whobtn" type="button"><span class="av">${AVATARS[curP().av || 0]}</span><b>${esc(curP().name)}</b><i>▼</i></button><button id="goHelp" class="helpbtn" type="button">？ あそびかた</button></div>
       ${PZ.imgMode === 'none' ? '<div class="warn"><b>この ひょうじでは がぞうが ひらけません。</b><br>ファイルの プレビューなど、せいげんのある がめんで ひらいている かもしれません。Safari や Chrome などの ブラウザで ひらいてください。</div>' : ''}
       ${resume}
       ${recHtml}
@@ -184,6 +196,7 @@
     $('#goBook').onclick = () => openBook();
     $('#goZukan').onclick = openZukan;
     $('#goHelp').onclick = openHelp;
+    $('#goWho').onclick = openWho;
     $('#goSet').onclick = async () => { if (await PZ.parentGate('せっていは おとなの かた用です')) openSettings(); };
   }
   async function play(o) {
@@ -198,7 +211,7 @@
   const BREAKS = [[0, 'なし'], [10, '10ぷん'], [15, '15ふん'], [20, '20ぷん'], [30, '30ぷん']];
   let contMs = 0, saveAcc = 0;
   Engine.on.tick = (d) => {
-    const k = dayKey(); S.play = S.play || {}; S.play[k] = (S.play[k] || 0) + d; saveAcc += d;
+    const k = dayKey(); const pm = playMap(); pm[k] = (pm[k] || 0) + d; saveAcc += d;
     if (saveAcc > 10000) { saveAcc = 0; Store.saveSettings(); }
     contMs += d;
     const lim = (S.breakMin === undefined ? 15 : S.breakMin) * 60000;
@@ -214,7 +227,7 @@
     $('#bkEnd', box).onclick = () => { closeSheet(); Engine.exit(); };
   }
   function playReport(stickers) {
-    const play = S.play || {}, days = [];
+    const play = playMap(), days = [];
     for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push({ k: dayKey(d), w: '日月火水木金土'[d.getDay()], m: (play[dayKey(d)] || 0) / 60000 }); }
     const max = Math.max(15, ...days.map((x) => x.m)), tot = days.reduce((a, x) => a + x.m, 0);
     const wk = stickers.filter((s) => s.ts > Date.now() - 7 * 864e5), byN = {};
@@ -360,15 +373,15 @@
 
   /* ----------------------------------------------------------------- クリア */
   Engine.on.win = async (st) => {
-    const before = (await Store.all('stickers')).length;
+    const before = (await myStickers()).length;
     // シールの絵：完成した絵の真ん中を正方形に切り抜く
     const side = Math.min(st.srcC.width, st.srcC.height), cv = document.createElement('canvas'); cv.width = cv.height = 240;
     cv.getContext('2d').drawImage(st.srcC, (st.srcC.width - side) / 2, (st.srcC.height - side) / 2, side, side, 0, 0, 240, 240);
     const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.82));
-    const rec = { id: 's' + Date.now(), ts: Date.now(), key: st.key, name: st.name, n: st.n, level: st.level, time: st.time, misses: st.misses, type: 'image/jpeg', buf: await Store.toBuf(blob) };
+    const rec = { id: 's' + Date.now(), ts: Date.now(), key: st.key, name: st.name, n: st.n, level: st.level, time: st.time, misses: st.misses, pid: S.pid, type: 'image/jpeg', buf: await Store.toBuf(blob) };
     try { await Store.put('stickers', rec); } catch (e) { }
-    const bestKey = `${st.key}|${st.n}|${st.level}`, prev = S.best[bestKey], newBest = prev && st.time < prev;
-    if (!prev || st.time < prev) { S.best[bestKey] = st.time; Store.saveSettings(); }
+    const bestKey = `${st.key}|${st.n}|${st.level}`, prev = bestOf()[bestKey], newBest = prev && st.time < prev;
+    if (!prev || st.time < prev) { bestOf()[bestKey] = st.time; Store.saveSettings(); }
     const t0 = tierOf(before), t1 = tierOf(before + 1);
     const url = blobUrl(rec.id, blob);
     const box = openSheet(`
@@ -416,6 +429,18 @@
   $('#gHelp').onclick = openHelp;
 
   /* --------------------------------------------------------------- シール帳 */
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function openWho() {
+    const box = openSheet(`<h2>だれが あそぶ？</h2><div class="who">${S.profiles.map((p) => `<button type="button" class="${p.id === S.pid ? 'on' : ''}" data-id="${p.id}"><span class="av">${AVATARS[p.av || 0]}</span><b>${esc(p.name)}</b></button>`).join('')}</div>
+      <p class="note" style="text-align:center">なまえの へんこう・ふやす は、おとなの せっていで できます</p>
+      <div class="row"><button class="btn" id="wClose" type="button">とじる</button></div>`);
+    $('#wClose', box).onclick = closeSheet;
+    box.querySelector('.who').onclick = (e) => {
+      const b = e.target.closest('button[data-id]'); if (!b) return;
+      S.pid = b.dataset.id; contMs = 0; Store.saveSettings(); PZ.snd.pick(); closeSheet(); renderHome();
+    };
+  }
+
   /* ---------------------------------------------------------------- ずかん */
   const FACT = {
     neko: 'ねこは ひげで まわりを かんじるよ。ニャーと なくよ。', kuma: 'くまは はちみつが だいすき。ふゆは ほらあなで ねるよ。', sakana: 'さかなは みずの なかで ひれを うごかして およぐよ。',
@@ -430,7 +455,7 @@
     lion: 'ライオンは どうぶつの おうさま。おすには たてがみが あるよ。ガオー！', zou: 'ぞうは はなが とっても ながいよ。みずを すって シャワーも できるよ。', kirin: 'きりんは くびが ながくて、たかい きの はっぱを たべるよ。', panda: 'パンダは ささを もぐもぐ たべるよ。しろと くろの もようが かわいいね。',
   };
   async function openZukan() {
-    const stickers = await Store.all('stickers'), done = new Set(stickers.map((s) => s.key));
+    const stickers = await myStickers(), done = new Set(stickers.map((s) => s.key));
     const arts = PZ.art.filter((a) => FACT[a.id] || a.cat), got = arts.filter((a) => done.has('a:' + a.id)).length;
     const cell = (a) => { const ok = done.has('a:' + a.id); return `<button type="button" class="zk${ok ? ' got' : ''}" data-id="${a.id}">${ok ? `<img alt="" src="${PZ.svgUrl(a)}">` : '<i class="qq">？</i>'}<span>${ok ? a.name.replace(/（.*/, '') : '？？？'}</span></button>`; };
     const sec = (cat, t) => `<h3>${t}</h3><div class="zgrid">${arts.filter((a) => (a.cat === 'vehicle') === (cat === 'vehicle')).map(cell).join('')}</div>`;
@@ -451,7 +476,7 @@
   }
 
   async function openBook(fromClear) {
-    const stickers = (await Store.all('stickers')).sort((a, b) => a.ts - b.ts);
+    const stickers = (await myStickers()).sort((a, b) => a.ts - b.ts);
     const count = stickers.length, ti = tierOf(count), T = TIERS[ti], next = TIERS[ti + 1];
     const pages = Math.max(1, Math.ceil((count + 1) / 6));
     const book = $('#book');
@@ -491,13 +516,17 @@
   }
 
   /* ------------------------------------------------------------- 保護者設定 */
+  const profRow = (p) => `<div class="prow" data-id="${p.id}"><button type="button" class="pav">${AVATARS[p.av || 0]}</button><input type="text" maxlength="8" value="${esc(p.name)}" aria-label="なまえ"><button type="button" class="pdel dng"${S.profiles.length < 2 ? ' disabled' : ''}>けす</button></div>`;
   async function openSettings() {
-    const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent(), allStickers = await Store.all('stickers');
+    const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent(), allStickers = await myStickers();
     const box = openSheet(`
       <h2>おとなの せってい</h2>
       <h3>おと</h3>
       <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
-      <h3>あそんだ きろく（おとな用）</h3>
+      <h3>あそぶ 子（プロフィール）</h3>
+      <div id="profs">${S.profiles.map((p) => profRow(p)).join('')}</div>
+      <button class="btn" id="pAdd" type="button">＋ ふやす</button>
+      <h3>あそんだ きろく（${esc(curP().name)}）</h3>
       ${playReport(allStickers)}
       <h3>きゅうけいの おしらせ</h3>
       <div class="seg" id="sBreak">${BREAKS.map(([m, t]) => `<button data-m="${m}" class="${(S.breakMin === undefined ? 15 : S.breakMin) === m ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -509,6 +538,7 @@
       ${photos.length ? '<p class="note">「よみこめません」と出る しゃしんは、いったん「けす」で けして、もういちど ついかしてください。</p>' : ''}
       <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
       <h3>きろく</h3>
+      <p class="note">（いま えらんでいる 子：${esc(curP().name)} の ぶん）</p>
       <button class="dng" id="rBest">ベストタイムを けす</button>
       <button class="dng" id="rStk">シールを ぜんぶ けす</button>
       <h3>もんだいが あったとき</h3>
@@ -519,6 +549,24 @@
       S.sound = +b.dataset.s; PZ.muted = !S.sound; Store.saveSettings();
       box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
     });
+    const profs = $('#profs', box), delTimers = {};
+    profs.oninput = (e) => { const r = e.target.closest('.prow'); if (!r || e.target.tagName !== 'INPUT') return; const p = S.profiles.find((x) => x.id === r.dataset.id); p.name = e.target.value.trim() || 'なまえ'; Store.saveSettings(); };
+    profs.onclick = async (e) => {
+      const r = e.target.closest('.prow'); if (!r) return; const p = S.profiles.find((x) => x.id === r.dataset.id);
+      if (e.target.closest('.pav')) { p.av = ((p.av || 0) + 1) % AVATARS.length; e.target.closest('.pav').textContent = AVATARS[p.av]; Store.saveSettings(); }
+      else if (e.target.closest('.pdel')) {
+        const b = e.target.closest('.pdel');
+        if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'もういちど'; delTimers[p.id] = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'けす'; }, 3000); return; }
+        for (const s of (await Store.all('stickers')).filter((x) => (x.pid || 'p0') === p.id)) await Store.del('stickers', s.id);
+        await Store.del('saves', p.id === 'p0' ? 'current' : 'current:' + p.id);
+        S.profiles = S.profiles.filter((x) => x.id !== p.id); if (S.pid === p.id) S.pid = S.profiles[0].id;
+        Store.saveSettings(); closeSheet(); openSettings();
+      }
+    };
+    $('#pAdd', box).onclick = () => {
+      if (S.profiles.length >= 5) { flash('ふやせるのは 5にんまでです'); return; }
+      const id = 'p' + Date.now().toString(36); S.profiles.push({ id, name: 'あたらしい子', av: S.profiles.length % AVATARS.length }); Store.saveSettings(); closeSheet(); openSettings();
+    };
     box.querySelectorAll('#sBreak button').forEach((b) => b.onclick = () => {
       S.breakMin = +b.dataset.m; contMs = 0; Store.saveSettings(); box.querySelectorAll('#sBreak button').forEach((x) => x.classList.toggle('on', x === b));
     });
@@ -526,10 +574,10 @@
       S.voice = +b.dataset.s; PZ.voice = S.voice !== 0; Store.saveSettings();
       box.querySelectorAll('#sVoice button').forEach((x) => x.classList.toggle('on', x === b)); if (PZ.voice) PZ.sayV('こんにちは。いっしょに あそぼうね', true);
     });
-    box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); const sv = await Store.get('saves', 'current'); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', 'current'); closeSheet(); openSettings(); }));
+    box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); for (const p of S.profiles) { const sid = p.id === 'p0' ? 'current' : 'current:' + p.id, sv = await Store.get('saves', sid); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', sid); } closeSheet(); openSettings(); }));
     const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };
-    armedButton($('#rBest', box), 'ベストタイムを けす', () => { S.best = {}; Store.saveSettings(); flash('けしました'); });
-    armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { await Store.clear('stickers'); flash('けしました'); });
+    armedButton($('#rBest', box), 'ベストタイムを けす', () => { if (S.pid === 'p0') S.best = {}; else (S.bestP = S.bestP || {})[S.pid] = {}; Store.saveSettings(); flash('けしました'); });
+    armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { for (const s of await myStickers()) await Store.del('stickers', s.id); flash('けしました'); });
     $('#sClose', box).onclick = () => { closeSheet(); renderHome(); };
   }
 

@@ -579,7 +579,7 @@
     const go = () => {
       if (!G || G.over) return;
       Store.put('saves', {
-        id: 'current', desc: G.desc, rows: G.rows, cols: G.cols, level: G.level, seed: G.seed,
+        id: E.saveId(), desc: G.desc, rows: G.rows, cols: G.cols, level: G.level, seed: G.seed,
         placed: G.pieces.filter((p) => p.state === 'board').map((p) => p.i),
         groups: G.groups.map((g) => ({ m: [...g.ms], ax: g.ax, ay: g.ay })),
         elapsed: G.elapsed, misses: G.misses, ts: Date.now(),
@@ -593,7 +593,7 @@
   /* ---------------------------------------------------------------- クリア */
   function win(restoredAlreadyDone) {
     G.over = true; clearInterval(G.timerId); deselect();
-    Store.del('saves', 'current').catch(() => { });
+    Store.del('saves', E.saveId()).catch(() => { });
     // 完成した絵を、線なしできれいに重ねる
     const fin = document.createElement('canvas'); fin.width = G.srcC.width; fin.height = G.srcC.height; fin.getContext('2d').drawImage(G.srcC, 0, 0);
     fin.className = 'final'; fin.style.width = G.W + 'px'; fin.style.height = G.H + 'px'; ui.world.appendChild(fin);
@@ -633,7 +633,7 @@
     let rt = 0;
     addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (G) { setRefSize(); fitCam(false); } }, 200); });
   }
-  E.init = init; E.start = start; E.exit = exit; E.fmt = fmt;
+  E.saveId = () => 'current'; E.init = init; E.start = start; E.exit = exit; E.fmt = fmt;
   E.active = () => !!G;
   E.debug = () => G;                                              // テスト用：内部状態を覗く
 })();
