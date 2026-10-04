@@ -15,10 +15,16 @@
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 
+  /* 複数の絵をタイル状にならべた「ぜんぶ」パズル */
+  const COLLAGES = {
+    animals:  { name: 'どうぶつ・しぜん ぜんぶ', say: 'みんな いるね', cols: 3, ids: () => PZ.art.filter((a) => a.cat === 'nature').map((a) => a.id) },
+    vehicles: { name: 'のりもの ぜんぶ',         say: 'ぶーぶー',     cols: 3, ids: () => ['kuruma', 'shoubousha', 'patoka', 'kyuukyuusha', 'shoberu', 'shinkansen', 'dump', 'basu', 'hikouki'] },
+  };
+
   /* ------------------------------------------------------------ 絵の読み込み */
   const Sources = {
     cache: {},
-    key: (d) => (d.k === 'art' ? 'a:' + d.id : d.k === 'collage' ? 'c' : 'p:' + d.id),
+    key: (d) => (d.k === 'art' ? 'a:' + d.id : d.k === 'collage' ? 'c:' + (d.id || 'animals') : 'p:' + d.id),
     async load(desc) {
       const key = Sources.key(desc);
       if (Sources.cache[key]) return Sources.cache[key];
@@ -27,10 +33,11 @@
         const a = PZ.art.find((x) => x.id === desc.id) || PZ.art[0];
         info = { img: await PZ.artImage(a), aspect: 1, name: a.name, say: a.say };
       } else if (desc.k === 'collage') {
-        const cv = document.createElement('canvas'); cv.width = 1600; cv.height = 800;
+        const def = COLLAGES[desc.id || 'animals'] || COLLAGES.animals, ids = def.ids(), cols = def.cols, rows = Math.ceil(ids.length / cols);
+        const cv = document.createElement('canvas'); cv.width = cols * 400; cv.height = rows * 400;
         const x = cv.getContext('2d');
-        for (let i = 0; i < 8; i++) x.drawImage(await PZ.artImage(PZ.art[i]), (i % 4) * 400, Math.floor(i / 4) * 400, 400, 400);
-        info = { img: cv, aspect: 2, name: 'どうぶつ ぜんいん', say: 'みんな いるね' };
+        for (let i = 0; i < ids.length; i++) x.drawImage(await PZ.artImage(PZ.art.find((a) => a.id === ids[i])), (i % cols) * 400, Math.floor(i / cols) * 400, 400, 400);
+        info = { img: cv, aspect: cols / rows, name: def.name, say: def.say, tiles: { cols, rows, ids } };
       } else {
         const rec = await Store.get('photos', desc.id);
         if (!rec) throw new Error('photo-missing');
@@ -61,6 +68,82 @@
       if (!best || score < best.score) best = { rows: r, cols: c, n, score };
     }
     return best;
+  }
+
+
+  /* ---------------------------------------------------- 「特徴のないピース」をなくす
+     空・水・地面・道路などの「のっぺり」したマスを見つけて、絵に合う小さな絵柄（雲・鳥・泡・花など）を足す。
+     どのピースにも見分ける手がかりがあるようにするため。同じ番号(seed)なら毎回同じ絵柄になる（再開しても同じ）。 */
+  const PAL = {
+    cloud: [['#ffffff']], bird: [['#334155']], balloon: [['#ff6b6b'], ['#ffd93d'], ['#a78bfa'], ['#34d399']],
+    star: [['#ffd93d'], ['#fff3a0'], ['#ffb3d1']], heart: [['#ff6b8b'], ['#ff9fb5']],
+    flower: [['#ff7eb6', '#ffd93d'], ['#ffffff', '#ffb703'], ['#a78bfa', '#fff3a0']],
+    butterfly: [['#ff9f43', '#ffd39a'], ['#7c5cff', '#c4b5fd'], ['#f43f5e', '#fda4af']], ladybug: [['#ef4444']],
+    bubble: [['#ffffff']], fish: [['#ff9f43'], ['#a78bfa'], ['#34d399'], ['#f472b6']], starfish: [['#ff6b8a'], ['#fb923c']],
+    snow: [['#7dd3fc']], planet: [['#a78bfa', '#f5d0fe'], ['#fb923c', '#fde68a']], comet: [['#fff3a0']],
+    crack: [['#000000']], pebble: [['#000000']], dots: [['#ffffff']],
+  };
+  const THEMES = {
+    sky: ['cloud', 'bird', 'balloon', 'cloud', 'bird'], water: ['bubble', 'fish', 'starfish', 'bubble'], grass: ['flower', 'butterfly', 'ladybug', 'flower'],
+    road: ['crack', 'pebble', 'crack', 'dots'], dirt: ['pebble', 'crack', 'pebble'], space: ['star', 'planet', 'comet', 'star'],
+    snow: ['snow', 'star'], party: ['star', 'heart', 'balloon', 'dots'],
+  };
+  const star5 = (x, R, r) => { x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r : R; x[i ? 'lineTo' : 'moveTo'](Math.cos(a) * q, Math.sin(a) * q); } x.closePath(); };
+  const ell = (x, cx, cy, rx, ry, rot = 0) => { x.beginPath(); x.ellipse(cx, cy, rx, ry, rot, 0, 6.3); x.fill(); };
+  const MOTIF = {
+    cloud(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 13, 6); ell(x, -7, -4, 8, 6); ell(x, 5, -6, 9, 7); },
+    bird(x, c) { x.strokeStyle = c[0]; x.lineWidth = 2.6; x.lineCap = 'round'; x.beginPath(); x.moveTo(-10, 0); x.quadraticCurveTo(-5, -8, 0, 0); x.quadraticCurveTo(5, -8, 10, 0); x.stroke(); },
+    balloon(x, c) { x.fillStyle = c[0]; ell(x, 0, -3, 7, 9); x.strokeStyle = 'rgba(60,60,60,.6)'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(0, 6); x.quadraticCurveTo(-3, 11, 0, 15); x.stroke(); x.fillStyle = 'rgba(255,255,255,.5)'; ell(x, -2.5, -6, 1.8, 3, 0.4); },
+    star(x, c) { x.fillStyle = c[0]; star5(x, 9, 4); x.fill(); x.strokeStyle = 'rgba(255,255,255,.7)'; x.lineWidth = 1; x.stroke(); },
+    heart(x, c) { x.fillStyle = c[0]; x.beginPath(); x.moveTo(0, 8); x.bezierCurveTo(-14, -2, -8, -12, 0, -5); x.bezierCurveTo(8, -12, 14, -2, 0, 8); x.fill(); },
+    flower(x, c) { x.fillStyle = c[0]; for (let i = 0; i < 5; i++) { const a = i * 1.2566; ell(x, Math.cos(a) * 5.5, Math.sin(a) * 5.5, 4.2, 4.2); } x.fillStyle = c[1]; ell(x, 0, 0, 3.4, 3.4); },
+    butterfly(x, c) { x.fillStyle = c[0]; ell(x, -6, -3, 6, 4.5, -0.4); ell(x, 6, -3, 6, 4.5, 0.4); x.fillStyle = c[1]; ell(x, -5, 4, 4, 3, 0.4); ell(x, 5, 4, 4, 3, -0.4); x.fillStyle = '#4a2c17'; ell(x, 0, 0, 1.4, 6); },
+    ladybug(x, c) { x.fillStyle = '#222'; ell(x, 0, -6, 3.4, 3); x.fillStyle = c[0]; ell(x, 0, 1, 7, 7); x.fillStyle = '#222'; ell(x, -3, -1, 1.5, 1.5); ell(x, 3, 3, 1.5, 1.5); ell(x, -2, 5, 1.2, 1.2); x.fillRect(-0.4, -5, 0.8, 12); },
+    bubble(x, c) { x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 1.8; x.beginPath(); x.arc(0, 0, 6, 0, 6.3); x.stroke(); x.fillStyle = 'rgba(255,255,255,.25)'; ell(x, 0, 0, 6, 6); x.fillStyle = 'rgba(255,255,255,.9)'; ell(x, -2, -2.5, 1.6, 1); x.strokeStyle = 'rgba(255,255,255,.8)'; x.beginPath(); x.arc(9, -7, 2.4, 0, 6.3); x.stroke(); },
+    fish(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 9, 5.5); x.beginPath(); x.moveTo(-7, 0); x.lineTo(-14, -5); x.lineTo(-14, 5); x.closePath(); x.fill(); x.fillStyle = '#fff'; ell(x, 4, -1.4, 1.8, 1.8); x.fillStyle = '#222'; ell(x, 4.4, -1.4, 0.9, 0.9); },
+    starfish(x, c) { x.fillStyle = c[0]; star5(x, 10, 4.4); x.fill(); x.fillStyle = 'rgba(255,255,255,.55)'; ell(x, 0, 0, 1.2, 1.2); },
+    snow(x, c) { x.strokeStyle = c[0]; x.lineWidth = 1.8; x.lineCap = 'round'; for (let i = 0; i < 3; i++) { const a = i * 1.0472; x.beginPath(); x.moveTo(Math.cos(a) * 9, Math.sin(a) * 9); x.lineTo(-Math.cos(a) * 9, -Math.sin(a) * 9); x.stroke(); } },
+    planet(x, c) { x.fillStyle = c[0]; ell(x, 0, 0, 6.5, 6.5); x.strokeStyle = c[1]; x.lineWidth = 1.8; x.beginPath(); x.ellipse(0, 0, 11, 3.2, -0.4, 0, 6.3); x.stroke(); },
+    comet(x, c) { x.fillStyle = c[0]; ell(x, 4, 0, 4, 4); x.strokeStyle = 'rgba(255,243,160,.7)'; x.lineWidth = 2; x.lineCap = 'round'; x.beginPath(); x.moveTo(1, -1); x.lineTo(-12, -6); x.moveTo(1, 1); x.lineTo(-12, 5); x.stroke(); },
+    crack(x) { x.strokeStyle = 'rgba(0,0,0,.28)'; x.lineWidth = 1.8; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); x.moveTo(-10, -4); x.lineTo(-3, 0); x.lineTo(-5, 5); x.moveTo(-3, 0); x.lineTo(5, -2); x.lineTo(10, 4); x.stroke(); },
+    pebble(x) { x.fillStyle = 'rgba(0,0,0,.22)'; ell(x, -5, 2, 4.5, 3); ell(x, 4, -3, 3.4, 2.5); x.fillStyle = 'rgba(255,255,255,.18)'; ell(x, 6, 5, 2.6, 2); },
+    dots(x, c) { x.fillStyle = c[0]; x.globalAlpha = 0.55; ell(x, -6, 2, 2.4, 2.4); ell(x, 2, -4, 2.8, 2.8); ell(x, 7, 5, 2, 2); x.globalAlpha = 1; },
+  };
+  function themeOf(r, g, b, artId) {
+    const L = 0.299 * r + 0.587 * g + 0.114 * b, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (L < 75 && b >= r) return 'space';
+    if (L > 238 && mx - mn < 14) return 'snow';
+    if (b > r + 22 && b >= g - 12) return artId === 'sakana' ? 'water' : 'sky';
+    if (g > r + 14 && g > b + 14) return 'grass';
+    if (mx - mn < 34) return L > 215 ? 'snow' : 'road';
+    if (r > g && g > b && L < 175) return 'dirt';
+    return 'party';
+  }
+  function enrichSource(srcC, rows, cols, seed, info, desc) {
+    let cx; try { cx = srcC.getContext('2d'); cx.getImageData(0, 0, 1, 1); } catch (e) { return; }
+    const u = srcC.width / cols, uh = srcC.height / rows, rnd = PZ.rng((seed ^ 0x5bd1e995) | 0);
+    const artAt = (fx, fy) => (desc.k === 'collage' ? info.tiles.ids[Math.floor(fy * info.tiles.rows) * info.tiles.cols + Math.floor(fx * info.tiles.cols)] : desc.id);
+    const jobs = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const px = Math.floor(c * u), py = Math.floor(r * uh), w = Math.floor(u), h = Math.floor(uh);
+      let d; try { d = cx.getImageData(px, py, w, h).data; } catch (e) { return; }
+      const step = Math.max(1, Math.floor(w / 12)); let n = 0, sr = 0, sg = 0, sb = 0;
+      for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { const i = (y * w + x) * 4; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++; }
+      const mr = sr / n, mg = sg / n, mb = sb / n; let mad = 0;
+      for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) { const i = (y * w + x) * 4; mad += (Math.abs(d[i] - mr) + Math.abs(d[i + 1] - mg) + Math.abs(d[i + 2] - mb)) / 3; }
+      mad /= n;
+      if (mad < 5.5) jobs.push({ r, c, theme: themeOf(mr, mg, mb, artAt((c + 0.5) / cols, (r + 0.5) / rows)) });
+    }
+    const m = u / 60;
+    jobs.forEach((j) => {
+      const list = THEMES[j.theme], count = rnd() < 0.3 ? 2 : 1;
+      for (let k = 0; k < count; k++) {
+        const name = list[(j.r * 7 + j.c * 3 + k * 2 + Math.floor(rnd() * 2)) % list.length], pals = PAL[name], col = pals[(j.r * 5 + j.c * 11 + k) % pals.length];
+        const fx = k ? (rnd() < 0.5 ? 0.25 : 0.75) : 0.35 + rnd() * 0.3, fy = k ? (rnd() < 0.5 ? 0.25 : 0.75) : 0.35 + rnd() * 0.3;
+        cx.save(); cx.translate((j.c + fx) * u, (j.r + fy) * uh); cx.rotate((rnd() - 0.5) * 0.5);
+        const s = m * (k ? 0.85 : 1.15 + rnd() * 0.3); cx.scale(s, s); MOTIF[name](cx, col); cx.restore();
+      }
+    });
   }
 
   /* ---------------------------------------------------------------- 状態
@@ -182,6 +265,7 @@
     const order = shuffleSeed([...Array(n).keys()], rnd);
     const rots = Array.from({ length: n }, () => (L.rot ? 1 + Math.floor(rnd() * 3) : 0));
     const srcC = Sources.cover(info.img, W * RES, H * RES);
+    if (o.desc.k !== 'photo') enrichSource(srcC, rows, cols, seed, info, o.desc);      // 写真は そのまま（絵だけ、手がかりを足す）
     G = {
       desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
       srcC, edges, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,

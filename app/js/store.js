@@ -43,7 +43,7 @@
 
   /* 設定（小さいもの） */
   const KEY = 'jigsaw-app-settings';
-  let cache = { sound: 1, src: { k: 'art', id: 'neko' }, target: 100, level: 'normal', best: {} };
+  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 100, level: 'normal', best: {} };
   try { Object.assign(cache, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
   Store.settings = cache;
   Store.saveSettings = () => { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) { } };

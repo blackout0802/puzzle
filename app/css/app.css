@@ -202,3 +202,10 @@ button{font-family:inherit;color:inherit}
 /* 写真のサムネイル：パズルと同じ縦横比 */
 .th.photo{display:grid;place-items:center;background:#fff}
 .th.photo img{object-fit:fill;border-radius:4px;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+
+/* えをえらぶ：見出し（のりもの／どうぶつ・しぜん／しゃしん） */
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.55);color:var(--wood-dark);font-size:14px;font-weight:800;white-space:nowrap;padding:0 4px}
+.tabs button.on{background:var(--paper);box-shadow:0 3px 0 var(--wood-dark)}
+.picked{margin:0;color:#fff;font-size:13px;text-shadow:0 1px 0 var(--wood-dark)}
+.picked b{font-size:15px}

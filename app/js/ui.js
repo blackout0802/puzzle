@@ -36,7 +36,7 @@
     };
   }
   const aspectOf = (src, photos) => {
-    if (src.k === 'collage') return 2;
+    if (src.k === 'collage') return (src.id || 'animals') === 'vehicles' ? 1 : 1.5;
     if (src.k === 'photo') { const p = photos.find((x) => x.id === src.id); return p ? Math.min(2, Math.max(0.5, p.w / p.h)) : 1; }
     return 1;
   };
@@ -48,20 +48,29 @@
     const iw = wide ? 100 : (a >= 1 ? 100 : 100 * a), ih = wide ? 100 : (a >= 1 ? 100 / a : 100);
     return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" src="${blobUrl(p.id, p.blob)}"></button>`;
   }
-  let collageUrl = null;
-  async function getCollageUrl() {
-    if (collageUrl) return collageUrl;
-    const info = await Engine.Sources.load({ k: 'collage' });
-    collageUrl = PZ.coverCanvas(info.img, 240, 120).toDataURL('image/jpeg', 0.8); return collageUrl;
+  const collageUrls = {};
+  async function getCollageUrl(id) {
+    if (collageUrls[id]) return collageUrls[id];
+    const info = await Engine.Sources.load({ k: 'collage', id });
+    collageUrls[id] = PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)).toDataURL('image/jpeg', 0.8); return collageUrls[id];
   }
+  const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
+  const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
+  const tabOf = (src) => (src.k === 'photo' ? 'photo' : src.k === 'collage' ? ((src.id || 'animals') === 'vehicles' ? 'vehicle' : 'nature') : ((PZ.art.find((a) => a.id === src.id) || {}).cat === 'vehicle' ? 'vehicle' : 'nature'));
   async function renderHome() {
     const home = $('#home'), scroll = home.scrollTop;
     const [photos, stickers, save] = await Promise.all([Store.all('photos'), Store.all('stickers'), Store.get('saves', 'current')]);
     photos.sort((a, b) => a.ts - b.ts);
-    if (S.src.k === 'photo' && !photos.find((p) => p.id === S.src.id)) S.src = { k: 'art', id: 'neko' };
+    if (S.src.k === 'photo' && !photos.find((p) => p.id === S.src.id)) S.src = { k: 'art', id: 'shoubousha' };
     const asp = aspectOf(S.src, photos), tier = tierOf(stickers.length);
     const sel = (k, id) => (S.src.k === k && (id === undefined || S.src.id === id) ? ' on' : '');
-    const cUrl = await getCollageUrl();
+    if (!S.tab) S.tab = tabOf(S.src);
+    const artBtn = (a) => `<button class="th${sel('art', a.id)}" data-k="art" data-id="${a.id}"><img alt="${a.name}" src="${PZ.svgUrl(a)}"></button>`;
+    const colBtn = async (id, aspect) => `<button class="th${aspect >= 1.4 ? ' wide' : ''}${S.src.k === 'collage' && (S.src.id || 'animals') === id ? ' on' : ''}"${aspect >= 1.4 ? ` style="aspect-ratio:${aspect}"` : ''} data-k="collage" data-id="${id}"><img alt="${COLLAGE_NAME[id]}" src="${await getCollageUrl(id)}"></button>`;
+    let thumbs = '';
+    if (S.tab === 'vehicle') thumbs = PZ.art.filter((a) => a.cat === 'vehicle').map(artBtn).join('') + await colBtn('vehicles', 1);
+    else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 1.5);
+    else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>';
 
     let resume = '';
     if (save) {
@@ -81,12 +90,11 @@
       <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
       ${resume}
       <h2>えを えらぶ</h2>
-      <div class="thumbs" id="thumbs">
-        ${PZ.art.map((a) => `<button class="th${sel('art', a.id)}" data-k="art" data-id="${a.id}"><img alt="${a.name}" src="${PZ.svgUrl(a)}"></button>`).join('')}
-        <button class="th wide${sel('collage')}" data-k="collage"><img alt="どうぶつ ぜんいん" src="${cUrl}"></button>
-        ${photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('')}
-        <button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>
+      <div class="tabs" id="tabs">
+        ${[['vehicle', 'のりもの'], ['nature', 'どうぶつ・しぜん'], ['photo', 'しゃしん']].map(([k, t]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${t}</button>`).join('')}
       </div>
+      <div class="thumbs" id="thumbs">${thumbs}</div>
+      <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b></p>
       <h2>ピースの かず</h2>
       <div class="cnts" id="cnts">
         ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
@@ -103,8 +111,9 @@
     $('#thumbs').onclick = (e) => {
       const b = e.target.closest('.th'); if (!b) return;
       if (b.id === 'addPhoto') return addPhoto();
-      S.src = b.dataset.k === 'collage' ? { k: 'collage' } : { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
+      S.src = { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
     };
+    $('#tabs').onclick = (e) => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#lvs').onclick = (e) => { const b = e.target.closest('.lv'); if (!b) return; S.level = b.dataset.l; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
