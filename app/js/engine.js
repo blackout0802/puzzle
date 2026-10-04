@@ -6,10 +6,10 @@
   const CELL = 60;            // 盤面の1マス（ワールド座標）
   const TS = 0.88;            // ピース置き場での表示倍率
   const LEVELS = {
-    easy:   { name: 'やさしい',         desc: 'うすい見本と、ヒントのひかり', ghost: 0.38, grid: true,  assist: true,  rot: false },
-    normal: { name: 'ふつう',           desc: 'うすい見本あり',               ghost: 0.14, grid: true,  assist: false, rot: false },
-    hard:   { name: 'むずかしい',       desc: '盤面に見本なし（右上の見本だけ）', ghost: 0,    grid: false, assist: false, rot: false },
-    expert: { name: 'ちょうむずかしい', desc: 'さらに、ピースがまわっている', ghost: 0,  grid: false, assist: false, rot: true },
+    easy:   { name: 'やさしい',         desc: 'うすい見本と、ヒントのひかり', ghost: 0.38, grid: true,  assist: true,  rot: false, snap: 0.8 },
+    normal: { name: 'ふつう',           desc: 'うすい見本あり',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
+    hard:   { name: 'むずかしい',       desc: '盤面に見本なし（右上の見本だけ）', ghost: 0,    grid: false, assist: false, rot: false, snap: 0.42 },
+    expert: { name: 'ちょうむずかしい', desc: 'さらに、ピースがまわっている', ghost: 0,  grid: false, assist: false, rot: true, snap: 0.35 },
   };
   const $ = (s) => document.querySelector(s);
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
@@ -63,7 +63,10 @@
     return best;
   }
 
-  /* ---------------------------------------------------------------- 状態 */
+  /* ---------------------------------------------------------------- 状態
+     ピースは3つの場所のどれかにある:  'tray' ピース置き場 / 'table' 盤面の外のテーブル / 'board' 盤面（固定）
+     テーブルのピースは「グループ」にまとまる。グループの位置は (ax, ay) = 盤面の左上(0,0)に相当する点。
+     つまり ピース(r,c) は (ax + c*CELL, ay + r*CELL) にいる。ax=ay=0 なら盤面とぴったり重なる。 */
   let G = null, ui = null;
   const cam = { x: 0, y: 0, s: 1 };
   const E = (window.Engine = { LEVELS, Sources, gridFor, CELL, on: {} });
@@ -71,7 +74,7 @@
   function refs() {
     if (ui) return ui;
     ui = {
-      game: $('#game'), view: $('#view'), world: $('#world'), board: $('#board'), ring: $('#ring'),
+      game: $('#game'), view: $('#view'), world: $('#world'), board: $('#board'), ring: $('#ring'), table: $('#table'),
       tray: $('#tray'), filters: $('#filters'), timer: $('#timer'), left: $('#left'),
       hand: $('#hand'), ref: $('#ref'), refImg: $('#ref img'), peek: $('#peek'), peekImg: $('#peek img'), loading: $('#loading'), toast: $('#toast'),
     };
@@ -94,21 +97,29 @@
     else top = Math.max(hs + 16, rr.bottom - v.t + 6);
     const aw = v.w - left - right, ah = v.h - top;
     const s = Math.min(aw * 0.96 / G.W, ah * 0.96 / G.H);
-    G.fit = s; G.sMin = s * 0.8; G.sMax = Math.max(160 / CELL, s * 3);
+    G.fit = s; G.sTable = Math.min(v.w / (G.W + 2 * G.M), v.h / (G.H + 2 * G.M)) * 0.94;
+    G.sMin = Math.min(G.sTable, s * 0.8); G.sMax = Math.max(160 / CELL, s * 3);
     cam.s = s; cam.x = left + (aw - G.W * s) / 2; cam.y = top + (ah - G.H * s) / 2; applyCam(anim);
   }
-  function clampCam() { const v = viewSize(), m = 80; cam.x = clamp(cam.x, m - G.W * cam.s, v.w - m); cam.y = clamp(cam.y, m - G.H * cam.s, v.h - m); }
+  function fitTable(anim) {                                      // テーブル全体が見えるところまで引く
+    const v = viewSize(); cam.s = G.sTable; cam.x = v.w / 2 - (G.W / 2) * cam.s; cam.y = v.h / 2 - (G.H / 2) * cam.s; applyCam(anim);
+  }
+  function clampCam() {
+    const v = viewSize(), m = 80, M = G.M;
+    cam.x = clamp(cam.x, m - (G.W + M) * cam.s, v.w - m + M * cam.s);
+    cam.y = clamp(cam.y, m - (G.H + M) * cam.s, v.h - m + M * cam.s);
+  }
   function zoomAt(px, py, s2, anim) {
     s2 = clamp(s2, G.sMin, G.sMax);
     const wx = (px - cam.x) / cam.s, wy = (py - cam.y) / cam.s;
     cam.s = s2; cam.x = px - wx * s2; cam.y = py - wy * s2; clampCam(); applyCam(anim);
   }
-  function focusCell(r, c, anim) {          // 指定のマスが画面の真ん中に来るように
+  function focusWorld(wx, wy, anim) {                            // 指定の場所が画面の真ん中に来るように
     const v = viewSize(), s = clamp(Math.max(cam.s, 110 / CELL), G.sMin, G.sMax);
-    cam.s = s; cam.x = v.w / 2 - (c + 0.5) * CELL * s; cam.y = v.h / 2 - (r + 0.5) * CELL * s; clampCam(); applyCam(anim);
+    cam.s = s; cam.x = v.w / 2 - wx * s; cam.y = v.h / 2 - wy * s; clampCam(); applyCam(anim);
   }
 
-  /* 盤面の指操作：1本=移動 / 2本=拡大縮小 / ちょん=置く */
+  /* 盤面の指操作：1本=移動 / 2本=拡大縮小 / ちょん=タップ */
   function bindView() {
     const v = ui.view, ptrs = new Map();
     let pinch = null, multi = false;
@@ -137,7 +148,7 @@
     const up = (e) => {
       const q = ptrs.get(e.pointerId); if (!q) return;
       ptrs.delete(e.pointerId);
-      if (e.type === 'pointerup' && !q.moved && !multi && G) onTapBoard(q.x, q.y);
+      if (e.type === 'pointerup' && !q.moved && !multi && G) onTap(q.x, q.y);
       if (ptrs.size < 2) pinch = null;
       if (ptrs.size === 0) multi = false;
     };
@@ -159,27 +170,28 @@
     const grid = o.save ? { rows: o.save.rows, cols: o.save.cols } : gridFor(o.target, info.aspect);
     const rows = grid.rows, cols = grid.cols, n = rows * cols, W = cols * CELL, H = rows * CELL;
     const RES = Math.max(1, Math.min(2, 4096 / Math.max(W, H)));
-    const pad = Math.ceil(CELL * 0.3), S = CELL + pad * 2;
+    const pad = Math.ceil(CELL * 0.3), S = CELL + pad * 2, M = Math.round(Math.max(W, H) * 0.5);
     const seed = o.save ? o.save.seed : (Math.random() * 1e9) | 0;
     const rnd = PZ.rng(seed), edges = PZ.edges(rows, cols, seed);
     const order = shuffleSeed([...Array(n).keys()], rnd);
     const rots = Array.from({ length: n }, () => (L.rot ? 1 + Math.floor(rnd() * 3) : 0));
     const srcC = Sources.cover(info.img, W * RES, H * RES);
     G = {
-      desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, RES, pad, S, seed,
-      srcC, pieces: [], placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
-      started: !!(o.save && o.save.placed && o.save.placed.length), over: false, filter: 'all', fit: 1, sMin: 0.2, sMax: 3, order, timerId: 0, lastTick: 0, destroyed: false,
+      desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
+      srcC, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
+      started: !!(o.save && ((o.save.placed && o.save.placed.length) || (o.save.groups && o.save.groups.length))), over: false, filter: 'all',
+      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, timerId: 0, lastTick: 0, destroyed: false,
     };
-    // 盤面
+    // 盤面とテーブル
     const b = ui.board; b.width = Math.ceil(W * RES); b.height = Math.ceil(H * RES); b.style.width = W + 'px'; b.style.height = H + 'px';
     ui.world.style.width = W + 'px'; ui.world.style.height = H + 'px';
+    Object.assign(ui.table.style, { left: -M + 'px', top: -M + 'px', width: W + 2 * M + 'px', height: H + 2 * M + 'px' });
     drawBoardBase();
-    // 見本（みほんボタン用）
+    // 見本（右上の小さな見本と、タップで出る大きな見本）
     const refUrl = PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W).toDataURL('image/jpeg', 0.85);
-    ui.peekImg.src = refUrl; ui.refImg.src = refUrl;                    // 右上の見本（小）と、タップで出る大きな見本
+    ui.peekImg.src = refUrl; ui.refImg.src = refUrl;
     ui.ref.style.aspectRatio = `${W} / ${H}`;
     // ピース
-    const placedSet = new Set(o.save ? o.save.placed : []);
     for (let i = 0; i < n; i++) {
       const r = Math.floor(i / cols), c = i % cols;
       const cv = document.createElement('canvas'); cv.width = cv.height = Math.ceil(S * RES);
@@ -189,12 +201,15 @@
       x.save(); x.clip(path); x.drawImage(srcC, -c * CELL, -r * CELL, W, H); x.restore();
       x.lineJoin = 'round'; x.strokeStyle = 'rgba(0,0,0,.30)'; x.lineWidth = 2.2; x.stroke(path);
       x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 1.1; x.stroke(path);
-      G.pieces.push({ i, r, c, cv, rot: rots[i], deg: rots[i] * 90, placed: false, tp: null, edge: r === 0 || c === 0 || r === rows - 1 || c === cols - 1 });
+      G.pieces.push({ i, r, c, cv, rot: rots[i], deg: rots[i] * 90, state: 'tray', tp: null, g: null, edge: r === 0 || c === 0 || r === rows - 1 || c === cols - 1 });
       if (i % 25 === 24) { ui.loading.querySelector('span').textContent = `ピースを つくっています ${Math.round(i / n * 100)}%`; await nextFrame(); if (G.destroyed) return; }
     }
-    // 置き場に並べる／保存分は盤面へ
-    G.pieces.forEach((p) => { if (placedSet.has(p.i)) { p.placed = true; G.placed++; drawPiece(p); } });
-    order.forEach((i) => { const p = G.pieces[i]; if (!p.placed) buildTp(p); });
+    // 保存分の復元：盤面 → テーブルのグループ → 残りはピース置き場へ
+    if (o.save) {
+      (o.save.placed || []).forEach((i) => { const p = G.pieces[i]; if (p) { p.state = 'board'; G.placed++; drawPiece(p); } });
+      (o.save.groups || []).forEach((sg) => { const ms = sg.m.filter((i) => G.pieces[i] && G.pieces[i].state === 'tray'); if (ms.length) newGroup(ms, sg.ax, sg.ay); });
+    }
+    order.forEach((i) => { const p = G.pieces[i]; if (p.state === 'tray') buildTp(p); });
     updateLabels(); setFilter('all'); showTimer();
     ui.game.classList.add('on'); ui.loading.classList.remove('on');
     await nextFrame(); fitCam(false);
@@ -227,89 +242,188 @@
     p.cv.style.transform = `rotate(${p.deg}deg)`; tp.appendChild(p.cv); p.tp = tp; ui.tray.appendChild(tp);
   }
 
-  /* ----------------------------------------------------- ピースの選択と配置 */
-  function toast(msg) {
-    ui.toast.textContent = msg; ui.toast.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => ui.toast.classList.remove('on'), 1600);
+  /* ----------------------------------------------------------- グループ（テーブルのかたまり） */
+  function newGroup(ms, ax, ay) {
+    const g = { id: ++G.gid, ms: new Set(ms), ax, ay, el: null, z: ++G.z, box: null };
+    ms.forEach((i) => { const p = G.pieces[i]; p.g = g; p.state = 'table'; if (p.tp) { p.tp.remove(); p.tp = null; } });
+    G.groups.push(g); compose(g); return g;
   }
-  function selectPiece(p) {
-    if (!G || G.over || p.placed) return;
-    if (G.sel === p) { if (G.L.rot) { rotate(p); return; } deselect(); return; }
-    deselect(); G.sel = p; p.tp.classList.add('sel'); PZ.snd.pick();
-    showHand(p);
+  function removeGroup(g) { if (g.el) g.el.remove(); G.groups = G.groups.filter((x) => x !== g); }
+  /* メンバーを1枚のcanvasに描く（かたまりが大きくても、画面の部品は1つ） */
+  function compose(g) {
+    let rmin = 1e9, rmax = -1, cmin = 1e9, cmax = -1;
+    g.ms.forEach((i) => { const p = G.pieces[i]; rmin = Math.min(rmin, p.r); rmax = Math.max(rmax, p.r); cmin = Math.min(cmin, p.c); cmax = Math.max(cmax, p.c); });
+    g.box = { rmin, rmax, cmin, cmax };
+    const w = (cmax - cmin + 1) * CELL + 2 * G.pad, h = (rmax - rmin + 1) * CELL + 2 * G.pad;
+    if (!g.el) { g.el = document.createElement('canvas'); g.el.className = 'grp'; ui.world.appendChild(g.el); }
+    const cv = g.el; cv.width = Math.ceil(w * G.RES); cv.height = Math.ceil(h * G.RES); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    const x = cv.getContext('2d'); x.setTransform(G.RES, 0, 0, G.RES, 0, 0);
+    g.ms.forEach((i) => { const p = G.pieces[i]; x.drawImage(p.cv, (p.c - cmin) * CELL, (p.r - rmin) * CELL, G.S, G.S); });
+    placeGroupEl(g);
+  }
+  function placeGroupEl(g) {
+    g.el.style.left = g.ax + g.box.cmin * CELL - G.pad + 'px'; g.el.style.top = g.ay + g.box.rmin * CELL - G.pad + 'px'; g.el.style.zIndex = g.z;
+  }
+  function hitGroup(wx, wy) {                                      // 指の下にある、いちばん上のグループとピース
+    const gs = G.groups.slice().sort((a, b) => b.z - a.z);
+    for (const g of gs) {
+      const c = Math.floor((wx - g.ax) / CELL), r = Math.floor((wy - g.ay) / CELL);
+      if (r < 0 || c < 0 || r >= G.rows || c >= G.cols) continue;
+      const idx = r * G.cols + c; if (g.ms.has(idx)) return { g, idx };
+    }
+    return null;
+  }
+  function nbrs(i) {
+    const p = G.pieces[i], out = [];
+    if (p.r > 0) out.push(i - G.cols); if (p.r < G.rows - 1) out.push(i + G.cols); if (p.c > 0) out.push(i - 1); if (p.c < G.cols - 1) out.push(i + 1);
+    return out;
+  }
+  const members = (U) => (U.from === 'tray' ? [U.p.i] : [...U.g.ms]);
+  const touches = (U, idx) => members(U).some((i) => nbrs(i).includes(idx));     // 選んだものの誰かが、idx のピースと本当にとなりあっているか
+  const upright = (U) => U.from !== 'tray' || U.p.rot % 4 === 0;
+
+  /* ----------------------------------------------------- 選ぶ・置く・くっつける */
+  function toast(msg) {
+    ui.toast.textContent = msg; ui.toast.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => ui.toast.classList.remove('on'), 2200);
+  }
+  function startSelect() {
     if (!G.started) G.started = true;
-    if (G.L.assist) pulse(p.r, p.c, 0);
+    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('つなげたい ピースを タップ。あいている ばしょを タップで おけるよ'); }
+  }
+  function selectTray(p) {
+    if (!G || G.over || p.state !== 'tray') return;
+    if (G.sel && G.sel.from === 'tray' && G.sel.p === p) { if (G.L.rot) { rotate(p); return; } deselect(); return; }
+    deselect(); G.sel = { from: 'tray', p }; p.tp.classList.add('sel'); PZ.snd.pick();
+    showHand(); startSelect();
+    if (G.L.assist) pulseCell(p.r, p.c, 0);
+  }
+  function selectGroup(g) {
+    deselect(); G.sel = { from: 'table', g }; g.el.classList.add('sel'); PZ.snd.pick();
+    showHand(); startSelect();
+    if (G.L.assist) { const p = G.pieces[[...g.ms][0]]; pulseCell(p.r, p.c, 0); }
   }
   function deselect() {
     if (!G || !G.sel) return;
-    G.sel.tp && G.sel.tp.classList.remove('sel'); G.sel = null; ui.hand.classList.remove('on'); ui.ring.classList.remove('on');
+    const U = G.sel; if (U.from === 'tray') U.p.tp && U.p.tp.classList.remove('sel'); else U.g.el && U.g.el.classList.remove('sel');
+    G.sel = null; ui.hand.classList.remove('on'); ui.ring.classList.remove('on');
   }
-  function showHand(p) {
-    const h = ui.hand; h.innerHTML = ''; const c = document.createElement('canvas');
-    c.width = p.cv.width; c.height = p.cv.height; c.getContext('2d').drawImage(p.cv, 0, 0);
-    c.style.transform = `rotate(${p.deg}deg)`; h.appendChild(c);
-    h.classList.toggle('rot', G.L.rot); h.classList.add('on');
+  function showHand() {
+    const U = G.sel, h = ui.hand; h.innerHTML = ''; const c = document.createElement('canvas');
+    const src = U.from === 'tray' ? U.p.cv : U.g.el;
+    c.width = src.width; c.height = src.height; c.getContext('2d').drawImage(src, 0, 0);
+    if (U.from === 'tray') c.style.transform = `rotate(${U.p.deg}deg)`;
+    h.appendChild(c); h.classList.toggle('rot', U.from === 'tray' && G.L.rot); h.classList.add('on');
   }
   function rotate(p) {
     p.rot = (p.rot + 1) % 4; p.deg += 90; PZ.snd.pick();
     p.cv.style.transform = `rotate(${p.deg}deg)`;
     const hc = ui.hand.querySelector('canvas'); if (hc) hc.style.transform = `rotate(${p.deg}deg)`;
   }
-  function pulse(r, c, ms) {
-    const ring = ui.ring; ring.style.left = c * CELL + 'px'; ring.style.top = r * CELL + 'px'; ring.style.width = ring.style.height = CELL + 'px';
+  function pulseAt(wx, wy, ms) {
+    const ring = ui.ring; ring.style.left = wx + 'px'; ring.style.top = wy + 'px'; ring.style.width = ring.style.height = CELL + 'px';
     ring.classList.remove('on'); void ring.offsetWidth; ring.classList.add('on');
-    clearTimeout(pulse.t); if (ms) pulse.t = setTimeout(() => ring.classList.remove('on'), ms);
+    clearTimeout(pulseAt.t); if (ms) pulseAt.t = setTimeout(() => ring.classList.remove('on'), ms);
   }
+  const pulseCell = (r, c, ms) => pulseAt(c * CELL, r * CELL, ms);
   function wobbleHand() { ui.hand.classList.remove('wob'); void ui.hand.offsetWidth; ui.hand.classList.add('wob'); }
+  function miss() { G.misses++; PZ.snd.soft(); wobbleHand(); }
+  const tol = () => G.L.snap * CELL;
 
-  function onTapBoard(x, y) {
-    if (!G || G.over || !G.sel) return;
-    const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s;
-    if (wx < 0 || wy < 0 || wx >= G.W || wy >= G.H) return;
-    const c = Math.floor(wx / CELL), r = Math.floor(wy / CELL), t = G.pieces[r * G.cols + c], p = G.sel;
-    if (t.placed) return;                                  // もうはまっているマスは、何も起きない
-    if (t === p) {
-      if (G.L.rot && p.rot % 4 !== 0) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね'); return; }
-      place(p);
-    } else { G.misses++; PZ.snd.soft(); wobbleHand(); }
+  function onTap(x, y) {
+    if (!G || G.over) return;
+    const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, hit = hitGroup(wx, wy);
+    const U = G.sel;
+    if (!U) { if (hit) selectGroup(hit.g); return; }                         // 何も持っていない時：テーブルのかたまりを持ち上げる
+    if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね'); return; }
+    const inBoard = wx >= 0 && wy >= 0 && wx < G.W && wy < G.H;
+    const bidx = inBoard ? Math.floor(wy / CELL) * G.cols + Math.floor(wx / CELL) : -1;
+    if (inBoard && members(U).includes(bidx)) { toBoard(U); return; }        // 正しいマスをタップ：はまる（上にテーブルのかたまりが重なっていても）
+    if (U.from === 'table' && hit && hit.g === U.g) { deselect(); return; }  // 自分をもう一度タップ：やめる
+    if (hit) {                                                               // ほかのかたまりをタップ：その中のピースととなりあっていればくっつく
+      if (touches(U, hit.idx)) attach(U, hit.g); else miss();
+      return;
+    }
+    if (inBoard) {
+      if (G.pieces[bidx].state === 'board' && touches(U, bidx)) toBoard(U);  // 置いてあるピースをタップ：となりなら、そこにはまる
+      else miss();
+      return;
+    }
+    if (wx >= -G.M && wy >= -G.M && wx < G.W + G.M && wy < G.H + G.M) putDown(U, wx, wy);   // テーブルの空いている所：仮置き
   }
-  function place(p) {
-    drawPiece(p); p.placed = true; G.placed++;
-    p.tp.remove(); p.tp = null; G.sel = null; ui.hand.classList.remove('on'); ui.ring.classList.remove('on');
-    // 置いた瞬間の「ぽん」
-    const pop = document.createElement('canvas'); pop.width = p.cv.width; pop.height = p.cv.height; pop.getContext('2d').drawImage(p.cv, 0, 0);
-    pop.className = 'pop'; Object.assign(pop.style, { left: p.c * CELL - G.pad + 'px', top: p.r * CELL - G.pad + 'px', width: G.S + 'px', height: G.S + 'px' });
+
+  function popAt(src, left, top, w, h) {
+    const pop = document.createElement('canvas'); pop.width = src.width; pop.height = src.height; pop.getContext('2d').drawImage(src, 0, 0);
+    pop.className = 'pop'; Object.assign(pop.style, { left: left + 'px', top: top + 'px', width: w + 'px', height: h + 'px' });
     ui.world.appendChild(pop); setTimeout(() => pop.remove(), 520);
-    PZ.snd.ok(); updateLabels(); persist();
+  }
+  function finishMove() { deselect(); updateLabels(); persist(); }
+
+  function toBoard(U) {                                                       // 盤面に固定する
+    const ms = members(U);
+    if (U.from === 'tray') { const p = U.p; popAt(p.cv, p.c * CELL - G.pad, p.r * CELL - G.pad, G.S, G.S); }
+    else { const g = U.g; popAt(g.el, g.box.cmin * CELL - G.pad, g.box.rmin * CELL - G.pad, parseFloat(g.el.style.width), parseFloat(g.el.style.height)); removeGroup(g); }
+    ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = null; p.state = 'board'; G.placed++; drawPiece(p); });
+    PZ.snd.ok(); finishMove();
     if (G.placed === G.n) win(false);
+  }
+  function attach(U, T) {                                                     // となりあうかたまりにくっつく（位置はTにそろう）
+    const ms = members(U);
+    if (U.from === 'table') removeGroup(U.g);
+    ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = T; p.state = 'table'; T.ms.add(i); });
+    T.z = ++G.z; compose(T);
+    T.el.classList.remove('joined'); void T.el.offsetWidth; T.el.classList.add('joined');
+    PZ.snd.ok(); finishMove();
+  }
+  function putDown(U, wx, wy) {                                               // テーブルに置く／動かす（近くのとなりに合えば、そのままくっつく）
+    const ms = members(U).map((i) => G.pieces[i]);
+    const rmin = Math.min(...ms.map((p) => p.r)), rmax = Math.max(...ms.map((p) => p.r)), cmin = Math.min(...ms.map((p) => p.c)), cmax = Math.max(...ms.map((p) => p.c));
+    const ax = wx - (cmin + cmax + 1) / 2 * CELL, ay = wy - (rmin + rmax + 1) / 2 * CELL;
+    if (Math.abs(ax) <= tol() && Math.abs(ay) <= tol()) { toBoard(U); return; }          // 盤面のふちにぴったり近い
+    const set = new Set(members(U));
+    for (const T of G.groups) {
+      if (U.from === 'table' && T === U.g) continue;
+      if (Math.abs(ax - T.ax) <= tol() && Math.abs(ay - T.ay) <= tol() && [...set].some((i) => nbrs(i).some((j) => T.ms.has(j)))) { attach(U, T); return; }
+    }
+    if (U.from === 'tray') newGroup([U.p.i], ax, ay);
+    else { U.g.ax = ax; U.g.ay = ay; U.g.z = ++G.z; placeGroupEl(U.g); }
+    PZ.snd.drop(); finishMove();
   }
 
   /* ---------------------------------------------------- 絞りこみ・ヒント・表示 */
   function setFilter(f) {
     G.filter = f; ui.filters.querySelectorAll('button[data-f]').forEach((b) => b.classList.toggle('on', b.dataset.f === f));
     G.pieces.forEach((p) => { if (p.tp) p.tp.classList.toggle('hide', !(f === 'all' || (f === 'edge' ? p.edge : !p.edge))); });
-    if (G.sel && G.sel.tp && G.sel.tp.classList.contains('hide')) deselect();
+    if (G.sel && G.sel.from === 'tray' && G.sel.p.tp.classList.contains('hide')) deselect();
   }
   function updateLabels() {
+    const tray = G.pieces.filter((p) => p.state === 'tray'), onTable = G.pieces.filter((p) => p.state === 'table').length;
     ui.left.textContent = `あと ${G.n - G.placed}`;
-    const e = G.pieces.filter((p) => !p.placed && p.edge).length, m = G.pieces.filter((p) => !p.placed && !p.edge).length;
-    ui.filters.querySelector('[data-f="edge"]').textContent = `ふち ${e}`;
-    ui.filters.querySelector('[data-f="mid"]').textContent = `なか ${m}`;
-    ui.filters.querySelector('[data-f="all"]').textContent = `ぜんぶ ${G.n - G.placed}`;
+    ui.filters.querySelector('[data-f="edge"]').textContent = `ふち ${tray.filter((p) => p.edge).length}`;
+    ui.filters.querySelector('[data-f="mid"]').textContent = `なか ${tray.filter((p) => !p.edge).length}`;
+    ui.filters.querySelector('[data-f="all"]').textContent = `ぜんぶ ${tray.length}`;
+    ui.game.classList.toggle('hasTable', onTable > 0);
   }
   function hint() {
     if (!G || G.over) return;
-    const left = G.pieces.filter((p) => !p.placed); if (!left.length) return;
-    const has = (r, c) => r >= 0 && c >= 0 && r < G.rows && c < G.cols && G.pieces[r * G.cols + c].placed;
-    let cand = left.filter((p) => has(p.r - 1, p.c) || has(p.r + 1, p.c) || has(p.r, p.c - 1) || has(p.r, p.c + 1));
-    if (!cand.length) cand = left.filter((p) => (p.r === 0 || p.r === G.rows - 1) && (p.c === 0 || p.c === G.cols - 1));
-    if (!cand.length) cand = left;
+    const tray = G.pieces.filter((p) => p.state === 'tray'), st = (j) => G.pieces[j].state;
+    if (!tray.length) {                                                      // 置き場が空：テーブルのかたまりを盤面へ
+      const g = G.groups[0]; if (!g) return; const p = G.pieces[[...g.ms][0]];
+      selectGroup(g); pulseCell(p.r, p.c, 4000); focusWorld((p.c + 0.5) * CELL, (p.r + 0.5) * CELL, true); return;
+    }
+    let cand = tray.filter((p) => nbrs(p.i).some((j) => st(j) === 'board')), mode = 'cell';
+    if (!cand.length) { cand = tray.filter((p) => nbrs(p.i).some((j) => st(j) === 'table')); mode = 'table'; }
+    if (!cand.length) { mode = 'cell'; cand = tray.filter((p) => (p.r === 0 || p.r === G.rows - 1) && (p.c === 0 || p.c === G.cols - 1)); }
+    if (!cand.length) cand = tray;
     const p = PZ.pick(cand);
     if (G.filter !== 'all') setFilter('all');
-    selectPiece(p);
+    selectTray(p);
     const t = ui.tray;
     if (landscape()) t.scrollTo({ top: p.tp.offsetTop - t.clientHeight / 2 + p.tp.offsetHeight / 2, behavior: 'smooth' });
     else t.scrollTo({ left: p.tp.offsetLeft - t.clientWidth / 2 + p.tp.offsetWidth / 2, behavior: 'smooth' });
-    focusCell(p.r, p.c, true); pulse(p.r, p.c, 4000);
+    if (mode === 'table') {                                                  // となりのピースが、テーブルのかたまりにある → そのピースを光らせる
+      const q = G.pieces[nbrs(p.i).find((j) => st(j) === 'table')], g = q.g, wx = g.ax + q.c * CELL, wy = g.ay + q.r * CELL;
+      pulseAt(wx, wy, 4000); focusWorld(wx + CELL / 2, wy + CELL / 2, true);
+    } else { pulseCell(p.r, p.c, 4000); focusWorld((p.c + 0.5) * CELL, (p.r + 0.5) * CELL, true); }
   }
   function setPeek(on) { ui.peek.classList.toggle('on', on); }
 
@@ -326,7 +440,12 @@
     clearTimeout(saveT);
     const go = () => {
       if (!G || G.over) return;
-      Store.put('saves', { id: 'current', desc: G.desc, rows: G.rows, cols: G.cols, level: G.level, seed: G.seed, placed: G.pieces.filter((p) => p.placed).map((p) => p.i), elapsed: G.elapsed, misses: G.misses, ts: Date.now() }).catch(() => { });
+      Store.put('saves', {
+        id: 'current', desc: G.desc, rows: G.rows, cols: G.cols, level: G.level, seed: G.seed,
+        placed: G.pieces.filter((p) => p.state === 'board').map((p) => p.i),
+        groups: G.groups.map((g) => ({ m: [...g.ms], ax: g.ax, ay: g.ay })),
+        elapsed: G.elapsed, misses: G.misses, ts: Date.now(),
+      }).catch(() => { });
     };
     if (now) go(); else saveT = setTimeout(go, 400);
   }
@@ -352,8 +471,8 @@
     if (!G) return;
     G.destroyed = true; clearInterval(G.timerId); clearTimeout(saveT);
     ui.tray.innerHTML = ''; ui.hand.classList.remove('on'); ui.ring.classList.remove('on'); ui.peek.classList.remove('on');
-    ui.world.querySelectorAll('.final,.pop').forEach((e) => e.remove());
-    ui.game.classList.remove('on'); G = null;
+    ui.world.querySelectorAll('.final,.pop,.grp').forEach((e) => e.remove());
+    ui.game.classList.remove('on', 'hasTable'); G = null;
   }
   function exit() { persist(true); destroy(); E.on.exit && E.on.exit(); }
 
@@ -361,15 +480,15 @@
   function init() {
     refs(); bindView();
     ui.tray.addEventListener('click', (e) => {
-      const tp = e.target.closest('.tp'); if (!tp || !G) return; selectPiece(G.pieces[+tp.dataset.i]);
+      const tp = e.target.closest('.tp'); if (!tp || !G) return; selectTray(G.pieces[+tp.dataset.i]);
     });
-    ui.hand.addEventListener('click', () => { if (!G || !G.sel) return; if (G.L.rot) rotate(G.sel); else deselect(); });
+    ui.hand.addEventListener('click', () => { if (!G || !G.sel) return; if (G.sel.from === 'tray' && G.L.rot) rotate(G.sel.p); else deselect(); });
     ui.filters.addEventListener('click', (e) => { const b = e.target.closest('button[data-f]'); if (b && G) setFilter(b.dataset.f); });
     $('#gBack').onclick = exit;
     $('#gHint').onclick = hint;
     $('#zIn').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s * 1.35, true); };
     $('#zOut').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s / 1.35, true); };
-    $('#zFit').onclick = () => G && fitCam(true);
+    $('#zFit').onclick = () => { if (!G) return; if (Math.abs(cam.s - G.fit) < G.fit * 0.04) fitTable(true); else fitCam(true); };   // 盤面ぜんたい → もう一度でテーブルぜんたい
     ui.ref.addEventListener('click', () => setPeek(!ui.peek.classList.contains('on')));      // 右上の見本：タップで大きく／もう一度で閉じる
     ui.peek.addEventListener('click', () => setPeek(false));
     let rt = 0;
@@ -377,4 +496,5 @@
   }
   E.init = init; E.start = start; E.exit = exit; E.fmt = fmt;
   E.active = () => !!G;
+  E.debug = () => G;                                              // テスト用：内部状態を覗く
 })();
