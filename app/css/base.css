@@ -1,0 +1,35 @@
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
+  font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif}
+button{font:inherit;cursor:pointer;touch-action:manipulation}
+canvas,img{display:block;-webkit-user-drag:none}
+
+/* 左上の「ギャラリーへもどる」ボタン */
+.home{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;z-index:50;width:44px;height:44px;
+  border-radius:50%;background:rgba(255,255,255,.88);display:grid;place-items:center;
+  text-decoration:none;color:#444;font-size:22px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+
+/* ごほうび */
+.confetti-piece{position:fixed;top:-24px;width:12px;height:18px;z-index:200;pointer-events:none;
+  animation:cf 2.6s ease-in forwards}
+@keyframes cf{to{transform:translate(var(--dx),112vh) rotate(var(--rot))}}
+.banner{position:fixed;left:0;right:0;bottom:24%;z-index:210;text-align:center;pointer-events:none;white-space:nowrap;
+  font-size:min(12.5vw,76px);font-weight:900;color:#fff;letter-spacing:.04em;
+  text-shadow:0 4px 0 #ff7a59,0 8px 14px rgba(0,0,0,.3);animation:ban 2.2s ease forwards}
+@keyframes ban{0%{transform:scale(.2) rotate(-8deg);opacity:0}15%{transform:scale(1.15) rotate(3deg);opacity:1}
+  25%{transform:scale(1) rotate(0)}85%{opacity:1}100%{transform:scale(1);opacity:0}}
+
+/* 保護者ゲート */
+.gate-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:grid;place-items:center}
+.gate{background:#fff;border-radius:22px;padding:22px 20px 14px;width:min(88vw,340px);text-align:center;color:#333}
+.gate h2{margin:0 0 4px;font-size:18px}
+.gate p{margin:0 0 10px;color:#666;font-size:13px}
+.gate .q{font-size:34px;font-weight:800;margin:6px 0 14px}
+.gate .ans{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gate .ans button{padding:14px;font-size:26px;border-radius:14px;border:2px solid #ddd;background:#f6f6f6}
+.gate .ans button:active{background:#e8f0ff}
+.gate .cancel{margin-top:10px;background:none;border:0;color:#888;font-size:14px;padding:8px 14px}
+
+/* ドラッグ中のピース */
+.drag{filter:drop-shadow(0 10px 10px rgba(0,0,0,.35)) !important;cursor:grabbing}
