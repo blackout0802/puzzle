@@ -89,6 +89,12 @@
     ui.world.style.setProperty('--inv', 1 / cam.s);               // 拡大しても枠線の太さが変わらないように
   }
   function viewSize() { const r = ui.view.getBoundingClientRect(); return { w: r.width, h: r.height, l: r.left, t: r.top }; }
+  /* 右上の見本は、パズルとまったく同じ縦横比にする（縦長なら縦長、横長なら横長。切り抜かない） */
+  function setRefSize() {
+    const box = landscape() ? 78 : (innerWidth <= 380 ? 80 : 92), a = G.W / G.H;
+    const w = a >= 1 ? box : box * a, h = a >= 1 ? box / a : box;
+    Object.assign(ui.ref.style, { width: w + 'px', height: h + 'px', maxHeight: 'none', aspectRatio: '' });
+  }
   function fitCam(anim) {
     const v = viewSize(), rr = ui.ref.getBoundingClientRect();
     const hs = landscape() ? 92 : 112;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
@@ -190,7 +196,7 @@
     // 見本（右上の小さな見本と、タップで出る大きな見本）
     const refUrl = PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W).toDataURL('image/jpeg', 0.85);
     ui.peekImg.src = refUrl; ui.refImg.src = refUrl;
-    ui.ref.style.aspectRatio = `${W} / ${H}`;
+    setRefSize();
     // ピース
     for (let i = 0; i < n; i++) {
       const r = Math.floor(i / cols), c = i % cols;
@@ -492,7 +498,7 @@
     ui.ref.addEventListener('click', () => setPeek(!ui.peek.classList.contains('on')));      // 右上の見本：タップで大きく／もう一度で閉じる
     ui.peek.addEventListener('click', () => setPeek(false));
     let rt = 0;
-    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (G) { fitCam(false); } }, 200); });
+    addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (G) { setRefSize(); fitCam(false); } }, 200); });
   }
   E.init = init; E.start = start; E.exit = exit; E.fmt = fmt;
   E.active = () => !!G;
