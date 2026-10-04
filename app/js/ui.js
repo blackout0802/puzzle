@@ -44,9 +44,12 @@
       else { clearTimeout(t); armed = false; btn.classList.remove('armed'); btn.textContent = label; action(); }
     };
   }
+  /* 写真のパズルの形：「きりとり」を決めていればその形、なければ写真の形（0.5〜2にそろえる） */
+  const photoAspect = (p) => Math.min(2, Math.max(0.5, p.crop ? p.crop.w / p.crop.h : p.w / p.h));
+  const thumbUrl = (p) => (p.tbuf ? (urls[p.id + '_t'] || (urls[p.id + '_t'] = URL.createObjectURL(new Blob([p.tbuf], { type: 'image/jpeg' })))) : blobUrl(p.id, p));
   const aspectOf = (src, photos) => {
     if (src.k === 'collage') return (src.id || 'animals') === 'vehicles' ? 1 : 4 / 3;
-    if (src.k === 'photo') { const p = photos.find((x) => x.id === src.id); return p ? Math.min(2, Math.max(0.5, p.w / p.h)) : 1; }
+    if (src.k === 'photo') { const p = photos.find((x) => x.id === src.id); return p ? photoAspect(p) : 1; }
     return 1;
   };
 
@@ -70,9 +73,9 @@
   /* ---------------------------------------------------------------- ホーム */
   /* 写真のサムネイルは、パズルと同じ縦横比で見せる（縦長は縦長、横長は横長。横にとても長いものは2マス分） */
   function thumbHtml(p, on) {
-    const a = Math.min(2, Math.max(0.5, p.w / p.h)), wide = a >= 1.6;
+    const a = photoAspect(p), wide = a >= 1.6;
     const iw = wide ? 100 : (a >= 1 ? 100 : 100 * a), ih = wide ? 100 : (a >= 1 ? 100 / a : 100);
-    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" data-ph="${p.id}" src="${blobUrl(p.id, p)}"></button>`;
+    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" data-ph="${p.id}" src="${thumbUrl(p)}"></button>`;
   }
   const collageUrls = {};
   async function getCollageUrl(id) {
@@ -127,7 +130,7 @@
         ${[['vehicle', 'のりもの'], ['nature', 'どうぶつ・しぜん'], ['photo', 'しゃしん']].map(([k, t]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${t}</button>`).join('')}
       </div>
       <div class="thumbs" id="thumbs">${thumbs}</div>
-      <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b></p>
+      <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b>${S.src.k === 'photo' ? ' <button id="cropBtn" class="mini" type="button">きりとりを なおす</button>' : ''}</p>
       <h2>ピースの かず</h2>
       <div class="cnts" id="cnts">
         ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
@@ -146,6 +149,7 @@
       if (b.id === 'addPhoto') return addPhoto();
       S.src = { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
     };
+    const cb = $('#cropBtn'); if (cb) cb.onclick = () => openCrop(S.src.id);
     $('#tabs').onclick = (e) => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#lvs').onclick = (e) => { const b = e.target.closest('.lv'); if (!b) return; S.level = b.dataset.l; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
@@ -218,6 +222,82 @@
     flash(!bad.length ? `しゃしんを ${ok}まい ついかしました${vol ? '（この たんまつでは ほぞんできないため、いまだけ つかえます）' : ''}`
       : ok ? `${ok}まい ついか、${bad.length}まいは ${bad[0]}` : `しゃしんを とりこめませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
     renderHome();
+    if (ok === 1 && !bad.length && S.src.k === 'photo') openCrop(S.src.id);          // 1枚だけ追加したときは、そのまま きりとり画面へ
+  }
+
+  /* ---------------------------------------------------------- 写真の きりとり */
+  async function openCrop(id) {
+    const rec = await Store.get('photos', id); if (!rec) return;
+    let img; const blob = Store.recBlob(rec);
+    try { img = await createImageBitmap(blob); } catch (e) { try { const u0 = URL.createObjectURL(blob); img = await PZ.loadImage(u0); } catch (e2) { flash('この しゃしんは ひらけません'); return; } }
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, base = Math.min(2, Math.max(0.5, iw / ih));
+    const ASP = { auto: base, sq: 1, land: 4 / 3, port: 3 / 4, wide: 2 };
+    const box = openSheet(`<h2>きりとりを きめる</h2>
+      <p class="note" style="text-align:center">ゆびで うごかして、パズルにしたい ところを あわせてね。<br>2ほんの ゆびで おおきく／ちいさく できます。</p>
+      <div class="cropstage"><canvas id="cropCv"></canvas></div>
+      <div class="aspects" id="cropAsp">${[['auto', 'そのまま'], ['sq', 'しかく'], ['land', 'よこ'], ['port', 'たて'], ['wide', 'ワイド']].map(([k, t]) => `<button type="button" data-a="${k}">${t}</button>`).join('')}</div>
+      <label class="zoomrow"><span>ちいさく</span><input type="range" id="cropZoom" min="1" max="5" step="0.01" value="1"><span>おおきく</span></label>
+      <div class="row"><button class="btn" id="cropCancel" type="button">やめる</button><button class="btn go" id="cropOk" type="button">これで きめた</button></div>`, 'cropbox');
+    const cv = $('#cropCv', box), sw = Math.round(Math.min(innerWidth * 0.88 - 40, 340)), sh = Math.round(Math.min(sw * 1.1, innerHeight * 0.42)), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = sw * dpr; cv.height = sh * dpr; cv.style.width = sw + 'px'; cv.style.height = sh + 'px'; cv.style.touchAction = 'none';
+    const x = cv.getContext('2d'); x.scale(dpr, dpr);
+    let key = 'auto', F = null, z = 1, k = 1, ox = 0, oy = 0;
+    if (rec.crop) { const a = rec.crop.w / rec.crop.h; key = Object.keys(ASP).reduce((b, c) => (Math.abs(ASP[c] / a - 1) < Math.abs(ASP[b] / a - 1) ? c : b), 'auto'); }
+    const frame = () => { const A = ASP[key], m = 14, aw = sw - m * 2, ah = sh - m * 2; const fw = A >= aw / ah ? aw : ah * A, fh = A >= aw / ah ? aw / A : ah; return { x: (sw - fw) / 2, y: (sh - fh) / 2, w: fw, h: fh }; };
+    const kmin = () => Math.max(F.w / iw, F.h / ih);
+    const clampPos = () => { ox = Math.min(F.x, Math.max(F.x + F.w - iw * k, ox)); oy = Math.min(F.y, Math.max(F.y + F.h - ih * k, oy)); };
+    const setAspect = (nk, keepCenter) => {
+      const c = keepCenter ? { x: (F.x + F.w / 2 - ox) / k, y: (F.y + F.h / 2 - oy) / k } : null;
+      key = nk; F = frame(); k = kmin() * z;
+      if (c) { ox = F.x + F.w / 2 - c.x * k; oy = F.y + F.h / 2 - c.y * k; } else { ox = F.x + (F.w - iw * k) / 2; oy = F.y + (F.h - ih * k) / 2; }
+      clampPos(); draw(); sync();
+    };
+    const draw = () => {
+      x.clearRect(0, 0, sw, sh); x.fillStyle = '#222'; x.fillRect(0, 0, sw, sh);
+      x.drawImage(img, ox, oy, iw * k, ih * k);
+      x.fillStyle = 'rgba(0,0,0,.55)'; x.beginPath(); x.rect(0, 0, sw, sh); x.rect(F.x, F.y, F.w, F.h); x.fill('evenodd');
+      x.strokeStyle = '#fff'; x.lineWidth = 3; x.strokeRect(F.x, F.y, F.w, F.h);
+      x.strokeStyle = 'rgba(255,255,255,.4)'; x.lineWidth = 1; x.beginPath();
+      for (let i = 1; i < 3; i++) { x.moveTo(F.x + F.w * i / 3, F.y); x.lineTo(F.x + F.w * i / 3, F.y + F.h); x.moveTo(F.x, F.y + F.h * i / 3); x.lineTo(F.x + F.w, F.y + F.h * i / 3); }
+      x.stroke();
+    };
+    const sync = () => { $('#cropZoom', box).value = z; box.querySelectorAll('#cropAsp button').forEach((b) => b.classList.toggle('on', b.dataset.a === key)); };
+    const setZoom = (nz, px, py) => {                                          // (px,py) の下の点が動かないように拡大
+      nz = Math.min(5, Math.max(1, nz)); const wx = (px - ox) / k, wy = (py - oy) / k;
+      z = nz; k = kmin() * z; ox = px - wx * k; oy = py - wy * k; clampPos(); draw(); sync();
+    };
+    F = frame(); k = kmin() * z;
+    if (rec.crop) { z = Math.min(5, Math.max(1, (F.w / rec.crop.w) / kmin())); k = kmin() * z; ox = F.x - rec.crop.x * k; oy = F.y - rec.crop.y * k; } else { ox = F.x + (F.w - iw * k) / 2; oy = F.y + (F.h - ih * k) / 2; }
+    clampPos(); draw(); sync();
+    // 指の操作：1本=うごかす／2本=つまんで大きさ
+    const ptrs = new Map(); let pinch = null;
+    const lp = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    cv.addEventListener('pointerdown', (e) => { try { cv.setPointerCapture(e.pointerId); } catch (_) { } ptrs.set(e.pointerId, lp(e)); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z }; } });
+    cv.addEventListener('pointermove', (e) => {
+      if (!ptrs.has(e.pointerId)) return; const p = lp(e), q = ptrs.get(e.pointerId);
+      if (ptrs.size === 1) { ox += p.x - q.x; oy += p.y - q.y; clampPos(); draw(); }
+      else if (ptrs.size === 2 && pinch) { ptrs.set(e.pointerId, p); const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); setZoom(pinch.z * d / Math.max(1, pinch.d), (a.x + b.x) / 2, (a.y + b.y) / 2); }
+      ptrs.set(e.pointerId, p);
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = lp(e); setZoom(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1), p.x, p.y); }, { passive: false });
+    $('#cropZoom', box).oninput = (e) => setZoom(+e.target.value, F.x + F.w / 2, F.y + F.h / 2);
+    $('#cropAsp', box).onclick = (e) => { const b = e.target.closest('button[data-a]'); if (b) setAspect(b.dataset.a, true); };
+    $('#cropCancel', box).onclick = () => { if (img.close) try { img.close(); } catch (e) { } closeSheet(); };
+    $('#cropOk', box).onclick = async () => {
+      const crop = { x: Math.max(0, Math.round((F.x - ox) / k)), y: Math.max(0, Math.round((F.y - oy) / k)), w: Math.round(F.w / k), h: Math.round(F.h / k) };
+      crop.w = Math.min(crop.w, iw - crop.x); crop.h = Math.min(crop.h, ih - crop.y);
+      const full = Math.abs(crop.x) < 2 && Math.abs(crop.y) < 2 && Math.abs(crop.w - iw) < 3 && Math.abs(crop.h - ih) < 3;     // 全体のままなら、きりとりなし
+      const t = 240, sc = t / Math.max(crop.w, crop.h), tc = document.createElement('canvas'); tc.width = Math.max(1, Math.round(crop.w * sc)); tc.height = Math.max(1, Math.round(crop.h * sc));
+      tc.getContext('2d').drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, tc.width, tc.height);
+      const next = Object.assign({}, rec, { crop: full ? null : crop, tbuf: await Store.toBuf(await toJpegBlob(tc)) });
+      if (full) { delete next.crop; }
+      await Store.put('photos', next);
+      if (urls[id + '_t']) { try { URL.revokeObjectURL(urls[id + '_t']); } catch (e) { } delete urls[id + '_t']; }
+      if (img.close) try { img.close(); } catch (e) { }
+      closeSheet(); S.src = { k: 'photo', id }; S.tab = 'photo'; Store.saveSettings(); flash('きりとりを きめました'); renderHome();
+    };
   }
 
   /* ----------------------------------------------------------------- クリア */

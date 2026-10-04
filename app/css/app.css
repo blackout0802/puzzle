@@ -221,3 +221,14 @@ button{font-family:inherit;color:inherit}
 .th.photo .brokenph{aspect-ratio:1}
 
 .warn{background:#fff3cd;color:#5a4220;border:2px solid #e8a100;border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.6}
+
+/* 写真の きりとり */
+.cropbox{width:min(94vw,420px)}
+.cropstage{margin:6px auto 8px;width:max-content;max-width:100%;border-radius:12px;overflow:hidden;background:#222;touch-action:none}
+.cropstage canvas{display:block}
+.aspects{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.aspects button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:8px 10px;font-size:13px;font-weight:800;color:var(--ink)}
+.aspects button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.zoomrow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.zoomrow input{flex:1;height:32px}
+.mini{border:0;border-radius:12px;background:var(--paper);color:var(--wood-dark);font-size:12px;font-weight:800;padding:4px 10px;margin-left:6px;box-shadow:0 2px 0 var(--wood-dark)}

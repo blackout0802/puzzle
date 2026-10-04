@@ -47,7 +47,15 @@
           try { const u = URL.createObjectURL(blob); img = await PZ.loadImage(u); }
           catch (e2) { throw Object.assign(new Error('photo-broken'), { name: 'PhotoBroken' }); }       // 保存された写真の中身が読めない
         }
-        info = { img, aspect: clamp(rec.w / rec.h, 0.5, 2), name: 'わたしの しゃしん', say: 'できたね' };
+        let aspect = clamp(rec.w / rec.h, 0.5, 2);
+        if (rec.crop && rec.crop.w > 4 && rec.crop.h > 4) {                       // 「きりとり」で決めた範囲だけをパズルにする
+          const k = Math.min(1, 1600 / Math.max(rec.crop.w, rec.crop.h)), cc = document.createElement('canvas');
+          cc.width = Math.max(1, Math.round(rec.crop.w * k)); cc.height = Math.max(1, Math.round(rec.crop.h * k));
+          cc.getContext('2d').drawImage(img, rec.crop.x, rec.crop.y, rec.crop.w, rec.crop.h, 0, 0, cc.width, cc.height);
+          if (img.close) try { img.close(); } catch (e3) { }
+          img = cc; aspect = clamp(cc.width / cc.height, 0.5, 2);
+        }
+        info = { img, aspect, name: 'わたしの しゃしん', say: 'できたね' };
       }
       if (desc.k !== 'photo') Sources.cache[key] = info;
       return info;
