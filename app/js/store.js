@@ -15,29 +15,35 @@
 
   const Store = (window.Store = {});
   Store.persistent = () => ready.then(() => !!db);
+  const toMem = (store, obj) => { const a = mem[store], i = a.findIndex((x) => x.id === obj.id); if (i < 0) a.push(obj); else a[i] = obj; };
+  Store.volatile = false;               // true なら、いま保存できず「このページを開いている間だけ」の保存になっている
   Store.put = async (store, obj) => {
     await ready;
-    if (!db) { const a = mem[store], i = a.findIndex((x) => x.id === obj.id); if (i < 0) a.push(obj); else a[i] = obj; return; }
-    return new Promise((res, rej) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(obj); t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error); });
+    if (!db) { toMem(store, obj); Store.volatile = true; return 'mem'; }
+    try {
+      await new Promise((res, rej) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).put(obj); t.oncomplete = () => res(); t.onerror = t.onabort = () => rej(t.error); });
+      return 'db';
+    } catch (e) { toMem(store, obj); Store.volatile = true; return 'mem'; }       // 容量不足・プライベートモードなど
   };
   Store.all = async (store) => {
     await ready;
-    if (!db) return mem[store].slice();
-    return new Promise((res) => { const r = db.transaction(store).objectStore(store).getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); });
+    const m = mem[store].slice(); if (!db) return m;
+    const d = await new Promise((res) => { const r = db.transaction(store).objectStore(store).getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); });
+    const ids = new Set(d.map((x) => x.id)); return d.concat(m.filter((x) => !ids.has(x.id)));
   };
   Store.get = async (store, id) => {
     await ready;
-    if (!db) return mem[store].find((x) => x.id === id) || null;
+    const m = mem[store].find((x) => x.id === id); if (m || !db) return m || null;
     return new Promise((res) => { const r = db.transaction(store).objectStore(store).get(id); r.onsuccess = () => res(r.result || null); r.onerror = () => res(null); });
   };
   Store.del = async (store, id) => {
-    await ready;
-    if (!db) { mem[store] = mem[store].filter((x) => x.id !== id); return; }
+    await ready; mem[store] = mem[store].filter((x) => x.id !== id);
+    if (!db) return;
     return new Promise((res) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).delete(id); t.oncomplete = () => res(); t.onerror = t.onabort = () => res(); });
   };
   Store.clear = async (store) => {
-    await ready;
-    if (!db) { mem[store] = []; return; }
+    await ready; mem[store] = [];
+    if (!db) return;
     return new Promise((res) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).clear(); t.oncomplete = () => res(); t.onerror = t.onabort = () => res(); });
   };
 

@@ -22,7 +22,7 @@
   /* ---------------------------------------------------------------- 共通 */
   const urls = {};
   function blobUrl(id, blob) { return urls[id] || (urls[id] = URL.createObjectURL(blob)); }
-  function flash(msg) { const f = $('#flash'); f.textContent = msg; f.classList.add('on'); clearTimeout(flash.t); flash.t = setTimeout(() => f.classList.remove('on'), 2200); }
+  function flash(msg, ms) { const f = $('#flash'); f.textContent = msg; f.classList.add('on'); clearTimeout(flash.t); flash.t = setTimeout(() => f.classList.remove('on'), ms || 2200); }
   function loading(on, msg) { const l = $('#loading'); l.classList.toggle('on', on); if (msg) l.querySelector('span').textContent = msg; }
   function show(id) { document.querySelectorAll('.scr').forEach((s) => s.classList.toggle('on', s.id === id)); }
   function closeSheet() { $('#sheet').classList.remove('on'); $('#sheet').innerHTML = ''; }
@@ -132,24 +132,54 @@
   /* -------------------------------------------------------------- 写真の追加 */
   async function addPhoto() {
     if (!(await PZ.parentGate('しゃしんを えらぶのは おとなの かたが してください'))) return;
-    $('#file').click();
+    // ゲートのあとに「本物の」ファイル選択ボタンを出す。プログラムからの自動オープンは、iPhoneなどで無視されることがあるため。
+    const box = openSheet(`<h2>しゃしんを えらぶ</h2>
+      <p class="note">下の ボタンを おして、しゃしんを えらんでください（まとめて いくつでも えらべます）。<br>しゃしんは この たんまつの 中だけで つかいます。</p>
+      <label class="filebtn">しゃしんを えらぶ<input type="file" id="file" accept="image/*" multiple></label>
+      <div class="row"><button class="btn" id="fCancel" type="button">やめる</button></div>`, 'setbox');
+    $('#fCancel', box).onclick = closeSheet;
+    $('#file', box).onchange = (e) => { const fs = [...e.target.files]; if (fs.length) importPhotos(fs); };
   }
-  $('#file').onchange = async (e) => {
-    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-    loading(true, 'しゃしんを とりこみ中…');
-    try {
-      const img = await PZ.fileImage(f), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-      const sc = Math.min(1, 1600 / Math.max(iw, ih)), w = Math.round(iw * sc), h = Math.round(ih * sc);
-      const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
-      const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.88));
-      if (!blob) throw new Error('blob');
-      const rec = { id: 'p' + Date.now(), ts: Date.now(), w, h, blob };
-      await Store.put('photos', rec);
-      S.src = { k: 'photo', id: rec.id }; Store.saveSettings();
-      flash('しゃしんを ついかしました');
-    } catch (err) { flash('この しゃしんは よみこめませんでした'); }
-    loading(false); renderHome();
-  };
+  /* 写真を読みこむ：いくつかの方法を順番に試す（機種・ブラウザによって、使える方法がちがうため） */
+  async function decodePhoto(file) {
+    const tries = [
+      () => createImageBitmap(file, { imageOrientation: 'from-image' }),
+      async () => { const u = URL.createObjectURL(file); try { return await PZ.loadImage(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 8000); } },
+      () => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => PZ.loadImage(fr.result).then(res, rej); fr.onerror = () => rej(fr.error || new Error('read')); fr.readAsDataURL(file); }),
+      () => createImageBitmap(file),
+    ];
+    let last;
+    for (const t of tries) { try { const img = await t(); if ((img.naturalWidth || img.width) > 0) return img; } catch (e) { last = e; } }
+    throw Object.assign(new Error((last && last.message) || 'decode'), { stage: 'ひらけません（しゃしんの かたちが ちがうかも）' });
+  }
+  async function toJpegBlob(cv) {
+    const b = await new Promise((r) => { try { cv.toBlob(r, 'image/jpeg', 0.88); } catch (e) { r(null); } });
+    if (b) return b;
+    const d = cv.toDataURL('image/jpeg', 0.88).split(','), bin = atob(d[1]), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: 'image/jpeg' });
+  }
+  async function importPhotos(files) {
+    closeSheet(); let ok = 0, vol = false; const bad = [];
+    for (let i = 0; i < files.length; i++) {
+      loading(true, `しゃしんを とりこみ中… ${i + 1}/${files.length}`);
+      try {
+        const img = await decodePhoto(files[i]), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        const sc = Math.min(1, 1600 / Math.max(iw, ih)), w = Math.max(1, Math.round(iw * sc)), h = Math.max(1, Math.round(ih * sc));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
+        if (img.close) try { img.close(); } catch (e) { }
+        let blob; try { blob = await toJpegBlob(cv); } catch (e) { throw Object.assign(e, { stage: 'ちいさくできません' }); }
+        const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, blob };
+        if ((await Store.put('photos', rec)) === 'mem') vol = true;
+        S.src = { k: 'photo', id: rec.id }; ok++;
+      } catch (err) { console.error(err); bad.push((err && err.stage) || 'とりこめません'); }
+    }
+    S.tab = 'photo'; Store.saveSettings(); loading(false);
+    flash(!bad.length ? `しゃしんを ${ok}まい ついかしました${vol ? '（この たんまつでは ほぞんできないため、いまだけ つかえます）' : ''}`
+      : ok ? `${ok}まい ついか、${bad.length}まいは ${bad[0]}` : `しゃしんを とりこめませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
+    renderHome();
+  }
 
   /* ----------------------------------------------------------------- クリア */
   Engine.on.win = async (st) => {
