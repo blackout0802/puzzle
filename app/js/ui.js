@@ -6,7 +6,7 @@
   const LV = Engine.LEVELS;
   const LV_STARS = { easy: 1, normal: 2, hard: 3, expert: 4 };
   const COUNTS = [24, 48, 100, 150, 200, 300];
-  PZ.muted = !S.sound;
+  PZ.muted = !S.sound; PZ.voice = S.voice !== 0;
 
   /* ------------------------------------------------------- シール帳の「育ち」 */
   const TIERS = [
@@ -89,6 +89,27 @@
   const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
   const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
   const tabOf = (src) => (src.k === 'photo' ? 'photo' : src.k === 'collage' ? ((src.id || 'animals') === 'vehicles' ? 'vehicle' : 'nature') : ((PZ.art.find((a) => a.id === src.id) || {}).cat === 'vehicle' ? 'vehicle' : 'nature'));
+  /* おすすめ：さいごに あそんだ記録から「つぎは これ」を決める。
+     かんたんに終われたら 1だん上げ（ピースの数→むずかしさ の順に、交互に）。たいへんそうなら 1だん下げる。まだ集めていない絵を すすめる */
+  const LV_ORDER = ['easy', 'normal', 'hard', 'expert'];
+  function recommend(stickers) {
+    if (!stickers.length) return null;
+    const last = stickers.slice().sort((a, b) => a.ts - b.ts).pop();
+    let ci = COUNTS.reduce((b, c, i) => (Math.abs(c - last.n) < Math.abs(COUNTS[b] - last.n) ? i : b), 0), li = Math.max(0, LV_ORDER.indexOf(last.level));
+    const easy = last.time <= last.n * 7 && last.misses <= last.n * 0.15, hard = last.time > last.n * 16 || last.misses > last.n * 0.5;
+    let why; const prevCi = ci, prevLi = li;
+    if (easy) {
+      if ((ci <= li + 1 && ci < COUNTS.length - 1) || li >= LV_ORDER.length - 1) ci = Math.min(COUNTS.length - 1, ci + 1); else li++;
+      why = (ci === COUNTS.length - 1 && li === LV_ORDER.length - 1 && ci === prevCi && li === prevLi) ? 'いちばん むずかしいのも クリア！ すごい！' : 'じょうずに できたね！ ちょっと むずかしく してみよう';
+    } else if (hard) {
+      if (li > 0 && li >= ci) li--; else ci = Math.max(0, ci - 1);
+      why = 'ちょっと たいへん だったかな？ すこし やさしく しよう';
+    } else why = 'ちょうどいい むずかしさ！ もういっかい あそぼう';
+    const done = new Set(stickers.map((s) => s.key));
+    const pool = PZ.art.filter((a) => !done.has('a:' + a.id)), lastArt = PZ.art.find((a) => 'a:' + a.id === last.key);
+    const pick = pool.find((a) => lastArt && a.cat !== lastArt.cat) || pool[0] || null;        // 前と ちがう しゅるいの え を ひとつ
+    return { target: COUNTS[ci], level: LV_ORDER[li], why, art: pick };
+  }
   async function renderHome() {
     const home = $('#home'), scroll = home.scrollTop;
     const [photos, stickers, save] = await Promise.all([Store.all('photos'), Store.all('stickers'), Store.get('saves', 'current')]);
@@ -107,6 +128,8 @@
     else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 4 / 3);
     else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>';
 
+    const rec = recommend(stickers);
+    const recHtml = rec ? `<button class="recbox" id="recBtn" type="button">${rec.art ? `<img alt="" src="${PZ.svgUrl(rec.art)}">` : '<span class="star">★</span>'}<span><b>つぎは これ！</b><small>${rec.art ? rec.art.name + ' ・ ' : ''}${rec.target}ピース ・ ${LV[rec.level].name}</small><small class="why">${rec.why}</small></span></button>` : '';
     let resume = '';
     if (save) {
       let valid = !(save.desc.k === 'photo' && !photos.find((p) => p.id === save.desc.id));
@@ -125,6 +148,7 @@
       <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
       ${PZ.imgMode === 'none' ? '<div class="warn"><b>この ひょうじでは がぞうが ひらけません。</b><br>ファイルの プレビューなど、せいげんのある がめんで ひらいている かもしれません。Safari や Chrome などの ブラウザで ひらいてください。</div>' : ''}
       ${resume}
+      ${recHtml}
       <h2>えを えらぶ</h2>
       <div class="tabs" id="tabs">
         ${[['vehicle', 'のりもの'], ['nature', 'どうぶつ・しぜん'], ['photo', 'しゃしん']].map(([k, t]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${t}</button>`).join('')}
@@ -133,11 +157,11 @@
       <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b>${S.src.k === 'photo' ? ' <button id="cropBtn" class="mini" type="button">きりとりを なおす</button>' : ''}</p>
       <h2>ピースの かず</h2>
       <div class="cnts" id="cnts">
-        ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
+        ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}${rec && rec.target === t ? ' rec' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
       </div>
       <h2>むずかしさ</h2>
       <div class="lvs" id="lvs">
-        ${Object.entries(LV).map(([k, v]) => `<button class="lv${S.level === k ? ' on' : ''}" data-l="${k}"><b>${v.name}</b><span class="st">${'★'.repeat(LV_STARS[k])}</span><small>${v.desc}</small></button>`).join('')}
+        ${Object.entries(LV).map(([k, v]) => `<button class="lv${S.level === k ? ' on' : ''}${rec && rec.level === k ? ' rec' : ''}" data-l="${k}"><b>${v.name}</b><span class="st">${'★'.repeat(LV_STARS[k])}</span><small>${v.desc}</small></button>`).join('')}
       </div>
       <button id="startBtn" class="start">はじめる ▶</button>
       <footer class="hfoot"><a href="../prototypes/index.html">試作ギャラリーへ</a></footer>
@@ -149,6 +173,7 @@
       if (b.id === 'addPhoto') return addPhoto();
       S.src = { k: b.dataset.k, id: b.dataset.id }; Store.saveSettings(); PZ.snd.pick(); renderHome();
     };
+    const rb = $('#recBtn'); if (rb) rb.onclick = () => { S.target = rec.target; S.level = rec.level; if (rec.art) { S.src = { k: 'art', id: rec.art.id }; S.tab = rec.art.cat === 'vehicle' ? 'vehicle' : 'nature'; } Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     const cb = $('#cropBtn'); if (cb) cb.onclick = () => openCrop(S.src.id);
     $('#tabs').onclick = (e) => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
@@ -403,8 +428,11 @@
     const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent();
     const box = openSheet(`
       <h2>おとなの せってい</h2>
-      <h3>おと・こえ</h3>
+      <h3>おと</h3>
       <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
+      <h3>こえの ガイド（ひらがなで はなしかけます）</h3>
+      <div class="seg" id="sVoice"><button data-s="1" class="${S.voice !== 0 ? 'on' : ''}">あり</button><button data-s="0" class="${S.voice !== 0 ? '' : 'on'}">なし</button></div>
+      <p class="note">「おと」を なしにすると、こえも でません。この たんまつの 読み上げ機能を つかいます。</p>
       <h3>とりこんだ しゃしん（${photos.length}まい）</h3>
       ${photos.length ? '<p class="note">「よみこめません」と出る しゃしんは、いったん「けす」で けして、もういちど ついかしてください。</p>' : ''}
       <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
@@ -418,6 +446,10 @@
     box.querySelectorAll('#sSound button').forEach((b) => b.onclick = () => {
       S.sound = +b.dataset.s; PZ.muted = !S.sound; Store.saveSettings();
       box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
+    });
+    box.querySelectorAll('#sVoice button').forEach((b) => b.onclick = () => {
+      S.voice = +b.dataset.s; PZ.voice = S.voice !== 0; Store.saveSettings();
+      box.querySelectorAll('#sVoice button').forEach((x) => x.classList.toggle('on', x === b)); if (PZ.voice) PZ.sayV('こんにちは。いっしょに あそぼうね', true);
     });
     box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); const sv = await Store.get('saves', 'current'); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', 'current'); closeSheet(); openSettings(); }));
     const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };

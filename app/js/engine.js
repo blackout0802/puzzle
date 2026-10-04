@@ -285,7 +285,7 @@
       desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
       srcC, edges, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
       started: !!(o.save && ((o.save.placed && o.save.placed.length) || (o.save.groups && o.save.groups.length))), over: false, filter: 'all',
-      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, opos: new Map(order.map((i, k) => [i, k])), timerId: 0, lastTick: 0, destroyed: false,
+      fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, opos: new Map(order.map((i, k) => [i, k])), timerId: 0, lastTick: 0, destroyed: false, cheerN: 0, joinN: 0, say: {},
     };
     // 盤面とテーブル
     const b = ui.board; b.width = Math.ceil(W * RES); b.height = Math.ceil(H * RES); b.style.width = W + 'px'; b.style.height = H + 'px';
@@ -322,6 +322,7 @@
     await nextFrame(); fitCam(false);
     G.lastTick = performance.now(); G.timerId = setInterval(tick, 500);
     if (G.placed === G.n) win(true);
+    else setTimeout(() => PZ.sayV(o.save ? 'つづきから はじめよう' : (G.info.name === 'わたしの しゃしん' ? 'わたしの しゃしんの パズルだよ' : G.info.name + 'の パズルだよ。ピースを えらんでね'), true), 700);
   }
   function shuffleSeed(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -404,12 +405,13 @@
   const upright = (U) => U.from !== 'tray' || U.p.rot % 4 === 0;
 
   /* ----------------------------------------------------- 選ぶ・置く・くっつける */
-  function toast(msg) {
+  function toast(msg, say) {
+    if (say) PZ.sayV(say);
     ui.toast.textContent = msg; ui.toast.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => ui.toast.classList.remove('on'), 2200);
   }
   function startSelect() {
     if (!G.started) G.started = true;
-    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('つなげたい ピースを タップ。あいている ばしょを タップで おけるよ'); }
+    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('つなげたい ピースを タップ。あいている ばしょを タップで おけるよ', 'ピースを タップして、あいている ばしょを タップしてね'); }
   }
   function selectTray(p) {
     if (!G || G.over || p.state !== 'tray') return;
@@ -455,7 +457,7 @@
     const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, hit = hitGroup(wx, wy);
     const U = G.sel;
     if (!U) { if (hit) selectGroup(hit.g); return; }                         // 何も持っていない時：テーブルのかたまりを持ち上げる
-    if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね'); return; }
+    if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね', 'ピースを タップして、むきを そろえてね'); return; }
     const inBoard = wx >= 0 && wy >= 0 && wx < G.W && wy < G.H;
     const bidx = inBoard ? Math.floor(wy / CELL) * G.cols + Math.floor(wx / CELL) : -1;
     if (inBoard && members(U).includes(bidx)) { toBoard(U); return; }        // 正しいマスをタップ：はまる（上にテーブルのかたまりが重なっていても）
@@ -477,6 +479,21 @@
     pop.className = 'pop'; Object.assign(pop.style, { left: left + 'px', top: top + 'px', width: w + 'px', height: h + 'px' });
     ui.world.appendChild(pop); setTimeout(() => pop.remove(), 520);
   }
+  /* 声のガイド：ほめる・おしえる（多すぎないよう、きりのいい所とときどきだけ） */
+  const PRAISE = ['ぴったり！', 'いいね！', 'すごい！', 'じょうず！', 'できたね！'];
+  function cheer(kind) {
+    if (!G || G.over) return;
+    const left = G.n - G.placed, edges = G.pieces.filter((p) => p.edge), edgeDone = edges.length && edges.every((p) => p.state === 'board');
+    if (kind === 'board') {
+      G.say = G.say || {};
+      if (!G.say.half && G.placed * 2 >= G.n) { G.say.half = 1; return PZ.sayV('はんぶん できたよ！ すごいね', true); }
+      if (!G.say.edge && edgeDone && G.n > 30) { G.say.edge = 1; return PZ.sayV('まわりの ふちが できたよ！', true); }
+      if (!G.say.ten && left === 10) { G.say.ten = 1; return PZ.sayV('あと ちょっとだよ！ がんばれ', true); }
+      if (++G.cheerN % 6 === 0) PZ.sayV(PZ.pick(PRAISE));
+    } else if (kind === 'join') {
+      if (++G.joinN === 1 || G.joinN % 8 === 0) PZ.sayV('くっついたね！');
+    }
+  }
   function finishMove() { deselect(); updateLabels(); persist(); }
 
   function toBoard(U) {                                                       // 盤面に固定する
@@ -485,7 +502,7 @@
     else { const g = U.g; popAt(g.el, g.box.cmin * CELL - G.pad, g.box.rmin * CELL - G.pad, parseFloat(g.el.style.width), parseFloat(g.el.style.height)); removeGroup(g); }
     ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = null; p.state = 'board'; G.placed++; drawPiece(p); });
     PZ.snd.ok(); finishMove();
-    if (G.placed === G.n) win(false);
+    if (G.placed === G.n) win(false); else cheer('board');
   }
   function attach(U, T) {                                                     // となりあうかたまりにくっつく（位置はTにそろう）
     const ms = members(U);
@@ -493,7 +510,7 @@
     ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = T; p.state = 'table'; T.ms.add(i); });
     T.z = ++G.z; compose(T);
     T.el.classList.remove('joined'); void T.el.offsetWidth; T.el.classList.add('joined');
-    PZ.snd.ok(); finishMove();
+    PZ.snd.ok(); finishMove(); cheer('join');
   }
   function putDown(U, wx, wy) {                                               // テーブルに置く／動かす（近くのとなりに合えば、そのままくっつく）
     const ms = members(U).map((i) => G.pieces[i]);
@@ -535,7 +552,7 @@
     if (!cand.length) { cand = tray.filter((p) => nbrs(p.i).some((j) => st(j) === 'table')); mode = 'table'; }
     if (!cand.length) { mode = 'cell'; cand = tray.filter((p) => (p.r === 0 || p.r === G.rows - 1) && (p.c === 0 || p.c === G.cols - 1)); }
     if (!cand.length) cand = tray;
-    const p = PZ.pick(cand);
+    const p = PZ.pick(cand); PZ.sayV('ひかっている ピースを さがしてね', true);
     if (G.filter !== 'all') setFilter('all');
     selectTray(p);
     const t = ui.tray;
@@ -584,7 +601,7 @@
     fitCam(true);
     PZ.confetti(90); PZ.snd.win();
     const stats = { time: G.elapsed, misses: G.misses, n: G.n, level: G.level, key: G.key, desc: G.desc, name: G.info.name, say: G.info.say, srcC: G.srcC, W: G.W, H: G.H };
-    setTimeout(() => PZ.say(G.info.say), 600);
+    setTimeout(() => PZ.sayV(G.info.say, true), 600);
     if (E.on.win) setTimeout(() => E.on.win(stats), 2400);
   }
 

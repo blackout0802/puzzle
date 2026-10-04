@@ -232,3 +232,13 @@ button{font-family:inherit;color:inherit}
 .zoomrow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
 .zoomrow input{flex:1;height:32px}
 .mini{border:0;border-radius:12px;background:var(--paper);color:var(--wood-dark);font-size:12px;font-weight:800;padding:4px 10px;margin-left:6px;box-shadow:0 2px 0 var(--wood-dark)}
+
+/* つぎは これ */
+.recbox{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0;padding:10px 14px;border:3px solid #ffd45c;border-radius:18px;background:linear-gradient(#fffbe6,#fff0b8);color:var(--ink);text-align:left;box-shadow:0 4px 0 #e0b43a}
+.recbox img{width:52px;height:52px;border-radius:12px;background:#fff;object-fit:cover;flex:none}
+.recbox .star{font-size:34px;color:#f5a400;width:52px;text-align:center;flex:none}
+.recbox b{display:block;font-size:17px}
+.recbox small{display:block;font-size:12px;color:var(--muted)}
+.recbox .why{color:#8a6a1a;margin-top:2px}
+.cn.rec,.lv.rec{position:relative}
+.cn.rec::after,.lv.rec::after{content:'おすすめ';position:absolute;top:-9px;right:-4px;background:#f5a400;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:8px;box-shadow:0 1px 0 #b57800}

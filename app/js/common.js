@@ -269,6 +269,14 @@
     if (PZ.muted || !('speechSynthesis' in window)) return;
     try { const u = new SpeechSynthesisUtterance(text); u.lang = 'ja-JP'; u.rate = .9; u.pitch = 1.35; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { }
   };
+  /* 声のガイド：あそびの途中で、ひらがなで はなしかける（おとなの せっていで オフにできる）。
+     ことばが かさならないよう、前に話してから すこしあいだを あける。 */
+  PZ.voice = true; let lastV = 0;
+  PZ.sayV = (text, force) => {
+    if (!PZ.voice || PZ.muted) return;
+    const now = Date.now(); if (!force && now - lastV < 2600) return; lastV = now;
+    PZ.say(text);
+  };
 
   /* ------------------------------------------------------ ごほうび演出 */
   PZ.confetti = (n = 70) => {
