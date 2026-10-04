@@ -318,11 +318,17 @@
     }
     order.forEach((i) => { const p = G.pieces[i]; if (p.state === 'tray') buildTp(p); });
     updateLabels(); setFilter('all'); showTimer();
+    // ふちガイド：やさしい・ふつうでは、まず まわりの「ふち」から。盤面のまわりを光らせ、置き場も「ふち」だけにする
+    G.guide = (o.level === 'easy' || o.level === 'normal') && n >= 40 && !G.pieces.filter((p) => p.edge).every((p) => p.state === 'board');
+    if (G.guide) {
+      const el = document.createElement('div'); el.className = 'edgeguide'; el.style.width = W + 'px'; el.style.height = H + 'px'; ui.world.appendChild(el); G.guideEl = el;
+      if (!o.save) setFilter('edge');
+    }
     ui.game.classList.add('on'); ui.loading.classList.remove('on');
     await nextFrame(); fitCam(false);
     G.lastTick = performance.now(); G.timerId = setInterval(tick, 500);
     if (G.placed === G.n) win(true);
-    else setTimeout(() => G && PZ.sayV(o.save ? 'つづきから はじめよう' : (G.info.name === 'わたしの しゃしん' ? 'わたしの しゃしんの パズルだよ' : G.info.name + 'の パズルだよ。ピースを えらんでね'), true), 700);
+    else setTimeout(() => G && PZ.sayV(o.save ? 'つづきから はじめよう' : G.guide ? 'まずは、まわりの ふちの ピースから あつめよう' : (G.info.name === 'わたしの しゃしん' ? 'わたしの しゃしんの パズルだよ' : G.info.name + 'の パズルだよ。ピースを えらんでね'), true), 700);
   }
   function shuffleSeed(a, rnd) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -481,6 +487,12 @@
   }
   /* 声のガイド：ほめる・おしえる（多すぎないよう、きりのいい所とときどきだけ） */
   const PRAISE = ['ぴったり！', 'いいね！', 'すごい！', 'じょうず！', 'できたね！'];
+  function checkGuide() {                                                     // ふちが ぜんぶ そろったら、ガイドを消して「なか」へ
+    if (!G || !G.guide || !G.guideEl) return;
+    if (!G.pieces.filter((p) => p.edge).every((p) => p.state === 'board')) return;
+    G.guideEl.classList.add('gone'); const el = G.guideEl; G.guideEl = null; setTimeout(() => el.remove(), 700);
+    if (G.filter === 'edge') setFilter('mid');
+  }
   function cheer(kind) {
     if (!G || G.over) return;
     const left = G.n - G.placed, edges = G.pieces.filter((p) => p.edge), edgeDone = edges.length && edges.every((p) => p.state === 'board');
@@ -502,7 +514,7 @@
     else { const g = U.g; popAt(g.el, g.box.cmin * CELL - G.pad, g.box.rmin * CELL - G.pad, parseFloat(g.el.style.width), parseFloat(g.el.style.height)); removeGroup(g); }
     ms.forEach((i) => { const p = G.pieces[i]; if (p.tp) { p.tp.remove(); p.tp = null; } p.g = null; p.state = 'board'; G.placed++; drawPiece(p); });
     PZ.snd.ok(); finishMove();
-    if (G.placed === G.n) win(false); else cheer('board');
+    if (G.placed === G.n) win(false); else { checkGuide(); cheer('board'); }
   }
   function attach(U, T) {                                                     // となりあうかたまりにくっつく（位置はTにそろう）
     const ms = members(U);
@@ -609,7 +621,7 @@
     if (!G) return;
     G.destroyed = true; clearInterval(G.timerId); clearTimeout(saveT);
     ui.tray.innerHTML = ''; ui.hand.classList.remove('on'); ui.ring.classList.remove('on'); ui.peek.classList.remove('on');
-    ui.world.querySelectorAll('.final,.pop,.grp').forEach((e) => e.remove());
+    ui.world.querySelectorAll('.final,.pop,.grp,.edgeguide').forEach((e) => e.remove());
     ui.game.classList.remove('on', 'hasTable'); ui.back.classList.remove('on'); G = null;
   }
   function exit() { persist(true); destroy(); E.on.exit && E.on.exit(); }
