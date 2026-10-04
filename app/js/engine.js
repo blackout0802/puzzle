@@ -285,8 +285,10 @@
     Object.assign(ui.table.style, { left: -M + 'px', top: -M + 'px', width: W + 2 * M + 'px', height: H + 2 * M + 'px' });
     drawBoardBase();
     // 見本（右上の小さな見本と、タップで出る大きな見本）
-    const refUrl = PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W).toDataURL('image/jpeg', 0.85);
-    ui.peekImg.src = refUrl; ui.refImg.src = refUrl;
+    try {
+      const refUrl = await PZ.canvasUrl(PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W), 'image/jpeg', 0.85);
+      ui.peekImg.src = refUrl; ui.refImg.src = refUrl; ui.ref.style.display = '';
+    } catch (err) { ui.ref.style.display = 'none'; }                // 画像の書き出しが禁止されている表示場所：見本だけあきらめて、パズルは続ける
     setRefSize();
     // ピース
     for (let i = 0; i < n; i++) {

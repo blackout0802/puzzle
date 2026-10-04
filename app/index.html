@@ -5,6 +5,19 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
 </head><body>
+<noscript><div style="position:fixed;left:8px;right:8px;top:8px;z-index:9999;padding:14px;border:2px solid #e8a100;border-radius:12px;background:#fff3cd;color:#5a4220;font:15px/1.7 sans-serif">この ひょうじでは プログラム（JavaScript）が うごきません。<br>Safari や Chrome などの ブラウザで ひらいてください。</div></noscript>
+<script>
+/* うまく動かなかったときに、画面に理由を出す（スクリーンショットで教えてもらうため） */
+(function () {
+  function show(m) {
+    var d = document.getElementById('fatal');
+    if (!d) { d = document.createElement('div'); d.id = 'fatal'; d.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:9999;background:#fff3cd;color:#5a4220;border:2px solid #e8a100;border-radius:12px;padding:10px 12px;font:13px/1.5 sans-serif;white-space:pre-wrap;word-break:break-all'; document.body.appendChild(d); }
+    d.textContent = 'うまく うごきませんでした。この がめんを おしえてください：\n' + m;
+  }
+  addEventListener('error', function (e) { show((e.message || 'error') + '  [' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || '') + ']'); });
+  addEventListener('unhandledrejection', function (e) { var r = e.reason; show('Promise: ' + ((r && (r.name + ': ' + r.message)) || r)); });
+})();
+</script>
 <main id="app">
   <!-- ホーム -->
   <section id="home" class="scr on"></section>

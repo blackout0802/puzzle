@@ -77,8 +77,11 @@
   const collageUrls = {};
   async function getCollageUrl(id) {
     if (collageUrls[id]) return collageUrls[id];
-    const info = await Engine.Sources.load({ k: 'collage', id });
-    collageUrls[id] = PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)).toDataURL('image/jpeg', 0.8); return collageUrls[id];
+    try {
+      const info = await Engine.Sources.load({ k: 'collage', id });
+      collageUrls[id] = await PZ.canvasUrl(PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)), 'image/jpeg', 0.8);
+    } catch (e) { logErr('ぜんぶパズルの絵', e); collageUrls[id] = ''; }          // 絵が読めなくても、ホームは出す
+    return collageUrls[id];
   }
   const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
   const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
@@ -117,6 +120,7 @@
         <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
       </header>
       <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
+      ${PZ.imgMode === 'none' ? '<div class="warn"><b>この ひょうじでは がぞうが ひらけません。</b><br>ファイルの プレビューなど、せいげんのある がめんで ひらいている かもしれません。Safari や Chrome などの ブラウザで ひらいてください。</div>' : ''}
       ${resume}
       <h2>えを えらぶ</h2>
       <div class="tabs" id="tabs">
@@ -344,5 +348,5 @@
 
   /* ------------------------------------------------------------------ 起動 */
   Engine.init();
-  migrateLegacy().catch(() => { }).then(() => renderHome());
+  PZ.probeImages().catch(() => { }).then(() => migrateLegacy().catch(() => { })).then(() => renderHome());
 })();

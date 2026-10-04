@@ -267,8 +267,23 @@ button{font-family:inherit;color:inherit}
 .brokenph{display:grid;place-items:center;width:100%;height:100%;min-height:60px;padding:4px;text-align:center;font-size:11px;font-weight:800;line-height:1.3;color:#c92a2a;background:#ffe3e3;border-radius:8px}
 .th.photo .brokenph{aspect-ratio:1}
 
+.warn{background:#fff3cd;color:#5a4220;border:2px solid #e8a100;border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.6}
+
 </style>
 </head><body>
+<noscript><div style="position:fixed;left:8px;right:8px;top:8px;z-index:9999;padding:14px;border:2px solid #e8a100;border-radius:12px;background:#fff3cd;color:#5a4220;font:15px/1.7 sans-serif">この ひょうじでは プログラム（JavaScript）が うごきません。<br>Safari や Chrome などの ブラウザで ひらいてください。</div></noscript>
+<script>
+/* うまく動かなかったときに、画面に理由を出す（スクリーンショットで教えてもらうため） */
+(function () {
+  function show(m) {
+    var d = document.getElementById('fatal');
+    if (!d) { d = document.createElement('div'); d.id = 'fatal'; d.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:9999;background:#fff3cd;color:#5a4220;border:2px solid #e8a100;border-radius:12px;padding:10px 12px;font:13px/1.5 sans-serif;white-space:pre-wrap;word-break:break-all'; document.body.appendChild(d); }
+    d.textContent = 'うまく うごきませんでした。この がめんを おしえてください：\n' + m;
+  }
+  addEventListener('error', function (e) { show((e.message || 'error') + '  [' + String(e.filename || '').split('/').pop() + ':' + (e.lineno || '') + ']'); });
+  addEventListener('unhandledrejection', function (e) { var r = e.reason; show('Promise: ' + ((r && (r.name + ': ' + r.message)) || r)); });
+})();
+</script>
 <main id="app">
   <!-- ホーム -->
   <section id="home" class="scr on"></section>
@@ -451,7 +466,27 @@ button{font-family:inherit;color:inherit}
   ];
 
   /* ------------------------------------------------------------ 画像 */
-  PZ.svgUrl = (a) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg);
+  /* 画像の出し方：普通は data: URL。それが禁止されている表示場所なら blob: URL。どちらもだめなら 'none' */
+  PZ.imgMode = 'data';
+  const svgBlobUrls = {};
+  PZ.svgUrl = (a) => (PZ.imgMode === 'blob'
+    ? (svgBlobUrls[a.id] || (svgBlobUrls[a.id] = URL.createObjectURL(new Blob([a.svg], { type: 'image/svg+xml' }))))
+    : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg));
+  /* canvas → 画像のURL。data: が使えない表示場所では blob: にする */
+  PZ.canvasUrl = (cv, type = 'image/jpeg', q = 0.85) => new Promise((res, rej) => {
+    try {
+      if (PZ.imgMode !== 'blob') return res(cv.toDataURL(type, q));
+      cv.toBlob((b) => (b ? res(URL.createObjectURL(b)) : rej(new Error('toBlob'))), type, q);
+    } catch (e) { rej(e); }
+  });
+  PZ.probeImages = async () => {
+    const t = '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="red"/></svg>';
+    const tryLoad = (u) => new Promise((r) => { const i = new Image(); i.onload = () => r(true); i.onerror = () => r(false); i.src = u; setTimeout(() => r(false), 3000); });
+    if (await tryLoad('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t))) return (PZ.imgMode = 'data');
+    let bu = null; try { bu = URL.createObjectURL(new Blob([t], { type: 'image/svg+xml' })); } catch (e) { }
+    if (bu && (await tryLoad(bu))) return (PZ.imgMode = 'blob');
+    return (PZ.imgMode = 'none');
+  };
   PZ.loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
   const imgCache = {};
   PZ.artImage = (a) => imgCache[a.id] || (imgCache[a.id] = PZ.loadImage(PZ.svgUrl(a)));
@@ -1246,8 +1281,10 @@ button{font-family:inherit;color:inherit}
     Object.assign(ui.table.style, { left: -M + 'px', top: -M + 'px', width: W + 2 * M + 'px', height: H + 2 * M + 'px' });
     drawBoardBase();
     // 見本（右上の小さな見本と、タップで出る大きな見本）
-    const refUrl = PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W).toDataURL('image/jpeg', 0.85);
-    ui.peekImg.src = refUrl; ui.refImg.src = refUrl;
+    try {
+      const refUrl = await PZ.canvasUrl(PZ.coverCanvas(srcC, Math.min(900, srcC.width), Math.min(900, srcC.width) * H / W), 'image/jpeg', 0.85);
+      ui.peekImg.src = refUrl; ui.refImg.src = refUrl; ui.ref.style.display = '';
+    } catch (err) { ui.ref.style.display = 'none'; }                // 画像の書き出しが禁止されている表示場所：見本だけあきらめて、パズルは続ける
     setRefSize();
     // ピース
     for (let i = 0; i < n; i++) {
@@ -1653,8 +1690,11 @@ button{font-family:inherit;color:inherit}
   const collageUrls = {};
   async function getCollageUrl(id) {
     if (collageUrls[id]) return collageUrls[id];
-    const info = await Engine.Sources.load({ k: 'collage', id });
-    collageUrls[id] = PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)).toDataURL('image/jpeg', 0.8); return collageUrls[id];
+    try {
+      const info = await Engine.Sources.load({ k: 'collage', id });
+      collageUrls[id] = await PZ.canvasUrl(PZ.coverCanvas(info.img, 240, Math.round(240 / info.aspect)), 'image/jpeg', 0.8);
+    } catch (e) { logErr('ぜんぶパズルの絵', e); collageUrls[id] = ''; }          // 絵が読めなくても、ホームは出す
+    return collageUrls[id];
   }
   const COLLAGE_NAME = { animals: 'どうぶつ・しぜん ぜんぶ', vehicles: 'のりもの ぜんぶ' };
   const srcName = (src, photos) => (src.k === 'art' ? (PZ.art.find((a) => a.id === src.id) || PZ.art[0]).name : src.k === 'collage' ? COLLAGE_NAME[src.id || 'animals'] : 'わたしの しゃしん');
@@ -1693,6 +1733,7 @@ button{font-family:inherit;color:inherit}
         <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
       </header>
       <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
+      ${PZ.imgMode === 'none' ? '<div class="warn"><b>この ひょうじでは がぞうが ひらけません。</b><br>ファイルの プレビューなど、せいげんのある がめんで ひらいている かもしれません。Safari や Chrome などの ブラウザで ひらいてください。</div>' : ''}
       ${resume}
       <h2>えを えらぶ</h2>
       <div class="tabs" id="tabs">
@@ -1919,7 +1960,7 @@ button{font-family:inherit;color:inherit}
 
   /* ------------------------------------------------------------------ 起動 */
   Engine.init();
-  migrateLegacy().catch(() => { }).then(() => renderHome());
+  PZ.probeImages().catch(() => { }).then(() => migrateLegacy().catch(() => { })).then(() => renderHome());
 })();
 
 </script>

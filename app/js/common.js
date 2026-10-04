@@ -142,7 +142,27 @@
   ];
 
   /* ------------------------------------------------------------ 画像 */
-  PZ.svgUrl = (a) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg);
+  /* 画像の出し方：普通は data: URL。それが禁止されている表示場所なら blob: URL。どちらもだめなら 'none' */
+  PZ.imgMode = 'data';
+  const svgBlobUrls = {};
+  PZ.svgUrl = (a) => (PZ.imgMode === 'blob'
+    ? (svgBlobUrls[a.id] || (svgBlobUrls[a.id] = URL.createObjectURL(new Blob([a.svg], { type: 'image/svg+xml' }))))
+    : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(a.svg));
+  /* canvas → 画像のURL。data: が使えない表示場所では blob: にする */
+  PZ.canvasUrl = (cv, type = 'image/jpeg', q = 0.85) => new Promise((res, rej) => {
+    try {
+      if (PZ.imgMode !== 'blob') return res(cv.toDataURL(type, q));
+      cv.toBlob((b) => (b ? res(URL.createObjectURL(b)) : rej(new Error('toBlob'))), type, q);
+    } catch (e) { rej(e); }
+  });
+  PZ.probeImages = async () => {
+    const t = '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="red"/></svg>';
+    const tryLoad = (u) => new Promise((r) => { const i = new Image(); i.onload = () => r(true); i.onerror = () => r(false); i.src = u; setTimeout(() => r(false), 3000); });
+    if (await tryLoad('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t))) return (PZ.imgMode = 'data');
+    let bu = null; try { bu = URL.createObjectURL(new Blob([t], { type: 'image/svg+xml' })); } catch (e) { }
+    if (bu && (await tryLoad(bu))) return (PZ.imgMode = 'blob');
+    return (PZ.imgMode = 'none');
+  };
   PZ.loadImage = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
   const imgCache = {};
   PZ.artImage = (a) => imgCache[a.id] || (imgCache[a.id] = PZ.loadImage(PZ.svgUrl(a)));
