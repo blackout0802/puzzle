@@ -535,6 +535,25 @@
     } catch (e) { loading(false); logErr('バックアップよみこみ', e); flash('このファイルは よみこめません（バックアップの ファイルを えらんでね）', 5000); }
   }
 
+  /* ------------------------------------------------ プライバシー（store/privacy-policy.html と同じ内容） */
+  const APP_VERSION = '1.0.0';
+  function openPrivacy() {
+    const box = openSheet(`<h2>プライバシーについて</h2><div class="policy">
+      <p><b>このアプリは、個人情報を あつめません。</b></p>
+      <ul>
+        <li>広告は ありません。広告や かいせきの プログラムも 入っていません。</li>
+        <li>アカウントの とうろくは ありません。名前・住所・メールなどは たずねません。</li>
+        <li>とりこんだ しゃしん・かいた え・シール・あそんだ きろくは、<b>ぜんぶ この たんまつの 中だけ</b>に 保存されます。かいはつしゃを ふくめ、だれにも 送られません。</li>
+        <li>あそぶのに、インターネットは つかいません。</li>
+        <li>声の ガイドは、たんまつに 入っている 読み上げ機能を つかいます。いつも きまった ことばだけを 読みます。</li>
+        <li>バックアップの ファイルは、おとなの かたが 操作したときだけ つくられます。ファイルの 保管は おとなの かたの 管理です。</li>
+        <li>しゃしん・シール・きろくは、この 画面の「設定」から いつでも 消せます。アプリを 消すと、たんまつの データも いっしょに 消えます。</li>
+      </ul>
+      <p class="note">くわしい ポリシー： store/privacy-policy.html（公開した URL を ストアにも のせます）<br>バージョン ${APP_VERSION}</p></div>
+      <div class="row"><button class="btn" id="pvClose" type="button">とじる</button></div>`, 'setbox');
+    $('#pvClose', box).onclick = () => { closeSheet(); openSettings(); };
+  }
+
   /* ---------------------------------------------------------------- ずかん */
   const FACT = {
     neko: 'ねこは ひげで まわりを かんじるよ。ニャーと なくよ。', kuma: 'くまは はちみつが だいすき。ふゆは ほらあなで ねるよ。', sakana: 'さかなは みずの なかで ひれを うごかして およぐよ。',
@@ -639,6 +658,8 @@
       <p class="note">しゃしん・シール・プロフィール・きろくを 1つの ファイルに ほぞんできます。きかんを かえるときや、まちがって けしたときに よみこめます。（インターネットには 送りません）</p>
       <button class="btn" id="bkOut" type="button">ファイルに かきだす</button>
       <label class="filebtn bkin"><input type="file" id="bkFile" accept=".json,application/json">ファイルから よみこむ</label>
+      <h3>プライバシー</h3>
+      <button class="btn" id="pvOpen" type="button">プライバシーについて</button>
       <h3>もんだいが あったとき</h3>
       ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">きろくを けす</button>` : '<p class="note">エラーの きろくは ありません</p>'}
       <p class="note">写真・シール・きろくは、この たんまつの中だけに保存されます。インターネットには送りません。${persistent ? '' : '<br><b>いまは一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
@@ -673,6 +694,7 @@
       box.querySelectorAll('#sVoice button').forEach((x) => x.classList.toggle('on', x === b)); if (PZ.voice) PZ.sayV('こんにちは。いっしょに あそぼうね', true);
     });
     box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); for (const p of S.profiles) { const sid = p.id === 'p0' ? 'current' : 'current:' + p.id, sv = await Store.get('saves', sid); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', sid); } closeSheet(); openSettings(); }));
+    $('#pvOpen', box).onclick = () => { closeSheet(); openPrivacy(); };
     $('#bkOut', box).onclick = exportBackup;
     $('#bkFile', box).onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f); };
     const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };

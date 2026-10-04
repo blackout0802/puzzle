@@ -1,0 +1,22 @@
+{
+  "name": "jigsaw-sticker-book",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ジグソーシールちょう — Capacitor wrapper (see ../store/CHECKLIST.md)",
+  "scripts": {
+    "sync:web": "python3 ../tools/build_single_html.py && mkdir -p www && cp ../dist/jigsaw-sticker-book.html www/index.html",
+    "add:android": "npx cap add android",
+    "add:ios": "npx cap add ios",
+    "sync": "npm run sync:web && npx cap sync",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

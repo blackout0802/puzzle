@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd86b"/><stop offset="1" stop-color="#ff9a3c"/></linearGradient>
+    <linearGradient id="pc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#52d6a8"/><stop offset="1" stop-color="#1fa57c"/></linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#7a3d00" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="820" cy="190" r="120" fill="#fff6c8" opacity=".75"/>
+  <g filter="url(#sh)">
+    <!-- ジグソーのピース：四角＋出っぱり(上・右)＋へこみ(左・下) -->
+    <path d="M262 262 H420 a62 62 0 1 1 184 0 H762 V420 a62 62 0 1 1 0 184 V762 H604 a62 62 0 1 0 -184 0 H262 V604 a62 62 0 1 0 0 -184 Z" fill="url(#pc)" stroke="#fff" stroke-width="22" stroke-linejoin="round"/>
+  </g>
+  <!-- シール(ほし) -->
+  <g transform="translate(512 512) rotate(-12)">
+    <path d="M0 -150 L44 -48 L156 -40 L70 32 L98 140 L0 82 L-98 140 L-70 32 L-156 -40 L-44 -48 Z" fill="#ffe14d" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+    <circle cx="-30" cy="-6" r="13" fill="#7a4b16"/><circle cx="30" cy="-6" r="13" fill="#7a4b16"/>
+    <path d="M-34 36 Q0 66 34 36" fill="none" stroke="#7a4b16" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>
