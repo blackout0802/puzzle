@@ -47,6 +47,12 @@
     return new Promise((res) => { const t = db.transaction(store, 'readwrite'); t.objectStore(store).clear(); t.oncomplete = () => res(); t.onerror = t.onabort = () => res(); });
   };
 
+  /* 画像の保存形式：Blob のままだと、iPhone では あとで中身が読めなくなることがある。
+     そのため「バイト列(ArrayBuffer)＋種類」で保存し、使うときに Blob にもどす。 */
+  Store.recBlob = (rec) => (rec.buf ? new Blob([rec.buf], { type: rec.type || 'image/jpeg' }) : rec.blob);
+  Store.toBuf = (blob) => (blob.arrayBuffer ? blob.arrayBuffer() : new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsArrayBuffer(blob); }));
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { }   // iOS に勝手に消されにくくする（お願いするだけ）
+
   /* 設定（小さいもの） */
   const KEY = 'jigsaw-app-settings';
   let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 100, level: 'normal', best: {} };

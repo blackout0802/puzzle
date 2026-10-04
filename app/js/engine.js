@@ -41,9 +41,12 @@
       } else {
         const rec = await Store.get('photos', desc.id);
         if (!rec) throw new Error('photo-missing');
-        let img;
-        try { img = await createImageBitmap(rec.blob); }
-        catch (e) { const u = URL.createObjectURL(rec.blob); img = await PZ.loadImage(u); }
+        let img; const blob = Store.recBlob(rec);
+        try { img = await createImageBitmap(blob); }
+        catch (e1) {
+          try { const u = URL.createObjectURL(blob); img = await PZ.loadImage(u); }
+          catch (e2) { throw Object.assign(new Error('photo-broken'), { name: 'PhotoBroken' }); }       // 保存された写真の中身が読めない
+        }
         info = { img, aspect: clamp(rec.w / rec.h, 0.5, 2), name: 'わたしの しゃしん', say: 'できたね' };
       }
       if (desc.k !== 'photo') Sources.cache[key] = info;

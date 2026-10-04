@@ -216,3 +216,6 @@ button{font-family:inherit;color:inherit}
 
 .logbox{max-height:160px;overflow-y:auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:6px;touch-action:pan-y}
 .logbox p{margin:3px 0;font-size:11px;line-height:1.5;word-break:break-all;color:#5a4220}
+
+.brokenph{display:grid;place-items:center;width:100%;height:100%;min-height:60px;padding:4px;text-align:center;font-size:11px;font-weight:800;line-height:1.3;color:#c92a2a;background:#ffe3e3;border-radius:8px}
+.th.photo .brokenph{aspect-ratio:1}

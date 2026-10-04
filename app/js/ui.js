@@ -21,7 +21,7 @@
 
   /* ---------------------------------------------------------------- 共通 */
   const urls = {};
-  function blobUrl(id, blob) { return urls[id] || (urls[id] = URL.createObjectURL(blob)); }
+  function blobUrl(id, x) { return urls[id] || (urls[id] = URL.createObjectURL(x instanceof Blob ? x : Store.recBlob(x))); }
   /* 失敗の理由を、端末の中に最大8件 記録する（おとなの設定から見られる。原因調べ用） */
   function logErr(tag, err, extra) {
     try {
@@ -50,12 +50,29 @@
     return 1;
   };
 
+  /* 保存された写真の中身が読めないとき（iPhone の保存の都合など）：「？」ではなく、分かる表示にして記録する */
+  const brokenSeen = new Set();
+  document.addEventListener('error', (e) => {
+    const t = e.target; if (!(t instanceof HTMLImageElement) || t.dataset.ph === undefined) return;
+    if (!brokenSeen.has(t.dataset.ph)) { brokenSeen.add(t.dataset.ph); logErr('保存した写真が読めない', { name: 'ImgError', message: t.dataset.ph }, ''); }
+    const sp = document.createElement('span'); sp.className = 'brokenph'; sp.textContent = 'よみこめません'; t.replaceWith(sp);
+  }, true);
+  /* 古い保存形式(Blob)の写真・シールは、読めるうちに新しい形式へ移す */
+  async function migrateLegacy() {
+    for (const store of ['photos', 'stickers']) {
+      for (const r of await Store.all(store)) {
+        if (r.buf || !r.blob) continue;
+        try { const buf = await Store.toBuf(r.blob); if (buf && buf.byteLength) { const n = Object.assign({}, r, { buf, type: r.blob.type || 'image/jpeg' }); delete n.blob; await Store.put(store, n); } } catch (e) { /* 読めないものは そのまま */ }
+      }
+    }
+  }
+
   /* ---------------------------------------------------------------- ホーム */
   /* 写真のサムネイルは、パズルと同じ縦横比で見せる（縦長は縦長、横長は横長。横にとても長いものは2マス分） */
   function thumbHtml(p, on) {
     const a = Math.min(2, Math.max(0.5, p.w / p.h)), wide = a >= 1.6;
     const iw = wide ? 100 : (a >= 1 ? 100 : 100 * a), ih = wide ? 100 : (a >= 1 ? 100 / a : 100);
-    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" src="${blobUrl(p.id, p.blob)}"></button>`;
+    return `<button class="th photo${wide ? ' wide' : ''}${on}"${wide ? ` style="aspect-ratio:${a}"` : ''} data-k="photo" data-id="${p.id}"><img alt="わたしの しゃしん" style="width:${iw}%;height:${ih}%" data-ph="${p.id}" src="${blobUrl(p.id, p)}"></button>`;
   }
   const collageUrls = {};
   async function getCollageUrl(id) {
@@ -137,7 +154,7 @@
   async function play(o) {
     $('#flash').classList.remove('on');
     try { await Engine.start(o); show('game'); }
-    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
+    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); if (e && e.name === 'PhotoBroken') { flash('この しゃしんは こわれていて ひらけません。おとなの せっていで けして、もういちど ついかしてください', 9000); renderHome(); return; } flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
   }
   Engine.on.exit = () => { show('home'); renderHome(); };
 
@@ -185,7 +202,7 @@
         const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
         if (img.close) try { img.close(); } catch (e) { }
         let blob; try { blob = await toJpegBlob(cv); } catch (e) { throw Object.assign(e, { stage: 'ちいさくできません' }); }
-        const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, blob };
+        const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, type: 'image/jpeg', buf: await Store.toBuf(blob) };
         if ((await Store.put('photos', rec)) === 'mem') vol = true;
         S.src = { k: 'photo', id: rec.id }; ok++;
       } catch (err) {
@@ -206,7 +223,7 @@
     const side = Math.min(st.srcC.width, st.srcC.height), cv = document.createElement('canvas'); cv.width = cv.height = 240;
     cv.getContext('2d').drawImage(st.srcC, (st.srcC.width - side) / 2, (st.srcC.height - side) / 2, side, side, 0, 0, 240, 240);
     const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.82));
-    const rec = { id: 's' + Date.now(), ts: Date.now(), key: st.key, name: st.name, n: st.n, level: st.level, time: st.time, misses: st.misses, blob };
+    const rec = { id: 's' + Date.now(), ts: Date.now(), key: st.key, name: st.name, n: st.n, level: st.level, time: st.time, misses: st.misses, type: 'image/jpeg', buf: await Store.toBuf(blob) };
     try { await Store.put('stickers', rec); } catch (e) { }
     const bestKey = `${st.key}|${st.n}|${st.level}`, prev = S.best[bestKey], newBest = prev && st.time < prev;
     if (!prev || st.time < prev) { S.best[bestKey] = st.time; Store.saveSettings(); }
@@ -268,7 +285,7 @@
       slots += `<div class="pg">`;
       for (let k = 0; k < 6; k++) {
         const i = p * 6 + k, s = stickers[i];
-        if (s) slots += `<button class="slot" data-i="${i}"><div class="stk f${frameOf(s.n)}" style="--r:${((i * 37) % 11) - 5}deg"><div class="ring"><img alt="" src="${blobUrl(s.id, s.blob)}"></div><span class="cap">${s.n}<small>${'★'.repeat(LV_STARS[s.level] || 1)}</small></span></div></button>`;
+        if (s) slots += `<button class="slot" data-i="${i}"><div class="stk f${frameOf(s.n)}" style="--r:${((i * 37) % 11) - 5}deg"><div class="ring"><img alt="" src="${blobUrl(s.id, s)}"></div><span class="cap">${s.n}<small>${'★'.repeat(LV_STARS[s.level] || 1)}</small></span></div></button>`;
         else slots += `<div class="slot empty${i === count ? ' next' : ''}"><span>${i === count ? '?' : ''}</span></div>`;
       }
       slots += `</div>`;
@@ -290,7 +307,7 @@
     pg.onclick = (e) => {
       const b = e.target.closest('.slot[data-i]'); if (!b) return;
       const s = stickers[+b.dataset.i], d = new Date(s.ts);
-      const box = openSheet(`<div class="clear"><div class="stk big f${frameOf(s.n)}"><div class="ring"><img alt="" src="${blobUrl(s.id, s.blob)}"></div></div>
+      const box = openSheet(`<div class="clear"><div class="stk big f${frameOf(s.n)}"><div class="ring"><img alt="" src="${blobUrl(s.id, s)}"></div></div>
         <p class="meta">${s.name} ・ ${s.n}ピース</p><p class="meta sub">${LV[s.level] ? LV[s.level].name : ''} ・ ${Engine.fmt(s.time)} ・ まちがい ${s.misses}かい<br>${d.getFullYear()}ねん ${d.getMonth() + 1}がつ ${d.getDate()}にち</p>
         <div class="row"><button class="btn" id="sClose">とじる</button></div></div>`, 'clearbox');
       $('#sClose', box).onclick = closeSheet;
@@ -305,7 +322,8 @@
       <h3>おと・こえ</h3>
       <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
       <h3>とりこんだ しゃしん（${photos.length}まい）</h3>
-      <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" src="${blobUrl(p.id, p.blob)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
+      ${photos.length ? '<p class="note">「よみこめません」と出る しゃしんは、いったん「けす」で けして、もういちど ついかしてください。</p>' : ''}
+      <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
       <h3>きろく</h3>
       <button class="dng" id="rBest">ベストタイムを けす</button>
       <button class="dng" id="rStk">シールを ぜんぶ けす</button>
@@ -326,5 +344,5 @@
 
   /* ------------------------------------------------------------------ 起動 */
   Engine.init();
-  renderHome();
+  migrateLegacy().catch(() => { }).then(() => renderHome());
 })();
