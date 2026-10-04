@@ -143,6 +143,7 @@
       <header class="hhead">
         <h1>ジグソー<br>シールちょう</h1>
         <button id="goBook" class="bookbtn" style="--cover:${TIERS[tier].cover}"><i class="bk"></i><b>シールちょう</b><small>${stickers.length}まい</small></button>
+        <button id="goZukan" class="zkbtn" aria-label="ずかん"><b>ずかん</b></button>
         <button id="goSet" class="gear" aria-label="おとなの せってい">⚙</button>
       </header>
       <button id="goHelp" class="helpbtn" type="button">？ あそびかたを みる</button>
@@ -181,6 +182,7 @@
     $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
     const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
     $('#goBook').onclick = () => openBook();
+    $('#goZukan').onclick = openZukan;
     $('#goHelp').onclick = openHelp;
     $('#goSet').onclick = async () => { if (await PZ.parentGate('せっていは おとなの かた用です')) openSettings(); };
   }
@@ -383,6 +385,40 @@
   $('#gHelp').onclick = openHelp;
 
   /* --------------------------------------------------------------- シール帳 */
+  /* ---------------------------------------------------------------- ずかん */
+  const FACT = {
+    neko: 'ねこは ひげで まわりを かんじるよ。ニャーと なくよ。', kuma: 'くまは はちみつが だいすき。ふゆは ほらあなで ねるよ。', sakana: 'さかなは みずの なかで ひれを うごかして およぐよ。',
+    kuruma: 'くるまは タイヤが まわって はしるよ。ブッブー！', ie: 'おうちは わたしたちが ねたり ごはんを たべたりする ところ。', hana: 'おはなは たいようが だいすき。みつを すいに ちょうちょが くるよ。',
+    roketto: 'ロケットは そらの たかい ところまで とんで いくよ。ごー、よん、さん、にー、いち、ゼロ！', pengin: 'ペンギンは とべないけれど、みずの なかを じょうずに およぐよ。',
+    shoubousha: 'しょうぼうしゃは ひを けす くるま。ホースから みずが でるよ。ウーカンカン！', patoka: 'パトカーは まちを まもる くるま。ピーポー、ウーウー！', kyuukyuusha: 'きゅうきゅうしゃは びょうきや けがの ひとを びょういんに はこぶよ。ピーポーピーポー！',
+    shoberu: 'ショベルカーは アームで つちを ほるよ。パワフル！', shinkansen: 'しんかんせんは とっても はやい でんしゃ。ビューン！', dump: 'ダンプカーは にだいを かたむけて、すなや いしを おろすよ。',
+    basu: 'バスは たくさんの ひとを のせて はしるよ。しゅっぱつ しんこう！', hikouki: 'ひこうきは つばさで そらを とぶよ。ゴォー！', gomi: 'ごみしゅうしゅうしゃは まちを きれいに してくれる くるま。ごみを ぎゅーっと つぶすよ。',
+    mixer: 'ミキサーしゃは ドラムが ぐるぐる まわって、コンクリートを まぜるよ。', crane: 'クレーンしゃは たかい ところまで おもい にもつを もちあげるよ。', tractor: 'トラクターは はたけを たがやす おおきな タイヤの くるま。',
+    sl: 'SLは ほのおと けむりで はしる、むかしの きかんしゃ。ポッポー！', heli: 'ヘリコプターは プロペラを まわして、その ばで うかべるよ。バラバラバラ！',
+    tyrano: 'ティラノサウルスは きょうりゅうの おうさま。おおきな くちと するどい はを もって いたよ。', tricera: 'トリケラトプスは かおに 3ぼんの つのが あるよ。くさを たべて いたんだって。',
+    lion: 'ライオンは どうぶつの おうさま。おすには たてがみが あるよ。ガオー！', zou: 'ぞうは はなが とっても ながいよ。みずを すって シャワーも できるよ。', kirin: 'きりんは くびが ながくて、たかい きの はっぱを たべるよ。', panda: 'パンダは ささを もぐもぐ たべるよ。しろと くろの もようが かわいいね。',
+  };
+  async function openZukan() {
+    const stickers = await Store.all('stickers'), done = new Set(stickers.map((s) => s.key));
+    const arts = PZ.art.filter((a) => FACT[a.id] || a.cat), got = arts.filter((a) => done.has('a:' + a.id)).length;
+    const cell = (a) => { const ok = done.has('a:' + a.id); return `<button type="button" class="zk${ok ? ' got' : ''}" data-id="${a.id}">${ok ? `<img alt="" src="${PZ.svgUrl(a)}">` : '<i class="qq">？</i>'}<span>${ok ? a.name.replace(/（.*/, '') : '？？？'}</span></button>`; };
+    const sec = (cat, t) => `<h3>${t}</h3><div class="zgrid">${arts.filter((a) => (a.cat === 'vehicle') === (cat === 'vehicle')).map(cell).join('')}</div>`;
+    const box = openSheet(`<h2>ずかん</h2><p class="note" style="text-align:center">パズルを クリアすると、えが ひらくよ（${got} / ${arts.length}）</p>
+      ${sec('vehicle', 'のりもの')}${sec('nature', 'どうぶつ・しぜん')}
+      <div class="row"><button class="btn" id="zClose" type="button">とじる</button></div>`, 'zukanbox');
+    $('#zClose', box).onclick = closeSheet;
+    box.querySelector('.zgrid').parentNode.onclick = (e) => {
+      const b = e.target.closest('.zk'); if (!b) return;
+      const a = PZ.art.find((x) => x.id === b.dataset.id), ok = done.has('a:' + a.id);
+      if (!ok) { PZ.snd.soft(); flash('まだ あそんで いないよ。パズルを クリアすると ひらくよ'); return; }
+      const d2 = openSheet(`<div class="clear"><div class="zbig"><img alt="" src="${PZ.svgUrl(a)}"></div><h2>${a.name}</h2><p class="fact">${FACT[a.id] || ''}</p>
+        <div class="row"><button class="btn" id="zBack" type="button">もどる</button><button class="btn go" id="zSay" type="button">🔊 よんで</button></div></div>`, 'clearbox');
+      PZ.sayV(a.name.replace(/（.*/, '') + '。' + (FACT[a.id] || ''), true);
+      $('#zSay', d2).onclick = () => PZ.sayV(a.name.replace(/（.*/, '') + '。' + (FACT[a.id] || ''), true);
+      $('#zBack', d2).onclick = () => { closeSheet(); openZukan(); };
+    };
+  }
+
   async function openBook(fromClear) {
     const stickers = (await Store.all('stickers')).sort((a, b) => a.ts - b.ts);
     const count = stickers.length, ti = tierOf(count), T = TIERS[ti], next = TIERS[ti + 1];

@@ -242,3 +242,23 @@ button{font-family:inherit;color:inherit}
 .recbox .why{color:#8a6a1a;margin-top:2px}
 .cn.rec,.lv.rec{position:relative}
 .cn.rec::after,.lv.rec::after{content:'おすすめ';position:absolute;top:-9px;right:-4px;background:#f5a400;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:8px;box-shadow:0 1px 0 #b57800}
+
+/* ずかん */
+.zkbtn{width:56px;height:46px;border-radius:16px;border:0;background:var(--paper);box-shadow:0 3px 0 var(--wood-dark);font-size:12px;padding:0;color:var(--ink)}
+.zkbtn b{font-size:12px}
+.hhead{gap:6px}
+.zukanbox{width:min(94vw,440px);max-height:90vh;overflow:auto}
+.zgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.zk{border:2px solid var(--line);border-radius:14px;background:#fff;padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink)}
+.zk img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;filter:brightness(0) opacity(.18)}
+.zk.got img{filter:none}
+.zk span{font-size:10px;font-weight:800;line-height:1.2;text-align:center;min-height:24px;display:flex;align-items:center}
+.zk.got{border-color:#ffd45c;background:#fffbe6}
+.zbig img{width:200px;max-width:70vw;border-radius:18px;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.zbig{text-align:center}
+.fact{font-size:16px;line-height:1.7;text-align:center;margin:8px 0 12px}
+.zk .qq{display:grid;place-items:center;width:100%;aspect-ratio:1;border-radius:10px;background:#e9dfc8;color:#c8b896;font-style:normal;font-size:28px;font-weight:900}
+.zk span{font-size:9.5px;letter-spacing:-.02em}
+.hhead h1{font-size:17px}
+.bookbtn{padding:6px 9px;column-gap:6px}.bookbtn b,.bookbtn small{white-space:nowrap}.bookbtn small{font-size:11px}
+.bookbtn .bk{width:24px;height:32px}
