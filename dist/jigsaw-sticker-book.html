@@ -360,6 +360,12 @@ button{font-family:inherit;color:inherit}
 
 .policy{font-size:14px;line-height:1.7}.policy ul{padding-left:1.2em;margin:6px 0}.policy li{margin:6px 0}
 
+/* つづきを けす */
+.resumewrap{position:relative}
+.resumewrap .resume{padding-right:56px}
+.resdel{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#c0392b;font-size:18px;font-weight:900;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.btn.go.dangerbtn{background:#e5534b;border-color:#e5534b;box-shadow:0 3px 0 #b3362f}
+
 </style>
 </head><body>
 <noscript><div style="position:fixed;left:8px;right:8px;top:8px;z-index:9999;padding:14px;border:2px solid #e8a100;border-radius:12px;background:#fff3cd;color:#5a4220;font:15px/1.7 sans-serif">この ひょうじでは プログラム（JavaScript）が うごきません。<br>Safari や Chrome などの ブラウザで ひらいてください。</div></noscript>
@@ -1103,8 +1109,8 @@ button{font-family:inherit;color:inherit}
   const LEVELS = {
     easy:   { name: 'やさしい',         desc: 'うすい見本と、ヒントのひかり', ghost: 0.38, grid: true,  assist: true,  rot: false, snap: 0.8 },
     normal: { name: 'ふつう',           desc: 'うすい見本あり',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    hard:   { name: 'むずかしい',       desc: '盤面に見本なし（右上の見本だけ）', ghost: 0,    grid: false, assist: false, rot: false, snap: 0.42 },
-    expert: { name: 'ちょうむずかしい', desc: 'さらに、ピースがまわっている', ghost: 0,  grid: false, assist: false, rot: true, snap: 0.35 },
+    hard:   { name: 'むずかしい',       desc: 'すごく うすい見本だけ',         ghost: 0.09, grid: false, assist: false, rot: false, snap: 0.42 },
+    expert: { name: 'ちょうむずかしい', desc: 'うすい見本＋ピースがまわっている', ghost: 0.09, grid: false, assist: false, rot: true, snap: 0.35 },
   };
   const $ = (s) => document.querySelector(s);
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
@@ -1896,7 +1902,7 @@ button{font-family:inherit;color:inherit}
       let valid = !(save.desc.k === 'photo' && !photos.find((p) => p.id === save.desc.id));
       if (valid) {
         const pct = Math.round(save.placed.length / (save.rows * save.cols) * 100);
-        resume = `<button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button>`;
+        resume = `<div class="resumewrap"><button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button><button class="resdel" id="resDel" type="button" aria-label="つづきを けす">✕</button></div>`;
       }
     }
     home.innerHTML = `
@@ -1941,6 +1947,12 @@ button{font-family:inherit;color:inherit}
     $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#lvs').onclick = (e) => { const b = e.target.closest('.lv'); if (!b) return; S.level = b.dataset.l; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
+    const rd = $('#resDel'); if (rd) rd.onclick = () => {
+      const box = openSheet(`<div class="clear"><h2>つづきを けす？</h2><p class="fact">ここまでの パズルは、もとに もどせません。</p>
+        <div class="row"><button class="btn" id="rdNo" type="button">やめる</button><button class="btn go dangerbtn" id="rdYes" type="button">けす</button></div></div>`, 'clearbox');
+      $('#rdNo', box).onclick = closeSheet;
+      $('#rdYes', box).onclick = async () => { await Store.del('saves', Engine.saveId()); closeSheet(); flash('つづきを けしました'); renderHome(); };
+    };
     const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
     $('#goBook').onclick = () => openBook();
     $('#goZukan').onclick = openZukan;

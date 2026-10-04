@@ -147,7 +147,7 @@
       let valid = !(save.desc.k === 'photo' && !photos.find((p) => p.id === save.desc.id));
       if (valid) {
         const pct = Math.round(save.placed.length / (save.rows * save.cols) * 100);
-        resume = `<button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button>`;
+        resume = `<div class="resumewrap"><button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button><button class="resdel" id="resDel" type="button" aria-label="つづきを けす">✕</button></div>`;
       }
     }
     home.innerHTML = `
@@ -193,6 +193,12 @@
     $('#cnts').onclick = (e) => { const b = e.target.closest('.cn'); if (!b) return; S.target = +b.dataset.t; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#lvs').onclick = (e) => { const b = e.target.closest('.lv'); if (!b) return; S.level = b.dataset.l; Store.saveSettings(); PZ.snd.pick(); renderHome(); };
     $('#startBtn').onclick = () => play({ desc: S.src, target: S.target, level: S.level });
+    const rd = $('#resDel'); if (rd) rd.onclick = () => {
+      const box = openSheet(`<div class="clear"><h2>つづきを けす？</h2><p class="fact">ここまでの パズルは、もとに もどせません。</p>
+        <div class="row"><button class="btn" id="rdNo" type="button">やめる</button><button class="btn go dangerbtn" id="rdYes" type="button">けす</button></div></div>`, 'clearbox');
+      $('#rdNo', box).onclick = closeSheet;
+      $('#rdYes', box).onclick = async () => { await Store.del('saves', Engine.saveId()); closeSheet(); flash('つづきを けしました'); renderHome(); };
+    };
     const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
     $('#goBook').onclick = () => openBook();
     $('#goZukan').onclick = openZukan;

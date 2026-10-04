@@ -312,3 +312,9 @@ button{font-family:inherit;color:inherit}
 .bkin{height:52px;font-size:16px;box-shadow:0 4px 0 #249a74}
 
 .policy{font-size:14px;line-height:1.7}.policy ul{padding-left:1.2em;margin:6px 0}.policy li{margin:6px 0}
+
+/* つづきを けす */
+.resumewrap{position:relative}
+.resumewrap .resume{padding-right:56px}
+.resdel{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#c0392b;font-size:18px;font-weight:900;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+.btn.go.dangerbtn{background:#e5534b;border-color:#e5534b;box-shadow:0 3px 0 #b3362f}
