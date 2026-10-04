@@ -93,7 +93,7 @@
   function setRefSize() {
     const box = landscape() ? 78 : (innerWidth <= 380 ? 80 : 92), a = G.W / G.H;
     const w = a >= 1 ? box : box * a, h = a >= 1 ? box / a : box;
-    Object.assign(ui.ref.style, { width: w + 'px', height: h + 'px', maxHeight: 'none', aspectRatio: '' });
+    Object.assign(ui.ref.querySelector('.pic').style, { width: w + 'px', height: h + 'px' });
   }
   function fitCam(anim) {
     const v = viewSize(), rr = ui.ref.getBoundingClientRect();
@@ -184,7 +184,7 @@
     const srcC = Sources.cover(info.img, W * RES, H * RES);
     G = {
       desc: o.desc, key: Sources.key(o.desc), info, level: o.level, L, rows, cols, n, W, H, M, RES, pad, S, seed,
-      srcC, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
+      srcC, edges, pieces: [], groups: [], gid: 0, z: 10, placed: 0, sel: null, misses: o.save ? o.save.misses || 0 : 0, elapsed: o.save ? o.save.elapsed || 0 : 0,
       started: !!(o.save && ((o.save.placed && o.save.placed.length) || (o.save.groups && o.save.groups.length))), over: false, filter: 'all',
       fit: 1, sTable: 0.2, sMin: 0.2, sMax: 3, order, opos: new Map(order.map((i, k) => [i, k])), timerId: 0, lastTick: 0, destroyed: false,
     };
@@ -229,11 +229,11 @@
     x.setTransform(RES, 0, 0, RES, 0, 0); x.clearRect(0, 0, W, H);
     x.fillStyle = '#fdf1d8'; x.fillRect(0, 0, W, H);
     if (L.ghost) { x.globalAlpha = L.ghost; x.drawImage(G.srcC, 0, 0, W, H); x.globalAlpha = 1; }
-    if (L.grid) {
-      x.strokeStyle = 'rgba(122,75,22,.28)'; x.lineWidth = 1; x.setLineDash([4, 4]); x.beginPath();
-      for (let r = 1; r < rows; r++) { x.moveTo(0, r * CELL); x.lineTo(W, r * CELL); }
-      for (let c = 1; c < cols; c++) { x.moveTo(c * CELL, 0); x.lineTo(c * CELL, H); }
-      x.stroke(); x.setLineDash([]);
+    if (L.grid) {                                                // 空のマスは、本物のピースの形の線で見せる
+      x.strokeStyle = 'rgba(122,75,22,.34)'; x.lineWidth = 1.2; x.lineJoin = 'round';
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        x.save(); x.translate(c * CELL, r * CELL); x.stroke(PZ.piecePath(r, c, rows, cols, CELL, CELL, G.edges, false)); x.restore();
+      }
     }
     x.strokeStyle = 'rgba(122,75,22,.55)'; x.lineWidth = 3; x.strokeRect(0, 0, W, H);
   }
