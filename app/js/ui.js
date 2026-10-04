@@ -489,6 +489,52 @@
     };
   }
 
+  /* ------------------------------------------------------ バックアップ
+     写真・シール・プロフィール・記録を ひとつのファイルに かきだす／よみこむ（機種変更や、うっかり消したときのため）。
+     サーバーには送らず、端末のファイルとして保存する */
+  const b64 = (buf) => { const u8 = new Uint8Array(buf); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = (t) => { const s = atob(t), u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8.buffer; };
+  const encRec = (r) => { const o = Object.assign({}, r); if (o.buf) o.buf = b64(o.buf); if (o.tbuf) o.tbuf = b64(o.tbuf); return o; };
+  const decRec = (r) => { const o = Object.assign({}, r); if (typeof o.buf === 'string') o.buf = unb64(o.buf); if (typeof o.tbuf === 'string') o.tbuf = unb64(o.tbuf); return o; };
+  async function makeBackup() {
+    const photos = (await Store.all('photos')).filter((r) => r.buf), stickers = (await Store.all('stickers')).filter((r) => r.buf);
+    const st = {}; ['sound', 'voice', 'breakMin', 'profiles', 'pid', 'best', 'bestP', 'play', 'playP', 'target', 'level'].forEach((k) => { if (S[k] !== undefined) st[k] = S[k]; });
+    return { app: 'jigsaw-sticker-book', v: 1, ts: Date.now(), settings: st, photos: photos.map(encRec), stickers: stickers.map(encRec) };
+  }
+  async function exportBackup() {
+    loading(true, 'バックアップを つくっています…');
+    try {
+      const data = await makeBackup(), blob = new Blob([JSON.stringify(data)], { type: 'application/json' }), d = new Date();
+      const name = `jigsaw-backup-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.json`;
+      loading(false);
+      const file = (typeof File === 'function') ? new File([blob], name, { type: 'application/json' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'ジグソーシールちょう バックアップ' }); flash('バックアップを ほぞんしました'); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(a.href); }, 4000);
+      flash(`バックアップを つくりました（しゃしん ${data.photos.length}・シール ${data.stickers.length}）`, 4500);
+    } catch (e) { loading(false); logErr('バックアップ', e); flash('バックアップを つくれませんでした', 4500); }
+  }
+  async function importBackup(file) {
+    loading(true, 'よみこんでいます…');
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || data.app !== 'jigsaw-sticker-book' || !Array.isArray(data.photos) || !Array.isArray(data.stickers)) throw new Error('not a backup');
+      for (const r of data.photos) await Store.put('photos', decRec(r));
+      for (const r of data.stickers) await Store.put('stickers', decRec(r));
+      const s = data.settings || {};
+      (s.profiles || []).forEach((p) => { if (p && p.id && !S.profiles.find((x) => x.id === p.id)) S.profiles.push({ id: String(p.id), name: String(p.name || 'なまえ').slice(0, 8), av: +p.av || 0 }); });
+      const mergeBest = (dst, src) => { Object.keys(src || {}).forEach((k) => { if (!dst[k] || src[k] < dst[k]) dst[k] = src[k]; }); };
+      const mergePlay = (dst, src) => { Object.keys(src || {}).forEach((k) => { dst[k] = Math.max(dst[k] || 0, src[k]); }); };
+      S.best = S.best || {}; mergeBest(S.best, s.best); S.play = S.play || {}; mergePlay(S.play, s.play);
+      S.bestP = S.bestP || {}; Object.keys(s.bestP || {}).forEach((id) => { S.bestP[id] = S.bestP[id] || {}; mergeBest(S.bestP[id], s.bestP[id]); });
+      S.playP = S.playP || {}; Object.keys(s.playP || {}).forEach((id) => { S.playP[id] = S.playP[id] || {}; mergePlay(S.playP[id], s.playP[id]); });
+      Store.saveSettings(); loading(false); closeSheet();
+      flash(`よみこみました（しゃしん ${data.photos.length}・シール ${data.stickers.length}）`, 4500); renderHome();
+    } catch (e) { loading(false); logErr('バックアップよみこみ', e); flash('このファイルは よみこめません（バックアップの ファイルを えらんでね）', 5000); }
+  }
+
   /* ---------------------------------------------------------------- ずかん */
   const FACT = {
     neko: 'ねこは ひげで まわりを かんじるよ。ニャーと なくよ。', kuma: 'くまは はちみつが だいすき。ふゆは ほらあなで ねるよ。', sakana: 'さかなは みずの なかで ひれを うごかして およぐよ。',
@@ -589,6 +635,10 @@
       <p class="note">（いま えらんでいる 子：${esc(curP().name)} の ぶん）</p>
       <button class="dng" id="rBest">ベストタイムを けす</button>
       <button class="dng" id="rStk">シールを ぜんぶ けす</button>
+      <h3>バックアップ</h3>
+      <p class="note">しゃしん・シール・プロフィール・きろくを 1つの ファイルに ほぞんできます。きかんを かえるときや、まちがって けしたときに よみこめます。（インターネットには 送りません）</p>
+      <button class="btn" id="bkOut" type="button">ファイルに かきだす</button>
+      <label class="filebtn bkin"><input type="file" id="bkFile" accept=".json,application/json">ファイルから よみこむ</label>
       <h3>もんだいが あったとき</h3>
       ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">きろくを けす</button>` : '<p class="note">エラーの きろくは ありません</p>'}
       <p class="note">写真・シール・きろくは、この たんまつの中だけに保存されます。インターネットには送りません。${persistent ? '' : '<br><b>いまは一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
@@ -623,6 +673,8 @@
       box.querySelectorAll('#sVoice button').forEach((x) => x.classList.toggle('on', x === b)); if (PZ.voice) PZ.sayV('こんにちは。いっしょに あそぼうね', true);
     });
     box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); for (const p of S.profiles) { const sid = p.id === 'p0' ? 'current' : 'current:' + p.id, sv = await Store.get('saves', sid); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', sid); } closeSheet(); openSettings(); }));
+    $('#bkOut', box).onclick = exportBackup;
+    $('#bkFile', box).onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f); };
     const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };
     armedButton($('#rBest', box), 'ベストタイムを けす', () => { if (S.pid === 'p0') S.best = {}; else (S.bestP = S.bestP || {})[S.pid] = {}; Store.saveSettings(); flash('けしました'); });
     armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { for (const s of await myStickers()) await Store.del('stickers', s.id); flash('けしました'); });
