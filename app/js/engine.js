@@ -17,8 +17,8 @@
 
   /* 複数の絵をタイル状にならべた「ぜんぶ」パズル */
   const COLLAGES = {
-    animals:  { name: 'どうぶつ・しぜん ぜんぶ', say: 'みんな いるね', cols: 3, ids: () => PZ.art.filter((a) => a.cat === 'nature').map((a) => a.id) },
-    vehicles: { name: 'のりもの ぜんぶ',         say: 'ぶーぶー',     cols: 3, ids: () => ['kuruma', 'shoubousha', 'patoka', 'kyuukyuusha', 'shoberu', 'shinkansen', 'dump', 'basu', 'hikouki'] },
+    animals:  { name: 'どうぶつ・しぜん ぜんぶ', say: 'みんな いるね', cols: 4, ids: () => PZ.art.filter((a) => a.cat === 'nature').map((a) => a.id) },
+    vehicles: { name: 'のりもの ぜんぶ',         say: 'ぶーぶー',     cols: 4, ids: () => PZ.art.filter((a) => a.cat === 'vehicle').map((a) => a.id) },
   };
 
   /* ------------------------------------------------------------ 絵の読み込み */
@@ -109,7 +109,11 @@
     pebble(x) { x.fillStyle = 'rgba(0,0,0,.22)'; ell(x, -5, 2, 4.5, 3); ell(x, 4, -3, 3.4, 2.5); x.fillStyle = 'rgba(255,255,255,.18)'; ell(x, 6, 5, 2.6, 2); },
     dots(x, c) { x.fillStyle = c[0]; x.globalAlpha = 0.55; ell(x, -6, 2, 2.4, 2.4); ell(x, 2, -4, 2.8, 2.8); ell(x, 7, 5, 2, 2); x.globalAlpha = 1; },
   };
+  const THEME_FORCE = { lion: { party: 'sky' }, tyrano: { party: 'sky' }, tricera: { party: 'sky' } };
   function themeOf(r, g, b, artId) {
+    const t = themeOf0(r, g, b, artId); return (THEME_FORCE[artId] && THEME_FORCE[artId][t]) || t;
+  }
+  function themeOf0(r, g, b, artId) {
     const L = 0.299 * r + 0.587 * g + 0.114 * b, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
     if (L < 75 && b >= r) return 'space';
     if (L > 238 && mx - mn < 14) return 'snow';

@@ -45,7 +45,7 @@
     };
   }
   const aspectOf = (src, photos) => {
-    if (src.k === 'collage') return (src.id || 'animals') === 'vehicles' ? 1 : 1.5;
+    if (src.k === 'collage') return (src.id || 'animals') === 'vehicles' ? 1 : 4 / 3;
     if (src.k === 'photo') { const p = photos.find((x) => x.id === src.id); return p ? Math.min(2, Math.max(0.5, p.w / p.h)) : 1; }
     return 1;
   };
@@ -75,10 +75,13 @@
     const sel = (k, id) => (S.src.k === k && (id === undefined || S.src.id === id) ? ' on' : '');
     if (!S.tab) S.tab = tabOf(S.src);
     const artBtn = (a) => `<button class="th${sel('art', a.id)}" data-k="art" data-id="${a.id}"><img alt="${a.name}" src="${PZ.svgUrl(a)}"></button>`;
-    const colBtn = async (id, aspect) => `<button class="th${aspect >= 1.4 ? ' wide' : ''}${S.src.k === 'collage' && (S.src.id || 'animals') === id ? ' on' : ''}"${aspect >= 1.4 ? ` style="aspect-ratio:${aspect}"` : ''} data-k="collage" data-id="${id}"><img alt="${COLLAGE_NAME[id]}" src="${await getCollageUrl(id)}"></button>`;
+    const colBtn = async (id, aspect) => {
+      const wide = aspect >= 1.6, iw = wide ? 100 : (aspect >= 1 ? 100 : 100 * aspect), ih = wide ? 100 : (aspect >= 1 ? 100 / aspect : 100);
+      return `<button class="th photo${wide ? ' wide' : ''}${S.src.k === 'collage' && (S.src.id || 'animals') === id ? ' on' : ''}"${wide ? ` style="aspect-ratio:${aspect}"` : ''} data-k="collage" data-id="${id}"><img alt="${COLLAGE_NAME[id]}" style="width:${iw}%;height:${ih}%" src="${await getCollageUrl(id)}"></button>`;
+    };
     let thumbs = '';
     if (S.tab === 'vehicle') thumbs = PZ.art.filter((a) => a.cat === 'vehicle').map(artBtn).join('') + await colBtn('vehicles', 1);
-    else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 1.5);
+    else if (S.tab === 'nature') thumbs = PZ.art.filter((a) => a.cat === 'nature').map(artBtn).join('') + await colBtn('animals', 4 / 3);
     else thumbs = photos.map((p) => thumbHtml(p, sel('photo', p.id))).join('') + '<button class="th add" id="addPhoto"><span>＋</span><small>しゃしん</small></button>';
 
     let resume = '';
