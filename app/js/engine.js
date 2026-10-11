@@ -4,7 +4,8 @@
 (function () {
   'use strict';
   const CELL = 60;            // 盤面の1マス（ワールド座標）
-  const TS = 0.66;            // ピース置き場での表示倍率
+  const TABLE = false;        // テーブル（盤面のまわりの仮置き場）。いまは なし：盤面を いちばん大きく見せるため
+  const TS = 0.6;            // ピース置き場での表示倍率
   const LEVELS = {
     easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
     normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
@@ -189,29 +190,24 @@
   function viewSize() { const r = ui.view.getBoundingClientRect(); return { w: r.width, h: r.height, l: r.left, t: r.top }; }
   /* 右上の見本は、パズルとまったく同じ縦横比にする（縦長なら縦長、横長なら横長。切り抜かない） */
   function setRefSize() {
-    const box = landscape() ? 78 : (innerWidth <= 380 ? 80 : 92), a = G.W / G.H;
+    const box = landscape() ? 84 : (innerWidth <= 380 ? 84 : 96), a = G.W / G.H;
     const w = a >= 1 ? box : box * a, h = a >= 1 ? box / a : box;
     Object.assign(ui.ref.querySelector('.pic').style, { width: w + 'px', height: h + 'px' });
   }
-  function fitCam(anim) {
-    const v = viewSize(), rr = ui.ref.getBoundingClientRect();
-    const hs = landscape() ? 92 : 88;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
-    let top = 0, left = 0, right = 0;
-    if (landscape()) { left = hs + 16; right = Math.max(0, v.l + v.w - rr.left + 6); }
-    else top = Math.max(hs + 10, rr.bottom - v.t + 4);
-    const aw = v.w - left - right, ah = v.h - top;
-    const s = Math.min(aw * 0.985 / G.W, ah * 0.985 / G.H);
-    G.fit = s; G.sTable = Math.min(v.w / (G.W + 2 * G.M), v.h / (G.H + 2 * G.M)) * 0.94;
-    G.sMin = Math.min(G.sTable, s * 0.8); G.sMax = Math.max(160 / CELL, s * 3);
-    cam.s = s; cam.x = left + (aw - G.W * s) / 2; cam.y = top + (ah - G.H * s) / 2; applyCam(anim);
-  }
-  function fitTable(anim) {                                      // テーブル全体が見えるところまで引く
-    const v = viewSize(); cam.s = G.sTable; cam.x = v.w / 2 - (G.W / 2) * cam.s; cam.y = v.h / 2 - (G.H / 2) * cam.s; applyCam(anim);
+  function fitCam(anim) {                                       // 盤面を、見える場所いっぱいに（見本は置き場の右はしに あるので、じゃまにならない）
+    const v = viewSize(), hs = 76 + 12;                           // 左上=いま持っているピース。あまった場所に置く
+    const s = Math.min(v.w / G.W, v.h / G.H) * 0.985;
+    const lx = v.w - G.W * s, ly = v.h - G.H * s;
+    const bias = (left) => Math.min(left, Math.max(left / 2, hs));   // 余白が たりれば、持っているピースの場所を あけるように 寄せる
+    let x = lx / 2, y = ly / 2;
+    if (ly >= lx) y = bias(ly); else x = bias(lx);
+    G.fit = s; G.sMin = s; G.sMax = Math.max(160 / CELL, s * 3); G.fx = x; G.fy = y;
+    cam.s = s; cam.x = x; cam.y = y; applyCam(anim);
   }
   function clampCam() {
-    const v = viewSize(), m = 80, M = G.M;
-    cam.x = clamp(cam.x, m - (G.W + M) * cam.s, v.w - m + M * cam.s);
-    cam.y = clamp(cam.y, m - (G.H + M) * cam.s, v.h - m + M * cam.s);
+    const v = viewSize(), w = G.W * cam.s, h = G.H * cam.s, k = 24;
+    cam.x = w <= v.w + 0.5 ? G.fx : clamp(cam.x, v.w - w - k, k);
+    cam.y = h <= v.h + 0.5 ? G.fy : clamp(cam.y, v.h - h - k, k);
   }
   function zoomAt(px, py, s2, anim) {
     s2 = clamp(s2, G.sMin, G.sMax);
@@ -332,7 +328,7 @@
     const grid = o.save ? { rows: o.save.rows, cols: o.save.cols } : gridFor(o.target, info.aspect);
     const rows = grid.rows, cols = grid.cols, n = rows * cols, W = cols * CELL, H = rows * CELL;
     const RES = Math.max(1, Math.min(2, 4096 / Math.max(W, H)));
-    const pad = Math.ceil(CELL * 0.3), S = CELL + pad * 2, M = Math.round(Math.max(W, H) * 0.5);
+    const pad = Math.ceil(CELL * 0.3), S = CELL + pad * 2, M = TABLE ? Math.round(Math.max(W, H) * 0.5) : 0;
     const seed = o.save ? o.save.seed : (Math.random() * 1e9) | 0;
     const rnd = PZ.rng(seed), edges = PZ.edges(rows, cols, seed);
     const order = shuffleSeed([...Array(n).keys()], rnd);
@@ -348,6 +344,7 @@
     // 盤面とテーブル
     const b = ui.board; b.width = Math.ceil(W * RES); b.height = Math.ceil(H * RES); b.style.width = W + 'px'; b.style.height = H + 'px';
     ui.world.style.width = W + 'px'; ui.world.style.height = H + 'px';
+    ui.table.style.display = TABLE ? '' : 'none';
     Object.assign(ui.table.style, { left: -M + 'px', top: -M + 'px', width: W + 2 * M + 'px', height: H + 2 * M + 'px' });
     drawBoardBase();
     // 見本（右上の小さな見本と、タップで出る大きな見本）
@@ -373,7 +370,7 @@
     // 保存分の復元：盤面 → テーブルのグループ → 残りはピース置き場へ
     if (o.save) {
       (o.save.placed || []).forEach((i) => { const p = G.pieces[i]; if (p) { p.state = 'board'; G.placed++; drawPiece(p); } });
-      (o.save.groups || []).forEach((sg) => { const ms = sg.m.filter((i) => G.pieces[i] && G.pieces[i].state === 'tray'); if (ms.length) newGroup(ms, sg.ax, sg.ay); });
+      (TABLE ? (o.save.groups || []) : []).forEach((sg) => { const ms = sg.m.filter((i) => G.pieces[i] && G.pieces[i].state === 'tray'); if (ms.length) newGroup(ms, sg.ax, sg.ay); });
     }
     order.forEach((i) => { const p = G.pieces[i]; if (p.state === 'tray') buildTp(p); });
     updateLabels(); setFilter('all'); showTimer();
@@ -478,7 +475,7 @@
   }
   function startSelect() {
     if (!G.started) G.started = true;
-    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('つなげたい ピースを タップ。あいている ばしょを タップで おけるよ', 'ピースを タップして、あいている ばしょを タップしてね'); }
+    const s = Store.settings; if ((s.tipJoin || 0) < 3) { s.tipJoin = (s.tipJoin || 0) + 1; Store.saveSettings(); toast('えらんだ ピースが はまる ばしょを タップ', 'ピースを タップして、はまる ばしょを タップしてね'); }
   }
   function selectTray(p) {
     if (!G || G.over || p.state !== 'tray') return;
@@ -522,7 +519,7 @@
   function onTap(x, y, drop) {
     if (!G || G.over) return;
     const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, U = G.sel;
-    let hit = hitGroup(wx, wy);
+    let hit = TABLE ? hitGroup(wx, wy) : null;
     if (drop && U && U.from === 'table' && hit && hit.g === U.g) hit = null;    // 長押しで運んだとき：自分自身の上は「空いている所」あつかい
     if (!U) { if (hit) selectGroup(hit.g); return; }                         // 何も持っていない時：テーブルのかたまりを持ち上げる
     if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね', 'ピースを タップして、むきを そろえてね'); return; }
@@ -539,7 +536,7 @@
       else miss();
       return;
     }
-    if (wx >= -G.M && wy >= -G.M && wx < G.W + G.M && wy < G.H + G.M) putDown(U, wx, wy);   // テーブルの空いている所：仮置き
+    if (TABLE && wx >= -G.M && wy >= -G.M && wx < G.W + G.M && wy < G.H + G.M) putDown(U, wx, wy);   // テーブルの空いている所：仮置き
   }
 
   function popAt(src, left, top, w, h) {
@@ -735,7 +732,7 @@
     $('#gHint').onclick = hint;
     $('#zIn').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s * 1.35, true); };
     $('#zOut').onclick = () => { const v = viewSize(); G && zoomAt(v.w / 2, v.h / 2, cam.s / 1.35, true); };
-    $('#zFit').onclick = () => { if (!G) return; if (Math.abs(cam.s - G.fit) < G.fit * 0.04) fitTable(true); else fitCam(true); };   // 盤面ぜんたい → もう一度でテーブルぜんたい
+    $('#zFit').onclick = () => { if (!G) return; fitCam(true); };   // 盤面ぜんたい → もう一度でテーブルぜんたい
     ui.ref.addEventListener('click', () => setPeek(!ui.peek.classList.contains('on')));      // 右上の見本：タップで大きく／もう一度で閉じる
     ui.peek.addEventListener('click', () => setPeek(false));
     let rt = 0;
