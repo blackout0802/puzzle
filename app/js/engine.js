@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const CELL = 60;            // 盤面の1マス（ワールド座標）
-  const TS = 0.88;            // ピース置き場での表示倍率
+  const TS = 0.66;            // ピース置き場での表示倍率
   const LEVELS = {
     easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
     normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
@@ -195,12 +195,12 @@
   }
   function fitCam(anim) {
     const v = viewSize(), rr = ui.ref.getBoundingClientRect();
-    const hs = landscape() ? 92 : 112;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
+    const hs = landscape() ? 92 : 88;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
     let top = 0, left = 0, right = 0;
     if (landscape()) { left = hs + 16; right = Math.max(0, v.l + v.w - rr.left + 6); }
-    else top = Math.max(hs + 16, rr.bottom - v.t + 6);
+    else top = Math.max(hs + 10, rr.bottom - v.t + 4);
     const aw = v.w - left - right, ah = v.h - top;
-    const s = Math.min(aw * 0.96 / G.W, ah * 0.96 / G.H);
+    const s = Math.min(aw * 0.985 / G.W, ah * 0.985 / G.H);
     G.fit = s; G.sTable = Math.min(v.w / (G.W + 2 * G.M), v.h / (G.H + 2 * G.M)) * 0.94;
     G.sMin = Math.min(G.sTable, s * 0.8); G.sMax = Math.max(160 / CELL, s * 3);
     cam.s = s; cam.x = left + (aw - G.W * s) / 2; cam.y = top + (ah - G.H * s) / 2; applyCam(anim);

@@ -117,13 +117,13 @@ button{font-family:inherit;color:inherit}
 #ref{position:absolute;top:8px;right:8px;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
 #ref .pic{border:3px solid #fff;border-radius:8px;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.4);overflow:hidden}
 #ref img{display:block;width:100%;height:100%;object-fit:fill}
-#ref .zm{font-size:11px;font-weight:800;color:#fff;background:rgba(40,25,10,.78);border-radius:10px;padding:1px 9px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+#ref .zm{margin-top:-24px;position:relative;font-size:10px;font-weight:800;color:#fff;background:rgba(40,25,10,.78);border-radius:10px;padding:1px 9px;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.3)}
 #peek{position:absolute;inset:0;z-index:20;display:none;place-items:center;background:rgba(30,18,6,.85)}
 #peek.on{display:grid}
 #peek img{max-width:94%;max-height:94%;border:6px solid #fff;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
 
 /* いま持っているピース */
-#hand{position:absolute;left:10px;top:8px;width:112px;height:112px;z-index:6;display:none;place-items:center;background:rgba(255,246,224,.94);border:3px solid var(--accent);border-radius:20px;box-shadow:0 5px 14px rgba(0,0,0,.4)}
+#hand{position:absolute;left:10px;top:8px;width:88px;height:88px;z-index:6;display:none;place-items:center;background:rgba(255,246,224,.94);border:3px solid var(--accent);border-radius:20px;box-shadow:0 5px 14px rgba(0,0,0,.4)}
 #hand.on{display:grid}
 #hand canvas{width:100%;height:100%;object-fit:contain;transition:transform .2s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
 #hand.rot:after{content:"↻";position:absolute;right:-8px;top:-10px;width:30px;height:30px;line-height:30px;text-align:center;border-radius:50%;background:var(--accent);color:#fff;font-size:20px;font-weight:900}
@@ -137,7 +137,7 @@ button{font-family:inherit;color:inherit}
 #filters{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px 2px}
 #filters button{white-space:nowrap;height:30px;border:0;border-radius:15px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;padding:0 12px}
 #filters button.on{background:#fff6e0;color:var(--wood-dark)}
-#tray{position:relative;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,93px);gap:2px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;padding:4px 8px 8px;height:204px;-webkit-overflow-scrolling:touch}
+#tray{position:relative;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,73px);gap:2px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;padding:4px 8px 8px;height:164px;-webkit-overflow-scrolling:touch}
 .tp{display:grid;place-items:center;border-radius:16px;touch-action:pan-x;transition:background .15s}
 .tp canvas{display:block;pointer-events:none;transition:transform .2s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
 .tp.hide{display:none}
@@ -146,9 +146,9 @@ button{font-family:inherit;color:inherit}
 
 /* 横向き：ピース置き場は右 */
 @media (orientation:landscape){
-  #game.on{grid-template-columns:minmax(0,1fr) 214px;grid-template-rows:48px minmax(0,1fr);grid-template-areas:"bar bar" "view tray"}
+  #game.on{grid-template-columns:minmax(0,1fr) 170px;grid-template-rows:48px minmax(0,1fr);grid-template-areas:"bar bar" "view tray"}
   #trayWrap{border-top:0;border-left:3px solid var(--wood-deep);min-height:0}
-  #tray{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,93px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;height:auto;flex:1;align-content:start}
+  #tray{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,73px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;height:auto;flex:1;align-content:start}
   .tp{touch-action:pan-y}
   #hand{width:92px;height:92px}
   #filters{gap:4px;padding:6px 6px 2px}
@@ -234,7 +234,7 @@ button{font-family:inherit;color:inherit}
 
 /* あそびかた・もどす */
 #filters .help{margin-left:auto;background:#fff6e0;color:var(--wood-dark)}
-#back2tray{position:absolute;left:10px;top:128px;z-index:6;display:none;border:0;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;box-shadow:0 3px 0 #c9631a}
+#back2tray{position:absolute;left:10px;top:104px;z-index:6;display:none;border:0;border-radius:16px;padding:7px 12px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;box-shadow:0 3px 0 #c9631a}
 #back2tray.on{display:block}
 @media (orientation:landscape){#back2tray{top:108px}}
 .helpbtn{border:0;border-radius:20px;background:rgba(255,255,255,.88);color:var(--wood-dark);font-weight:800;font-size:14px;padding:10px 16px;box-shadow:0 3px 0 var(--wood-dark)}
@@ -1104,7 +1104,7 @@ button{font-family:inherit;color:inherit}
 (function () {
   'use strict';
   const CELL = 60;            // 盤面の1マス（ワールド座標）
-  const TS = 0.88;            // ピース置き場での表示倍率
+  const TS = 0.66;            // ピース置き場での表示倍率
   const LEVELS = {
     easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
     normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
@@ -1295,12 +1295,12 @@ button{font-family:inherit;color:inherit}
   }
   function fitCam(anim) {
     const v = viewSize(), rr = ui.ref.getBoundingClientRect();
-    const hs = landscape() ? 92 : 112;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
+    const hs = landscape() ? 92 : 88;                          // 左上=いま持っているピース / 右上=見本。盤面はそれらにかぶらない場所に置く
     let top = 0, left = 0, right = 0;
     if (landscape()) { left = hs + 16; right = Math.max(0, v.l + v.w - rr.left + 6); }
-    else top = Math.max(hs + 16, rr.bottom - v.t + 6);
+    else top = Math.max(hs + 10, rr.bottom - v.t + 4);
     const aw = v.w - left - right, ah = v.h - top;
-    const s = Math.min(aw * 0.96 / G.W, ah * 0.96 / G.H);
+    const s = Math.min(aw * 0.985 / G.W, ah * 0.985 / G.H);
     G.fit = s; G.sTable = Math.min(v.w / (G.W + 2 * G.M), v.h / (G.H + 2 * G.M)) * 0.94;
     G.sMin = Math.min(G.sTable, s * 0.8); G.sMax = Math.max(160 / CELL, s * 3);
     cam.s = s; cam.x = left + (aw - G.W * s) / 2; cam.y = top + (ah - G.H * s) / 2; applyCam(anim);
