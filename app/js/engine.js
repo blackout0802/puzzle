@@ -298,6 +298,7 @@
       ui.peekImg.src = refUrl; ui.refImg.src = refUrl; ui.ref.style.display = '';
     } catch (err) { ui.ref.style.display = 'none'; }                // 画像の書き出しが禁止されている表示場所：見本だけあきらめて、パズルは続ける
     setRefSize();
+    ui.tray.style.setProperty('--tp', trayCell() + 'px');
     // ピース
     for (let i = 0; i < n; i++) {
       const r = Math.floor(i / cols), c = i % cols;
@@ -353,7 +354,7 @@
   /* ピース置き場の「もとの並び順」の位置に、ピースを戻す */
   function insertTp(p) {
     const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
-    tp.style.width = tp.style.height = G.S * TS + 8 + 'px';
+    tp.style.width = tp.style.height = trayCell() + 'px';
     p.cv.style.transform = `rotate(${p.deg}deg)`; tp.appendChild(p.cv); p.tp = tp;
     const next = [...ui.tray.children].find((t) => G.opos.get(+t.dataset.i) > G.opos.get(p.i));
     ui.tray.insertBefore(tp, next || null);
@@ -364,6 +365,8 @@
     G.sel = null; ui.hand.classList.remove('on'); ui.back.classList.remove('on'); ui.ring.classList.remove('on');
     PZ.snd.drop(); updateLabels(); setFilter(G.filter); persist();
   }
+  /* ピース置き場の1マスの大きさ：ピース本体＋でっぱり分だけ。まわりの透明な余白は詰めて、はみ出した部分は となりと重ねる */
+  const trayCell = () => Math.round((CELL + 26) * TS + 2);
   function buildTp(p) {
     const tp = document.createElement('div'); tp.className = 'tp'; tp.dataset.i = p.i;
     tp.style.width = tp.style.height = G.S * TS + 8 + 'px';

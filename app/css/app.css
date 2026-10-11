@@ -87,10 +87,10 @@ button{font-family:inherit;color:inherit}
 
 /* ピース置き場 */
 #trayWrap{grid-area:tray;background:var(--wood-dark);border-top:3px solid var(--wood-deep);display:flex;flex-direction:column;min-width:0;padding-bottom:env(safe-area-inset-bottom)}
-#filters{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px 2px}
-#filters button{white-space:nowrap;height:30px;border:0;border-radius:15px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;padding:0 12px}
+#filters{display:flex;flex-wrap:wrap;gap:6px;padding:5px 8px 0}
+#filters button{white-space:nowrap;height:28px;border:0;border-radius:15px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:800;padding:0 12px}
 #filters button.on{background:#fff6e0;color:var(--wood-dark)}
-#tray{position:relative;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,73px);gap:2px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;padding:4px 8px 8px;height:164px;-webkit-overflow-scrolling:touch}
+#tray{position:relative;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,var(--tp,58px));gap:0;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;padding:7px 8px 8px;height:calc(var(--tp,58px)*2 + 15px);-webkit-overflow-scrolling:touch}
 .tp{display:grid;place-items:center;border-radius:16px;touch-action:pan-x;transition:background .15s}
 .tp canvas{display:block;pointer-events:none;transition:transform .2s;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
 .tp.hide{display:none}
@@ -99,9 +99,9 @@ button{font-family:inherit;color:inherit}
 
 /* 横向き：ピース置き場は右 */
 @media (orientation:landscape){
-  #game.on{grid-template-columns:minmax(0,1fr) 170px;grid-template-rows:48px minmax(0,1fr);grid-template-areas:"bar bar" "view tray"}
+  #game.on{grid-template-columns:minmax(0,1fr) 150px;grid-template-rows:48px minmax(0,1fr);grid-template-areas:"bar bar" "view tray"}
   #trayWrap{border-top:0;border-left:3px solid var(--wood-deep);min-height:0}
-  #tray{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,73px);overflow-x:hidden;overflow-y:auto;touch-action:pan-y;height:auto;flex:1;align-content:start}
+  #tray{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:repeat(2,var(--tp,58px));justify-content:center;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;height:auto;flex:1;align-content:start}
   .tp{touch-action:pan-y}
   #hand{width:92px;height:92px}
   #filters{gap:4px;padding:6px 6px 2px}
