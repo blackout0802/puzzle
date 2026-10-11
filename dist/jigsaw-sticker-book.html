@@ -358,7 +358,7 @@ button{font-family:inherit;color:inherit}
 .edgeguide{position:absolute;left:0;top:0;z-index:2;pointer-events:none;box-sizing:border-box;outline:calc(6px*var(--inv)) solid rgba(255,138,60,.9);transition:opacity .6s}
 .edgeguide.gone{opacity:0}
 
-.bkin{display:block;text-align:center;margin-top:8px}
+.bkin{display:grid;place-items:center;text-align:center;margin-top:8px}
 .bkin{height:52px;font-size:16px;box-shadow:0 4px 0 #249a74}
 
 .policy{font-size:14px;line-height:1.7}.policy ul{padding-left:1.2em;margin:6px 0}.policy li{margin:6px 0}
@@ -736,7 +736,7 @@ button{font-family:inherit;color:inherit}
     const a = 3 + Math.floor(Math.random() * 6), b = 3 + Math.floor(Math.random() * 6), ans = a + b;
     const opts = PZ.shuffle([ans, ans + 2, ans - 3, ans + 5]);
     const back = PZ.el('div', 'gate-back', document.body), g = PZ.el('div', 'gate', back);
-    g.innerHTML = `<h2>おとなの かたへ</h2><p>${why || 'この さきは ほごしゃの かた用です'}</p><div class="q">${a} + ${b} = ?</div><div class="ans"></div><button class="cancel">やめる</button>`;
+    g.innerHTML = `<h2>保護者の方へ</h2><p>${why || 'この先は保護者の方向けの画面です'}</p><div class="q">${a} + ${b} = ?</div><div class="ans"></div><button class="cancel">やめる</button>`;
     const done = (ok) => { back.remove(); resolve(ok); };
     opts.forEach((o) => { const bt = PZ.el('button', '', PZ.$('.ans', g)); bt.textContent = o; bt.onclick = () => done(o === ans); });
     PZ.$('.cancel', g).onclick = () => done(false);
@@ -1105,9 +1105,9 @@ button{font-family:inherit;color:inherit}
 
   /* 設定（小さいもの） */
   const KEY = 'jigsaw-app-settings';
-  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 48, level: 'normal', best: {} };
+  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 24, voice: 0, level: 'normal', best: {} };
   try { Object.assign(cache, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
-  if (!cache.def49) { cache.target = 48; cache.def49 = 1; }          // 初期のピース数は49（48を選ぶと 7×7=49）。すでに使っている端末も一度だけ そろえる
+  if (!cache.def25) { cache.target = 24; cache.voice = 0; cache.def25 = 1; }          // 初期のピース数は25（24を選ぶと 5×5=25）、声は オフ。すでに使っている端末も一度だけそろえる
   Store.settings = cache;
   Store.saveSettings = () => { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) { } };
 })();
@@ -1123,11 +1123,11 @@ button{font-family:inherit;color:inherit}
   const TABLE = false;        // テーブル（盤面のまわりの仮置き場）。いまは なし：盤面を いちばん大きく見せるため
   const TS = 0.6;            // ピース置き場での表示倍率
   const LEVELS = {
-    easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
-    normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    hard:   { name: 'むずかしい',       desc: 'ヒントなし',        ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    expert: { name: 'ちょうむずかしい', desc: 'ピースがまわっている',ghost: 0.14, grid: true,  assist: false, rot: true, snap: 0.55 },
+    easy:   { name: 'やさしい',   desc: 'ヒントのひかりつき', ghost: 0.14, grid: true, assist: true,  rot: false, snap: 0.55 },
+    normal: { name: 'ふつう',     desc: 'ヒントなし',         ghost: 0.14, grid: true, assist: false, rot: false, snap: 0.55 },
+    hard:   { name: 'むずかしい', desc: 'ピースがまわっている', ghost: 0.14, grid: true, assist: false, rot: true,  snap: 0.55 },
   };
+
   const $ = (s) => document.querySelector(s);
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -1436,6 +1436,7 @@ button{font-family:inherit;color:inherit}
   /* ------------------------------------------------------------ 組み立て */
   async function start(o) {
     refs(); destroy();
+    if (o.level === 'expert') o.level = 'hard';                 // 「ちょうむずかしい」は やめて、「むずかしい」に まとめた
     const L = LEVELS[o.level] || LEVELS.normal;
     ui.loading.classList.add('on'); ui.loading.querySelector('span').textContent = 'じゅんび中…';
     let info;
@@ -1867,9 +1868,12 @@ button{font-family:inherit;color:inherit}
   const $ = (s, r) => (r || document).querySelector(s);
   const S = Store.settings;
   const LV = Engine.LEVELS;
-  const LV_STARS = { easy: 1, normal: 2, hard: 3, expert: 4 };
-  const COUNTS = [24, 48, 100, 150, 200, 300];
-  PZ.muted = !S.sound; PZ.voice = S.voice !== 0;
+  const LV_STARS = { easy: 1, normal: 2, hard: 3, expert: 3 };
+  const MAX_PIECES = 100;                       // いまは 100ピースまで（それより多い数は ひょうじしない）
+  const COUNTS = [24, 48, 100, 150, 200, 300].filter((n) => n <= MAX_PIECES);
+  if (S.target > MAX_PIECES) S.target = COUNTS[COUNTS.length - 1];
+  if (S.level === 'expert') S.level = 'hard';
+  PZ.muted = !S.sound; PZ.voice = S.voice === 1;
 
   /* ------------------------------------------------- こどもごとの プロフィール
      シール・つづき・ベストタイム・あそんだ記録は、プロフィールごとに わける（写真は みんなで つかう）。
@@ -1915,7 +1919,7 @@ button{font-family:inherit;color:inherit}
   function armedButton(btn, label, action) {
     let armed = false, t;
     btn.onclick = () => {
-      if (!armed) { armed = true; btn.textContent = 'もういちど おすと けします'; btn.classList.add('armed'); t = setTimeout(() => { armed = false; btn.textContent = label; btn.classList.remove('armed'); }, 3000); }
+      if (!armed) { armed = true; btn.textContent = 'もう一度押すと削除します'; btn.classList.add('armed'); t = setTimeout(() => { armed = false; btn.textContent = label; btn.classList.remove('armed'); }, 3000); }
       else { clearTimeout(t); armed = false; btn.classList.remove('armed'); btn.textContent = label; action(); }
     };
   }
@@ -1933,7 +1937,7 @@ button{font-family:inherit;color:inherit}
   document.addEventListener('error', (e) => {
     const t = e.target; if (!(t instanceof HTMLImageElement) || t.dataset.ph === undefined) return;
     if (!brokenSeen.has(t.dataset.ph)) { brokenSeen.add(t.dataset.ph); logErr('保存した写真が読めない', { name: 'ImgError', message: t.dataset.ph }, ''); }
-    const sp = document.createElement('span'); sp.className = 'brokenph'; sp.textContent = 'よみこめません'; t.replaceWith(sp);
+    const sp = document.createElement('span'); sp.className = 'brokenph'; sp.textContent = '読み込めません'; t.replaceWith(sp);
   }, true);
   /* 古い保存形式(Blob)の写真・シールは、読めるうちに新しい形式へ移す */
   async function migrateLegacy() {
@@ -1966,7 +1970,7 @@ button{font-family:inherit;color:inherit}
   const tabOf = (src) => (src.k === 'photo' ? 'photo' : src.k === 'collage' ? ((src.id || 'animals') === 'vehicles' ? 'vehicle' : 'nature') : ((PZ.art.find((a) => a.id === src.id) || {}).cat === 'vehicle' ? 'vehicle' : 'nature'));
   /* おすすめ：さいごに あそんだ記録から「つぎは これ」を決める。
      かんたんに終われたら 1だん上げ（ピースの数→むずかしさ の順に、交互に）。たいへんそうなら 1だん下げる。まだ集めていない絵を すすめる */
-  const LV_ORDER = ['easy', 'normal', 'hard', 'expert'];
+  const LV_ORDER = ['easy', 'normal', 'hard'];
   function recommend(stickers) {
     if (!stickers.length) return null;
     const last = stickers.slice().sort((a, b) => a.ts - b.ts).pop();
@@ -2010,7 +2014,7 @@ button{font-family:inherit;color:inherit}
       let valid = !(save.desc.k === 'photo' && !photos.find((p) => p.id === save.desc.id));
       if (valid) {
         const pct = Math.round(save.placed.length / (save.rows * save.cols) * 100);
-        resume = `<div class="resumewrap"><button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${LV[save.level].name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button><button class="resdel" id="resDel" type="button" aria-label="つづきを けす">✕</button></div>`;
+        resume = `<div class="resumewrap"><button class="resume" id="resume"><b>つづきから あそぶ</b><span>${save.rows * save.cols}ピース ・ ${(LV[save.level] || LV.hard).name} ・ ${pct}% ・ ${Engine.fmt(save.elapsed || 0)}</span></button><button class="resdel" id="resDel" type="button" aria-label="つづきを けす">✕</button></div>`;
       }
     }
     home.innerHTML = `
@@ -2030,7 +2034,7 @@ button{font-family:inherit;color:inherit}
         ${[['vehicle', 'のりもの'], ['nature', 'どうぶつ・しぜん'], ['photo', 'しゃしん']].map(([k, t]) => `<button type="button" data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${t}</button>`).join('')}
       </div>
       <div class="thumbs" id="thumbs">${thumbs}</div>
-      <p class="picked">えらんだ え：<b>${srcName(S.src, photos)}</b>${S.src.k === 'photo' ? ' <button id="cropBtn" class="mini" type="button">きりとりを なおす</button>' : ''}</p>
+      <p class="picked">選んだ絵：<b>${srcName(S.src, photos)}</b>${S.src.k === 'photo' ? ' <button id="cropBtn" class="mini" type="button">切り取りを直す</button>' : ''}</p>
       <h2>ピースの かず</h2>
       <div class="cnts" id="cnts">
         ${COUNTS.map((t) => { const g = Engine.gridFor(t, asp); return `<button class="cn${S.target === t ? ' on' : ''}${rec && rec.target === t ? ' rec' : ''}" data-t="${t}"><b>${g.n}</b><small>${g.cols}×${g.rows}</small></button>`; }).join('')}
@@ -2061,23 +2065,23 @@ button{font-family:inherit;color:inherit}
       $('#rdNo', box).onclick = closeSheet;
       $('#rdYes', box).onclick = async () => { await Store.del('saves', Engine.saveId()); closeSheet(); flash('つづきを けしました'); renderHome(); };
     };
-    const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: save.level, save });
+    const r = $('#resume'); if (r) r.onclick = () => play({ desc: save.desc, level: LV[save.level] ? save.level : 'hard', save });
     $('#goBook').onclick = () => openBook();
     $('#goZukan').onclick = openZukan;
     $('#goHelp').onclick = openHelp;
     $('#goWho').onclick = openWho;
-    $('#goSet').onclick = async () => { if (await PZ.parentGate('せっていは おとなの かた用です')) openSettings(); };
+    $('#goSet').onclick = async () => { if (await PZ.parentGate('設定は保護者の方向けです')) openSettings(); };
   }
   async function play(o) {
     $('#flash').classList.remove('on');
     try { await Engine.start(o); show('game'); }
-    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); if (e && e.name === 'PhotoBroken') { flash('この しゃしんは こわれていて ひらけません。おとなの せっていで けして、もういちど ついかしてください', 9000); renderHome(); return; } flash('この えは ひらけませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
+    catch (e) { loading(false); logErr('パズルをはじめる', e, JSON.stringify(o.desc)); if (e && e.name === 'PhotoBroken') { flash('この写真は壊れていて開けません。保護者向け設定で削除して、もう一度追加してください', 9000); renderHome(); return; } flash('この絵は開けませんでした（' + ((e && e.name) || '') + ' ' + ((e && e.message) || '') + '）', 8000); renderHome(); }
   }
   Engine.on.exit = () => { contMs = 0; show('home'); renderHome(); };
 
   /* ---------------------------------------------------- あそんだ記録と きゅうけい */
   const dayKey = (d) => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  const BREAKS = [[0, 'なし'], [10, '10ぷん'], [15, '15ふん'], [20, '20ぷん'], [30, '30ぷん']];
+  const BREAKS = [[0, 'なし'], [10, '10分'], [15, '15分'], [20, '20分'], [30, '30分']];
   let contMs = 0, saveAcc = 0;
   Engine.on.tick = (d) => {
     const k = dayKey(); const pm = playMap(); pm[k] = (pm[k] || 0) + d; saveAcc += d;
@@ -2103,16 +2107,16 @@ button{font-family:inherit;color:inherit}
     wk.forEach((s) => { byN[s.n] = (byN[s.n] || 0) + 1; });
     const top = Object.entries(byN).sort((a, b) => b[1] - a[1])[0];
     return `<div class="rep"><div class="bars">${days.map((x) => `<div class="b"><i style="height:${Math.round(x.m / max * 100)}%"></i><small>${Math.round(x.m)}</small><span>${x.w}</span></div>`).join('')}</div>
-      <p class="note">さいきん7にち：あそんだ じかん ${Math.round(tot)}ふん ・ クリア ${wk.length}かい${top ? ` ・ よくあそぶ かず ${top[0]}ピース` : ''}<br>きょう：${Math.round(days[6].m)}ふん ／ ぜんぶで クリア ${stickers.length}かい</p></div>`;
+      <p class="note">直近7日：遊んだ時間 ${Math.round(tot)}分 ・ クリア ${wk.length}回${top ? ` ・ よく遊ぶピース数 ${top[0]}ピース` : ''}<br>今日：${Math.round(days[6].m)}分 ／ 通算クリア ${stickers.length}回</p></div>`;
   }
 
   /* -------------------------------------------------------------- 写真の追加 */
   async function addPhoto() {
-    if (!(await PZ.parentGate('しゃしんを えらぶのは おとなの かたが してください'))) return;
+    if (!(await PZ.parentGate('写真を選ぶのは保護者の方がしてください'))) return;
     // ゲートのあとに「本物の」ファイル選択ボタンを出す。プログラムからの自動オープンは、iPhoneなどで無視されることがあるため。
-    const box = openSheet(`<h2>しゃしんを えらぶ</h2>
-      <p class="note">下の ボタンを おして、しゃしんを えらんでください（まとめて いくつでも えらべます）。<br>しゃしんは この たんまつの 中だけで つかいます。</p>
-      <label class="filebtn">しゃしんを えらぶ<input type="file" id="file" accept="image/*" multiple></label>
+    const box = openSheet(`<h2>写真を選ぶ</h2>
+      <p class="note">下のボタンを押して、写真を選んでください（まとめて何枚でも選べます）。<br>写真はこの端末の中だけで使われ、外部には送信されません。</p>
+      <label class="filebtn">写真を選ぶ<input type="file" id="file" accept="image/*" multiple></label>
       <div class="row"><button class="btn" id="fCancel" type="button">やめる</button></div>`, 'setbox');
     $('#fCancel', box).onclick = closeSheet;
     $('#file', box).onchange = (e) => { const fs = [...e.target.files]; if (fs.length) importPhotos(fs); };
@@ -2130,7 +2134,7 @@ button{font-family:inherit;color:inherit}
       try { const img = await t(); if ((img.naturalWidth || img.width) > 0) return img; errs.push(name + ':0px'); }
       catch (e) { errs.push(name + ':' + ((e && e.name) || 'err')); }
     }
-    throw Object.assign(new Error(errs.join(',')), { stage: 'ひらけません（しゃしんの かたちが ちがうかも）' });
+    throw Object.assign(new Error(errs.join(',')), { stage: '開けません（写真の形式が合わない可能性があります）' });
   }
   async function toJpegBlob(cv) {
     const b = await new Promise((r) => { try { cv.toBlob(r, 'image/jpeg', 0.88); } catch (e) { r(null); } });
@@ -2142,25 +2146,25 @@ button{font-family:inherit;color:inherit}
   async function importPhotos(files) {
     closeSheet(); let ok = 0, vol = false; const bad = [];
     for (let i = 0; i < files.length; i++) {
-      loading(true, `しゃしんを とりこみ中… ${i + 1}/${files.length}`);
+      loading(true, `写真を取り込み中… ${i + 1}/${files.length}`);
       try {
         const img = await decodePhoto(files[i]), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
         const sc = Math.min(1, 1600 / Math.max(iw, ih)), w = Math.max(1, Math.round(iw * sc)), h = Math.max(1, Math.round(ih * sc));
         const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
         const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, w, h);
         if (img.close) try { img.close(); } catch (e) { }
-        let blob; try { blob = await toJpegBlob(cv); } catch (e) { throw Object.assign(e, { stage: 'ちいさくできません' }); }
+        let blob; try { blob = await toJpegBlob(cv); } catch (e) { throw Object.assign(e, { stage: '縮小できません' }); }
         const rec = { id: 'p' + Date.now() + '_' + i, ts: Date.now() + i, w, h, type: 'image/jpeg', buf: await Store.toBuf(blob) };
         if ((await Store.put('photos', rec)) === 'mem') vol = true;
         S.src = { k: 'photo', id: rec.id }; ok++;
       } catch (err) {
         const f = files[i], info = `[${f.type || '?'} ${(f.size / 1048576).toFixed(1)}MB]`;
-        logErr('しゃしん取りこみ', err, info); bad.push(((err && err.stage) || 'とりこめません') + ' ' + info);
+        logErr('写真の取り込み', err, info); bad.push(((err && err.stage) || '取り込めません') + ' ' + info);
       }
     }
     S.tab = 'photo'; Store.saveSettings(); loading(false);
-    flash(!bad.length ? `しゃしんを ${ok}まい ついかしました${vol ? '（この たんまつでは ほぞんできないため、いまだけ つかえます）' : ''}`
-      : ok ? `${ok}まい ついか、${bad.length}まいは ${bad[0]}` : `しゃしんを とりこめませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
+    flash(!bad.length ? `写真を${ok}枚追加しました${vol ? '（この端末では保存できないため、今だけ使えます）' : ''}`
+      : ok ? `${ok}枚追加、${bad.length}枚は${bad[0]}` : `写真を取り込めませんでした：${bad[0]}`, (!bad.length && !vol) ? 2200 : 7000);
     renderHome();
     if (ok === 1 && !bad.length && S.src.k === 'photo') openCrop(S.src.id);          // 1枚だけ追加したときは、そのまま きりとり画面へ
   }
@@ -2216,15 +2220,15 @@ button{font-family:inherit;color:inherit}
   async function openCrop(id) {
     const rec = await Store.get('photos', id); if (!rec) return;
     let img; const blob = Store.recBlob(rec);
-    try { img = await createImageBitmap(blob); } catch (e) { try { const u0 = URL.createObjectURL(blob); img = await PZ.loadImage(u0); } catch (e2) { flash('この しゃしんは ひらけません'); return; } }
+    try { img = await createImageBitmap(blob); } catch (e) { try { const u0 = URL.createObjectURL(blob); img = await PZ.loadImage(u0); } catch (e2) { flash('この写真は開けません'); return; } }
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, base = Math.min(2, Math.max(0.5, iw / ih));
     const ASP = { auto: base, sq: 1, land: 4 / 3, port: 3 / 4, wide: 2 };
-    const box = openSheet(`<h2>きりとりを きめる</h2>
-      <p class="note" style="text-align:center">ゆびで うごかして、パズルにしたい ところを あわせてね。<br>2ほんの ゆびで おおきく／ちいさく できます。</p>
+    const box = openSheet(`<h2>切り取りを決める</h2>
+      <p class="note" style="text-align:center">指で動かして、パズルにしたい範囲を合わせてください。<br>2本指で拡大・縮小もできます。</p>
       <div class="cropstage"><canvas id="cropCv"></canvas></div>
-      <div class="aspects" id="cropAsp">${[['auto', 'そのまま'], ['sq', 'しかく'], ['land', 'よこ'], ['port', 'たて'], ['wide', 'ワイド']].map(([k, t]) => `<button type="button" data-a="${k}">${t}</button>`).join('')}</div>
-      <label class="zoomrow"><span>ちいさく</span><input type="range" id="cropZoom" min="1" max="5" step="0.01" value="1"><span>おおきく</span></label>
-      <div class="row"><button class="btn" id="cropCancel" type="button">やめる</button><button class="btn go" id="cropOk" type="button">これで きめた</button></div>`, 'cropbox');
+      <div class="aspects" id="cropAsp">${[['auto', 'そのまま'], ['sq', '正方形'], ['land', '横長'], ['port', '縦長'], ['wide', 'ワイド']].map(([k, t]) => `<button type="button" data-a="${k}">${t}</button>`).join('')}</div>
+      <label class="zoomrow"><span>縮小</span><input type="range" id="cropZoom" min="1" max="5" step="0.01" value="1"><span>拡大</span></label>
+      <div class="row"><button class="btn" id="cropCancel" type="button">やめる</button><button class="btn go" id="cropOk" type="button">これで決定</button></div>`, 'cropbox');
     const cv = $('#cropCv', box), sw = Math.round(Math.min(innerWidth * 0.88 - 40, 340)), sh = Math.round(Math.min(sw * 1.1, innerHeight * 0.42)), dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = sw * dpr; cv.height = sh * dpr; cv.style.width = sw + 'px'; cv.style.height = sh + 'px'; cv.style.touchAction = 'none';
     const x = cv.getContext('2d'); x.scale(dpr, dpr);
@@ -2283,7 +2287,7 @@ button{font-family:inherit;color:inherit}
       await Store.put('photos', next);
       if (urls[id + '_t']) { try { URL.revokeObjectURL(urls[id + '_t']); } catch (e) { } delete urls[id + '_t']; }
       if (img.close) try { img.close(); } catch (e) { }
-      closeSheet(); S.src = { k: 'photo', id }; S.tab = 'photo'; Store.saveSettings(); flash('きりとりを きめました'); renderHome();
+      closeSheet(); S.src = { k: 'photo', id }; S.tab = 'photo'; Store.saveSettings(); flash('切り取りを決定しました'); renderHome();
     };
   }
 
@@ -2335,7 +2339,7 @@ button{font-family:inherit;color:inherit}
     ['zoom',  '大きく・小さく',       '2本の ゆびで ひろげる／つまむ。1本の ゆびで うごかします。上の ⤢ ボタンで、盤面ぜんたいに もどります。'],
     ['ref',   'みほん',               'ピース置き場の 右はしの 小さな 絵を タップすると 大きく 見えます。もう一度 タップで とじます。'],
     ['hint',  'ヒント・ふち・なか',   '「ヒント」は、つぎに おけるピースを ひからせます。「ふち」「なか」で ピース置き場を しぼれます。'],
-    ['rot',   'ちょうむずかしい',     'ピースが まわっています。えらんだピース（左上の 大きな ピース）を タップして、むきを そろえてから おきます。'],
+    ['rot',   'むずかしい',     'ピースが まわっています。えらんだピース（左上の 大きな ピース）を タップして、むきを そろえてから おきます。'],
   ];
   function openHelp() {
     const box = openSheet(`<h2>あそびかた</h2>${HELP.map(([k, t, d]) => `<div class="hrow">${IC[k]}<div><b>${t}</b><p>${d}</p></div></div>`).join('')}
@@ -2349,7 +2353,7 @@ button{font-family:inherit;color:inherit}
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function openWho() {
     const box = openSheet(`<h2>だれが あそぶ？</h2><div class="who">${S.profiles.map((p) => `<button type="button" class="${p.id === S.pid ? 'on' : ''}" data-id="${p.id}"><span class="av">${AVATARS[p.av || 0]}</span><b>${esc(p.name)}</b></button>`).join('')}</div>
-      <p class="note" style="text-align:center">なまえの へんこう・ふやす は、おとなの せっていで できます</p>
+      <p class="note" style="text-align:center">名前の変更・追加は、保護者向け設定でできます</p>
       <div class="row"><button class="btn" id="wClose" type="button">とじる</button></div>`);
     $('#wClose', box).onclick = closeSheet;
     box.querySelector('.who').onclick = (e) => {
@@ -2371,22 +2375,22 @@ button{font-family:inherit;color:inherit}
     return { app: 'jigsaw-sticker-book', v: 1, ts: Date.now(), settings: st, photos: photos.map(encRec), stickers: stickers.map(encRec) };
   }
   async function exportBackup() {
-    loading(true, 'バックアップを つくっています…');
+    loading(true, 'バックアップを作成しています…');
     try {
       const data = await makeBackup(), blob = new Blob([JSON.stringify(data)], { type: 'application/json' }), d = new Date();
       const name = `jigsaw-backup-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.json`;
       loading(false);
       const file = (typeof File === 'function') ? new File([blob], name, { type: 'application/json' }) : null;
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'ジグソーシールちょう バックアップ' }); flash('バックアップを ほぞんしました'); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+        try { await navigator.share({ files: [file], title: 'ジグソーシールちょう バックアップ' }); flash('バックアップを保存しました'); return; } catch (e) { if (e && e.name === 'AbortError') return; }
       }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
       setTimeout(() => { a.remove(); URL.revokeObjectURL(a.href); }, 4000);
-      flash(`バックアップを つくりました（しゃしん ${data.photos.length}・シール ${data.stickers.length}）`, 4500);
-    } catch (e) { loading(false); logErr('バックアップ', e); flash('バックアップを つくれませんでした', 4500); }
+      flash(`バックアップを作成しました（写真${data.photos.length}枚・シール${data.stickers.length}枚）`, 4500);
+    } catch (e) { loading(false); logErr('バックアップ', e); flash('バックアップを作成できませんでした', 4500); }
   }
   async function importBackup(file) {
-    loading(true, 'よみこんでいます…');
+    loading(true, '読み込んでいます…');
     try {
       const data = JSON.parse(await file.text());
       if (!data || data.app !== 'jigsaw-sticker-book' || !Array.isArray(data.photos) || !Array.isArray(data.stickers)) throw new Error('not a backup');
@@ -2400,26 +2404,26 @@ button{font-family:inherit;color:inherit}
       S.bestP = S.bestP || {}; Object.keys(s.bestP || {}).forEach((id) => { S.bestP[id] = S.bestP[id] || {}; mergeBest(S.bestP[id], s.bestP[id]); });
       S.playP = S.playP || {}; Object.keys(s.playP || {}).forEach((id) => { S.playP[id] = S.playP[id] || {}; mergePlay(S.playP[id], s.playP[id]); });
       Store.saveSettings(); loading(false); closeSheet();
-      flash(`よみこみました（しゃしん ${data.photos.length}・シール ${data.stickers.length}）`, 4500); renderHome();
-    } catch (e) { loading(false); logErr('バックアップよみこみ', e); flash('このファイルは よみこめません（バックアップの ファイルを えらんでね）', 5000); }
+      flash(`読み込みました（写真${data.photos.length}枚・シール${data.stickers.length}枚）`, 4500); renderHome();
+    } catch (e) { loading(false); logErr('バックアップ読み込み', e); flash('このファイルは読み込めません（バックアップのファイルを選んでください）', 5000); }
   }
 
   /* ------------------------------------------------ プライバシー（store/privacy-policy.html と同じ内容） */
   const APP_VERSION = '1.0.0';
   function openPrivacy() {
     const box = openSheet(`<h2>プライバシーについて</h2><div class="policy">
-      <p><b>このアプリは、個人情報を あつめません。</b></p>
+      <p><b>このアプリは、個人情報を収集しません。</b></p>
       <ul>
-        <li>広告は ありません。広告や かいせきの プログラムも 入っていません。</li>
-        <li>アカウントの とうろくは ありません。名前・住所・メールなどは たずねません。</li>
-        <li>とりこんだ しゃしん・かいた え・シール・あそんだ きろくは、<b>ぜんぶ この たんまつの 中だけ</b>に 保存されます。かいはつしゃを ふくめ、だれにも 送られません。</li>
-        <li>あそぶのに、インターネットは つかいません。</li>
-        <li>声の ガイドは、たんまつに 入っている 読み上げ機能を つかいます。いつも きまった ことばだけを 読みます。</li>
-        <li>バックアップの ファイルは、おとなの かたが 操作したときだけ つくられます。ファイルの 保管は おとなの かたの 管理です。</li>
-        <li>しゃしん・シール・きろくは、この 画面の「設定」から いつでも 消せます。アプリを 消すと、たんまつの データも いっしょに 消えます。</li>
+        <li>広告は表示しません。広告や解析のプログラムも入っていません。</li>
+        <li>アカウント登録はありません。名前・住所・メールアドレスなどは求めません。</li>
+        <li>取り込んだ写真・描いた絵・シール・遊んだ記録は、<b>すべてこの端末の中だけ</b>に保存されます。開発者を含め、誰にも送信されません。</li>
+        <li>遊ぶ際に、インターネット通信は使いません。</li>
+        <li>声のガイドは、端末に備わっている読み上げ機能を使います。読み上げるのは、いつも決まった言葉だけです。</li>
+        <li>バックアップのファイルは、保護者の方が操作したときだけ作成されます。ファイルの保管は保護者の方の管理となります。</li>
+        <li>写真・シール・記録は、この画面の「設定」からいつでも削除できます。アプリを削除すると、端末内のデータも一緒に削除されます。</li>
       </ul>
-      <p class="note">くわしい ポリシー： store/privacy-policy.html（公開した URL を ストアにも のせます）<br>バージョン ${APP_VERSION}</p></div>
-      <div class="row"><button class="btn" id="pvClose" type="button">とじる</button></div>`, 'setbox');
+      <p class="note">詳しいポリシー：store/privacy-policy.html（公開したURLをストアにも掲載します）<br>バージョン ${APP_VERSION}</p></div>
+      <div class="row"><button class="btn" id="pvClose" type="button">閉じる</button></div>`, 'setbox');
     $('#pvClose', box).onclick = () => { closeSheet(); openSettings(); };
   }
 
@@ -2498,53 +2502,53 @@ button{font-family:inherit;color:inherit}
   }
 
   /* ------------------------------------------------------------- 保護者設定 */
-  const profRow = (p) => `<div class="prow" data-id="${p.id}"><button type="button" class="pav">${AVATARS[p.av || 0]}</button><input type="text" maxlength="8" value="${esc(p.name)}" aria-label="なまえ"><button type="button" class="pdel dng"${S.profiles.length < 2 ? ' disabled' : ''}>けす</button></div>`;
+  const profRow = (p) => `<div class="prow" data-id="${p.id}"><button type="button" class="pav">${AVATARS[p.av || 0]}</button><input type="text" maxlength="8" value="${esc(p.name)}" aria-label="名前"><button type="button" class="pdel dng"${S.profiles.length < 2 ? ' disabled' : ''}>削除</button></div>`;
   async function openSettings() {
     const photos = (await Store.all('photos')).sort((a, b) => a.ts - b.ts), persistent = await Store.persistent(), allStickers = await myStickers();
     const box = openSheet(`
-      <h2>おとなの せってい</h2>
-      <h3>おと</h3>
-      <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">あり</button><button data-s="0" class="${S.sound ? '' : 'on'}">なし</button></div>
-      <h3>あそぶ 子（プロフィール）</h3>
+      <h2>保護者向け設定</h2>
+      <h3>効果音</h3>
+      <div class="seg" id="sSound"><button data-s="1" class="${S.sound ? 'on' : ''}">オン</button><button data-s="0" class="${S.sound ? '' : 'on'}">オフ</button></div>
+      <h3>遊ぶ子（プロフィール）</h3>
       <div id="profs">${S.profiles.map((p) => profRow(p)).join('')}</div>
-      <button class="btn" id="pAdd" type="button">＋ ふやす</button>
-      <h3>あそんだ きろく（${esc(curP().name)}）</h3>
+      <button class="btn" id="pAdd" type="button">＋ 追加</button>
+      <h3>遊んだ記録（${esc(curP().name)}）</h3>
       ${playReport(allStickers)}
-      <h3>きゅうけいの おしらせ</h3>
+      <h3>休憩のお知らせ</h3>
       <div class="seg" id="sBreak">${BREAKS.map(([m, t]) => `<button data-m="${m}" class="${(S.breakMin === undefined ? 15 : S.breakMin) === m ? 'on' : ''}">${t}</button>`).join('')}</div>
-      <p class="note">つづけて あそんだ じかんが たつと、「ちょっと きゅうけい しよう」と おしらせします。</p>
-      <h3>こえの ガイド（ひらがなで はなしかけます）</h3>
-      <div class="seg" id="sVoice"><button data-s="1" class="${S.voice !== 0 ? 'on' : ''}">あり</button><button data-s="0" class="${S.voice !== 0 ? '' : 'on'}">なし</button></div>
-      <p class="note">「おと」を なしにすると、こえも でません。この たんまつの 読み上げ機能を つかいます。</p>
-      <h3>とりこんだ しゃしん（${photos.length}まい）</h3>
-      ${photos.length ? '<p class="note">「よみこめません」と出る しゃしんは、いったん「けす」で けして、もういちど ついかしてください。</p>' : ''}
-      <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">けす</button></div>`).join('') : '<p class="note">まだ ありません</p>'}</div>
-      <h3>きろく</h3>
-      <p class="note">（いま えらんでいる 子：${esc(curP().name)} の ぶん）</p>
-      <button class="dng" id="rBest">ベストタイムを けす</button>
-      <button class="dng" id="rStk">シールを ぜんぶ けす</button>
+      <p class="note">連続して遊んだ時間が経つと、「ちょっと きゅうけい しよう」と画面でお知らせします。</p>
+      <h3>声のガイド（ひらがなで話しかけます）</h3>
+      <div class="seg" id="sVoice"><button data-s="1" class="${S.voice === 1 ? 'on' : ''}">オン</button><button data-s="0" class="${S.voice === 1 ? '' : 'on'}">オフ</button></div>
+      <p class="note">「効果音」をオフにすると、声も出ません。端末の読み上げ機能を使います。</p>
+      <h3>取り込んだ写真（${photos.length}枚）</h3>
+      ${photos.length ? '<p class="note">「読み込めません」と表示される写真は、いったん「削除」して、もう一度追加してください。</p>' : ''}
+      <div class="plist">${photos.length ? photos.map((p) => `<div class="pi"><img alt="" data-ph="${p.id}" src="${blobUrl(p.id, p)}"><button data-id="${p.id}" class="del">削除</button></div>`).join('') : '<p class="note">まだありません</p>'}</div>
+      <h3>記録の削除</h3>
+      <p class="note">（現在選んでいる子：${esc(curP().name)} の分）</p>
+      <button class="dng" id="rBest">ベストタイムを削除</button>
+      <button class="dng" id="rStk">シールをすべて削除</button>
       <h3>バックアップ</h3>
-      <p class="note">しゃしん・シール・プロフィール・きろくを 1つの ファイルに ほぞんできます。きかんを かえるときや、まちがって けしたときに よみこめます。（インターネットには 送りません）</p>
-      <button class="btn" id="bkOut" type="button">ファイルに かきだす</button>
-      <label class="filebtn bkin"><input type="file" id="bkFile" accept=".json,application/json">ファイルから よみこむ</label>
+      <p class="note">写真・シール・プロフィール・記録を1つのファイルに保存できます。機種変更のときや、誤って削除したときに読み込めます。（インターネットには送信しません）</p>
+      <button class="btn" id="bkOut" type="button">ファイルに書き出す</button>
+      <label class="filebtn bkin"><input type="file" id="bkFile" accept=".json,application/json">ファイルから読み込む</label>
       <h3>プライバシー</h3>
       <button class="btn" id="pvOpen" type="button">プライバシーについて</button>
-      <h3>もんだいが あったとき</h3>
-      ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">きろくを けす</button>` : '<p class="note">エラーの きろくは ありません</p>'}
-      <p class="note">写真・シール・きろくは、この たんまつの中だけに保存されます。インターネットには送りません。${persistent ? '' : '<br><b>いまは一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
-      <div class="row"><button class="btn" id="sClose">とじる</button></div>`, 'setbox');
+      <h3>不具合があったとき</h3>
+      ${(S.log && S.log.length) ? `<div class="logbox">${S.log.slice().reverse().map((l) => `<p>${l.replace(/</g, '&lt;')}</p>`).join('')}</div><button class="dng" id="rLog" type="button">記録を削除</button>` : '<p class="note">エラーの記録はありません</p>'}
+      <p class="note">写真・シール・記録は、この端末の中だけに保存されます。インターネットには送信しません。${persistent ? '' : '<br><b>現在は一時保存です（ブラウザを閉じると消えます）。</b>'}</p>
+      <div class="row"><button class="btn" id="sClose">閉じる</button></div>`, 'setbox');
     box.querySelectorAll('#sSound button').forEach((b) => b.onclick = () => {
       S.sound = +b.dataset.s; PZ.muted = !S.sound; Store.saveSettings();
       box.querySelectorAll('#sSound button').forEach((x) => x.classList.toggle('on', x === b)); PZ.snd.ok();
     });
     const profs = $('#profs', box), delTimers = {};
-    profs.oninput = (e) => { const r = e.target.closest('.prow'); if (!r || e.target.tagName !== 'INPUT') return; const p = S.profiles.find((x) => x.id === r.dataset.id); p.name = e.target.value.trim() || 'なまえ'; Store.saveSettings(); };
+    profs.oninput = (e) => { const r = e.target.closest('.prow'); if (!r || e.target.tagName !== 'INPUT') return; const p = S.profiles.find((x) => x.id === r.dataset.id); p.name = e.target.value.trim() || '名前'; Store.saveSettings(); };
     profs.onclick = async (e) => {
       const r = e.target.closest('.prow'); if (!r) return; const p = S.profiles.find((x) => x.id === r.dataset.id);
       if (e.target.closest('.pav')) { p.av = ((p.av || 0) + 1) % AVATARS.length; e.target.closest('.pav').textContent = AVATARS[p.av]; Store.saveSettings(); }
       else if (e.target.closest('.pdel')) {
         const b = e.target.closest('.pdel');
-        if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'もういちど'; delTimers[p.id] = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'けす'; }, 3000); return; }
+        if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'もう一度押す'; delTimers[p.id] = setTimeout(() => { b.classList.remove('armed'); b.textContent = '削除'; }, 3000); return; }
         for (const s of (await Store.all('stickers')).filter((x) => (x.pid || 'p0') === p.id)) await Store.del('stickers', s.id);
         await Store.del('saves', p.id === 'p0' ? 'current' : 'current:' + p.id);
         S.profiles = S.profiles.filter((x) => x.id !== p.id); if (S.pid === p.id) S.pid = S.profiles[0].id;
@@ -2552,23 +2556,23 @@ button{font-family:inherit;color:inherit}
       }
     };
     $('#pAdd', box).onclick = () => {
-      if (S.profiles.length >= 5) { flash('ふやせるのは 5にんまでです'); return; }
-      const id = 'p' + Date.now().toString(36); S.profiles.push({ id, name: 'あたらしい子', av: S.profiles.length % AVATARS.length }); Store.saveSettings(); closeSheet(); openSettings();
+      if (S.profiles.length >= 5) { flash('追加できるのは5人までです'); return; }
+      const id = 'p' + Date.now().toString(36); S.profiles.push({ id, name: '新しい子', av: S.profiles.length % AVATARS.length }); Store.saveSettings(); closeSheet(); openSettings();
     };
     box.querySelectorAll('#sBreak button').forEach((b) => b.onclick = () => {
       S.breakMin = +b.dataset.m; contMs = 0; Store.saveSettings(); box.querySelectorAll('#sBreak button').forEach((x) => x.classList.toggle('on', x === b));
     });
     box.querySelectorAll('#sVoice button').forEach((b) => b.onclick = () => {
-      S.voice = +b.dataset.s; PZ.voice = S.voice !== 0; Store.saveSettings();
+      S.voice = +b.dataset.s; PZ.voice = S.voice === 1; Store.saveSettings();
       box.querySelectorAll('#sVoice button').forEach((x) => x.classList.toggle('on', x === b)); if (PZ.voice) PZ.sayV('こんにちは。いっしょに あそぼうね', true);
     });
-    box.querySelectorAll('.del').forEach((b) => armedButton(b, 'けす', async () => { await Store.del('photos', b.dataset.id); for (const p of S.profiles) { const sid = p.id === 'p0' ? 'current' : 'current:' + p.id, sv = await Store.get('saves', sid); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', sid); } closeSheet(); openSettings(); }));
+    box.querySelectorAll('.del').forEach((b) => armedButton(b, '削除', async () => { await Store.del('photos', b.dataset.id); for (const p of S.profiles) { const sid = p.id === 'p0' ? 'current' : 'current:' + p.id, sv = await Store.get('saves', sid); if (sv && sv.desc.k === 'photo' && sv.desc.id === b.dataset.id) await Store.del('saves', sid); } closeSheet(); openSettings(); }));
     $('#pvOpen', box).onclick = () => { closeSheet(); openPrivacy(); };
     $('#bkOut', box).onclick = exportBackup;
     $('#bkFile', box).onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importBackup(f); };
     const rl = $('#rLog', box); if (rl) rl.onclick = () => { S.log = []; Store.saveSettings(); closeSheet(); openSettings(); };
-    armedButton($('#rBest', box), 'ベストタイムを けす', () => { if (S.pid === 'p0') S.best = {}; else (S.bestP = S.bestP || {})[S.pid] = {}; Store.saveSettings(); flash('けしました'); });
-    armedButton($('#rStk', box), 'シールを ぜんぶ けす', async () => { for (const s of await myStickers()) await Store.del('stickers', s.id); flash('けしました'); });
+    armedButton($('#rBest', box), 'ベストタイムを削除', () => { if (S.pid === 'p0') S.best = {}; else (S.bestP = S.bestP || {})[S.pid] = {}; Store.saveSettings(); flash('削除しました'); });
+    armedButton($('#rStk', box), 'シールをすべて削除', async () => { for (const s of await myStickers()) await Store.del('stickers', s.id); flash('削除しました'); });
     $('#sClose', box).onclick = () => { closeSheet(); renderHome(); };
   }
 

@@ -55,9 +55,9 @@
 
   /* 設定（小さいもの） */
   const KEY = 'jigsaw-app-settings';
-  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 48, level: 'normal', best: {} };
+  let cache = { sound: 1, src: { k: 'art', id: 'shoubousha' }, target: 24, voice: 0, level: 'normal', best: {} };
   try { Object.assign(cache, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { }
-  if (!cache.def49) { cache.target = 48; cache.def49 = 1; }          // 初期のピース数は49（48を選ぶと 7×7=49）。すでに使っている端末も一度だけ そろえる
+  if (!cache.def25) { cache.target = 24; cache.voice = 0; cache.def25 = 1; }          // 初期のピース数は25（24を選ぶと 5×5=25）、声は オフ。すでに使っている端末も一度だけそろえる
   Store.settings = cache;
   Store.saveSettings = () => { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) { } };
 })();

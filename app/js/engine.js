@@ -7,11 +7,11 @@
   const TABLE = false;        // テーブル（盤面のまわりの仮置き場）。いまは なし：盤面を いちばん大きく見せるため
   const TS = 0.6;            // ピース置き場での表示倍率
   const LEVELS = {
-    easy:   { name: 'やさしい',         desc: 'ヒントのひかりつき', ghost: 0.14, grid: true,  assist: true,  rot: false, snap: 0.55 },
-    normal: { name: 'ふつう',           desc: 'ヒントなし',               ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    hard:   { name: 'むずかしい',       desc: 'ヒントなし',        ghost: 0.14, grid: true,  assist: false, rot: false, snap: 0.55 },
-    expert: { name: 'ちょうむずかしい', desc: 'ピースがまわっている',ghost: 0.14, grid: true,  assist: false, rot: true, snap: 0.55 },
+    easy:   { name: 'やさしい',   desc: 'ヒントのひかりつき', ghost: 0.14, grid: true, assist: true,  rot: false, snap: 0.55 },
+    normal: { name: 'ふつう',     desc: 'ヒントなし',         ghost: 0.14, grid: true, assist: false, rot: false, snap: 0.55 },
+    hard:   { name: 'むずかしい', desc: 'ピースがまわっている', ghost: 0.14, grid: true, assist: false, rot: true,  snap: 0.55 },
   };
+
   const $ = (s) => document.querySelector(s);
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -320,6 +320,7 @@
   /* ------------------------------------------------------------ 組み立て */
   async function start(o) {
     refs(); destroy();
+    if (o.level === 'expert') o.level = 'hard';                 // 「ちょうむずかしい」は やめて、「むずかしい」に まとめた
     const L = LEVELS[o.level] || LEVELS.normal;
     ui.loading.classList.add('on'); ui.loading.querySelector('span').textContent = 'じゅんび中…';
     let info;

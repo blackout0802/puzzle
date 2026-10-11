@@ -301,7 +301,7 @@
     const a = 3 + Math.floor(Math.random() * 6), b = 3 + Math.floor(Math.random() * 6), ans = a + b;
     const opts = PZ.shuffle([ans, ans + 2, ans - 3, ans + 5]);
     const back = PZ.el('div', 'gate-back', document.body), g = PZ.el('div', 'gate', back);
-    g.innerHTML = `<h2>おとなの かたへ</h2><p>${why || 'この さきは ほごしゃの かた用です'}</p><div class="q">${a} + ${b} = ?</div><div class="ans"></div><button class="cancel">やめる</button>`;
+    g.innerHTML = `<h2>保護者の方へ</h2><p>${why || 'この先は保護者の方向けの画面です'}</p><div class="q">${a} + ${b} = ?</div><div class="ans"></div><button class="cancel">やめる</button>`;
     const done = (ok) => { back.remove(); resolve(ok); };
     opts.forEach((o) => { const bt = PZ.el('button', '', PZ.$('.ans', g)); bt.textContent = o; bt.onclick = () => done(o === ans); });
     PZ.$('.cancel', g).onclick = () => done(false);
