@@ -173,7 +173,7 @@
     if (ui) return ui;
     ui = {
       game: $('#game'), view: $('#view'), world: $('#world'), board: $('#board'), ring: $('#ring'), table: $('#table'),
-      tray: $('#tray'), filters: $('#filters'), timer: $('#timer'), left: $('#left'),
+      tray: $('#tray'), trayWrap: $('#trayWrap'), filters: $('#filters'), timer: $('#timer'), left: $('#left'),
       hand: $('#hand'), back: $('#back2tray'), ref: $('#ref'), refImg: $('#ref img'), peek: $('#peek'), peekImg: $('#peek img'), loading: $('#loading'), toast: $('#toast'),
     };
     return ui;
@@ -231,7 +231,15 @@
     v.addEventListener('pointerdown', (e) => {
       if (e.target.closest('#hand,#back2tray,#peek,#ref,.zoom')) return;
       try { v.setPointerCapture(e.pointerId); } catch (_) { }
-      const p = local(e); ptrs.set(e.pointerId, { ...p, sx: p.x, sy: p.y, moved: false });
+      const p = local(e), q0 = { ...p, sx: p.x, sy: p.y, moved: false, cx: e.clientX, cy: e.clientY, drag: false };
+      ptrs.set(e.pointerId, q0);
+      if (ptrs.size === 1 && G && !G.over) {
+        q0.timer = setTimeout(() => {
+          if (q0.moved || multi || !G || G.over) return;
+          const hit = hitGroup((q0.x - cam.x) / cam.s, (q0.y - cam.y) / cam.s);
+          if (hit && dragStart('group', hit.g.id, q0.cx, q0.cy)) q0.drag = true;
+        }, HOLD);
+      } else ptrs.forEach((q) => clearTimeout(q.timer));
       if (ptrs.size === 2) {
         multi = true; const [a, b] = [...ptrs.values()];
         pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, s: cam.s, wx: ((a.x + b.x) / 2 - cam.x) / cam.s, wy: ((a.y + b.y) / 2 - cam.y) / cam.s };
@@ -240,8 +248,9 @@
     v.addEventListener('pointermove', (e) => {
       const q = ptrs.get(e.pointerId); if (!q || !G) return;
       const p = local(e), dx = p.x - q.x, dy = p.y - q.y;
-      q.x = p.x; q.y = p.y;
-      if (Math.hypot(p.x - q.sx, p.y - q.sy) > 9) q.moved = true;
+      q.x = p.x; q.y = p.y; q.cx = e.clientX; q.cy = e.clientY;
+      if (q.drag) { dragMove(e.clientX, e.clientY); return; }
+      if (Math.hypot(p.x - q.sx, p.y - q.sy) > 9) { q.moved = true; clearTimeout(q.timer); }
       if (ptrs.size === 1 && q.moved) { cam.x += dx; cam.y += dy; clampCam(); applyCam(); }
       else if (ptrs.size === 2 && pinch) {
         const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
@@ -251,7 +260,8 @@
     });
     const up = (e) => {
       const q = ptrs.get(e.pointerId); if (!q) return;
-      ptrs.delete(e.pointerId);
+      ptrs.delete(e.pointerId); clearTimeout(q.timer);
+      if (q.drag) { dragEnd(e.clientX, e.clientY, e.type !== 'pointerup'); if (ptrs.size === 0) multi = false; return; }
       if (e.type === 'pointerup' && !q.moved && !multi && G) onTap(q.x, q.y);
       if (ptrs.size < 2) pinch = null;
       if (ptrs.size === 0) multi = false;
@@ -261,6 +271,54 @@
       if (!G) return; e.preventDefault(); const p = local(e);
       zoomAt(p.x, p.y, cam.s * (e.deltaY < 0 ? 1.18 : 1 / 1.18));
     }, { passive: false });
+  }
+
+  /* ----------------------------------------------- 長押しで運ぶ（タップ＆タップに加えて）
+     ピース置き場のピース／テーブルのかたまりを 0.3秒おさえると もちあがり、ゆびについてくる。はなした場所が、タップした場所と同じ あつかい。
+     ピース置き場の上ではなすと、もとにもどる。 */
+  const HOLD = 300;
+  let drag = null;
+  function dragStart(kind, id, cx, cy) {
+    if (!G || G.over) return false;
+    let U;
+    if (kind === 'tray') {
+      const p = G.pieces[id]; if (!p || p.state !== 'tray') return false;
+      if (!(G.sel && G.sel.from === 'tray' && G.sel.p === p)) selectTray(p);
+      U = G.sel; if (!U || U.from !== 'tray') return false;
+    } else {
+      const g = G.groups.find((x) => x.id === id); if (!g) return false;
+      if (!(G.sel && G.sel.from === 'table' && G.sel.g === g)) selectGroup(g);
+      U = G.sel; if (!U || U.from !== 'table') return false;
+    }
+    const src = U.from === 'tray' ? U.p.cv : U.g.el;
+    const el = document.createElement('canvas'); el.width = src.width; el.height = src.height; el.getContext('2d').drawImage(src, 0, 0);
+    const cssW = U.from === 'tray' ? G.S : parseFloat(U.g.el.style.width), cssH = U.from === 'tray' ? G.S : parseFloat(U.g.el.style.height);
+    const v = viewSize(), k = Math.min(cam.s, (Math.min(v.w, v.h) * 0.55) / Math.max(cssW, cssH), 170 / Math.max(cssW, cssH) * (U.from === 'tray' ? 1 : 99));
+    el.className = 'dragproxy'; el.style.width = cssW * k + 'px'; el.style.height = cssH * k + 'px';
+    document.body.appendChild(el);
+    drag = { U, el, deg: U.from === 'tray' ? U.p.deg : 0 };
+    dragMove(cx, cy); try { navigator.vibrate && navigator.vibrate(12); } catch (_) { }
+    ui.game.classList.add('dragging');
+    return true;
+  }
+  function dragMove(cx, cy) {
+    if (!drag) return;
+    drag.el.style.left = cx + 'px'; drag.el.style.top = cy + 'px';
+    drag.el.style.transform = `translate(-50%,-50%) rotate(${drag.deg}deg) scale(1.06)`;
+    const r = ui.trayWrap.getBoundingClientRect(); ui.game.classList.toggle('dropback', cy >= r.top && cx >= r.left && cx <= r.right);
+  }
+  function dragEnd(cx, cy, cancel) {
+    if (!drag) return;
+    const d = drag; drag = null; d.el.remove(); ui.game.classList.remove('dragging', 'dropback');
+    G && (G.noClickUntil = performance.now() + 500);
+    if (cancel || !G || G.over) return;
+    const tr = ui.trayWrap.getBoundingClientRect(), vr = ui.view.getBoundingClientRect();
+    if (cx >= tr.left && cx <= tr.right && cy >= tr.top && cy <= tr.bottom) {              // ピース置き場の上：もとにもどす
+      if (d.U.from === 'table') returnToTray(d.U.g); else deselect();
+      return;
+    }
+    if (cx < vr.left || cx > vr.right || cy < vr.top || cy > vr.bottom) return;               // ボタンの上など：そのまま（選んだまま）
+    onTap(cx - vr.left, cy - vr.top, true);
   }
 
   /* ------------------------------------------------------------ 組み立て */
@@ -461,10 +519,11 @@
   function miss() { G.misses++; PZ.snd.soft(); wobbleHand(); }
   const tol = () => G.L.snap * CELL;
 
-  function onTap(x, y) {
+  function onTap(x, y, drop) {
     if (!G || G.over) return;
-    const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, hit = hitGroup(wx, wy);
-    const U = G.sel;
+    const wx = (x - cam.x) / cam.s, wy = (y - cam.y) / cam.s, U = G.sel;
+    let hit = hitGroup(wx, wy);
+    if (drop && U && U.from === 'table' && hit && hit.g === U.g) hit = null;    // 長押しで運んだとき：自分自身の上は「空いている所」あつかい
     if (!U) { if (hit) selectGroup(hit.g); return; }                         // 何も持っていない時：テーブルのかたまりを持ち上げる
     if (!upright(U)) { PZ.snd.soft(); wobbleHand(); toast('むきを そろえてね', 'ピースを タップして、むきを そろえてね'); return; }
     const inBoard = wx >= 0 && wy >= 0 && wx < G.W && wy < G.H;
@@ -633,8 +692,36 @@
   function init() {
     refs(); bindView();
     ui.tray.addEventListener('click', (e) => {
-      const tp = e.target.closest('.tp'); if (!tp || !G) return; selectTray(G.pieces[+tp.dataset.i]);
+      const tp = e.target.closest('.tp'); if (!tp || !G) return;
+      if (G.noClickUntil && performance.now() < G.noClickUntil) return;                // 長押しで運んだ直後の「クリック」は むし
+      selectTray(G.pieces[+tp.dataset.i]);
     });
+    {                                                                                    // ピース置き場：長押しでもちあげて、運ぶ
+      let hold = null;
+      ui.tray.addEventListener('pointerdown', (e) => {
+        const tp = e.target.closest('.tp'); if (!tp || !G || G.over || drag) return;
+        hold = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, i: +tp.dataset.i, on: false };
+        hold.timer = setTimeout(() => {
+          if (!hold || hold.on) return;
+          if (dragStart('tray', hold.i, hold.x, hold.y)) { hold.on = true; try { ui.tray.setPointerCapture(hold.id); } catch (_) { } }
+        }, HOLD);
+      });
+      ui.tray.addEventListener('pointermove', (e) => {
+        if (!hold || e.pointerId !== hold.id) return;
+        hold.x = e.clientX; hold.y = e.clientY;
+        if (hold.on) { dragMove(e.clientX, e.clientY); return; }
+        if (Math.hypot(e.clientX - hold.sx, e.clientY - hold.sy) > 10) { clearTimeout(hold.timer); }
+      });
+      const end = (e) => {
+        if (!hold || e.pointerId !== hold.id) return;
+        clearTimeout(hold.timer); const h = hold; hold = null;
+        if (h.on) dragEnd(e.clientX, e.clientY, e.type !== 'pointerup');
+      };
+      ui.tray.addEventListener('pointerup', end); ui.tray.addEventListener('pointercancel', end);
+      ui.tray.addEventListener('touchmove', (e) => { if (drag) e.preventDefault(); }, { passive: false });    // もちあげている間は、置き場が横にスクロールしない
+      ui.tray.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    ui.view.addEventListener('contextmenu', (e) => e.preventDefault());
     ui.hand.addEventListener('click', () => { if (!G || !G.sel) return; if (G.sel.from === 'tray' && G.L.rot) rotate(G.sel.p); else deselect(); });
     ui.back.addEventListener('click', () => { if (G && G.sel && G.sel.from === 'table') returnToTray(G.sel.g); });
     ui.filters.addEventListener('click', (e) => { const b = e.target.closest('button[data-f]'); if (b && G) setFilter(b.dataset.f); });
