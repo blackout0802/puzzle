@@ -710,7 +710,13 @@
         if (!hold || e.pointerId !== hold.id) return;
         hold.x = e.clientX; hold.y = e.clientY;
         if (hold.on) { dragMove(e.clientX, e.clientY); return; }
-        if (Math.hypot(e.clientX - hold.sx, e.clientY - hold.sy) > 10) { clearTimeout(hold.timer); }
+        const dx = e.clientX - hold.sx, dy = e.clientY - hold.sy;
+        if (Math.hypot(dx, dy) > 10) {
+          clearTimeout(hold.timer);
+          // 置き場が スクロールしない向き（たて向きの置き場なら「上」、よこ向きの置き場なら「盤面がわ」）へ すぐ引き出したときは、長押しなしで もちあげる
+          const out = landscape() ? (dx < 0 && -dx > Math.abs(dy) * 1.2) : (dy < 0 && -dy > Math.abs(dx) * 1.2);
+          if (out && !hold.on && dragStart('tray', hold.i, e.clientX, e.clientY)) { hold.on = true; try { ui.tray.setPointerCapture(hold.id); } catch (_) { } }
+        }
       });
       const end = (e) => {
         if (!hold || e.pointerId !== hold.id) return;
