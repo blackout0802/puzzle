@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>イラスト案10種</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&display=swap">
+<style>
+/* 画風の見本帳。やわらかい丸ゴシックで、ギャラリーと同じ空気に。絵そのものが主役なので、画面の色は控えめにする */
+:root{
+  --bg:#fbf8f3; --surface:#ffffff; --fg:#2d2a32; --muted:#6c6672; --line:#e9e2d8;
+  --accent:#f26a3d; --accent-fg:#ffffff; --chip:#f3ece2; --ok:#2f8f5b; --mid:#b8860b; --low:#a8576b;
+  --disp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --ok:#6fd39b; --mid:#ecc15a; --low:#e59ab0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --ok:#6fd39b; --mid:#ecc15a; --low:#e59ab0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;padding-inline:max(16px,env(safe-area-inset-left));padding-block:24px 56px;line-height:1.7;font-size:15px}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-family:var(--disp);font-weight:900;font-size:clamp(26px,6vw,38px);line-height:1.25;margin:0 0 8px;text-wrap:balance}
+.lead{margin:0 0 18px;color:var(--muted);max-width:42em}
+.back{display:inline-block;margin:0 0 14px;color:var(--muted);font-size:13px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 0;margin:0 0 18px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:inherit;font-weight:700;font-size:14px;border:2px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 14px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.sw{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.sw input{width:20px;height:20px;accent-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.pv{position:relative;aspect-ratio:1;width:100%;border:0;padding:0;background:var(--chip);cursor:zoom-in;display:block}
+.pv svg,.pv img{display:block;width:100%;height:100%}
+.pv img{image-rendering:pixelated}
+.pv .jig{position:absolute;inset:0;pointer-events:none}
+.pv .n{position:absolute;left:10px;top:8px;font-family:var(--disp);font-weight:900;font-size:26px;line-height:1;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.info{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.info h2{font-family:var(--disp);font-weight:900;font-size:19px;margin:0}
+.info p{margin:0;font-size:13.5px}
+.cl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.cl b{font-size:14px}
+.cl .ok{color:var(--ok)}.cl .mid{color:var(--mid)}.cl .low{color:var(--low)}
+.good{color:var(--fg)}.warn{color:var(--muted)}
+.good:before{content:"◯ ";color:var(--ok);font-weight:700}.warn:before{content:"△ ";color:var(--mid);font-weight:700}
+.foot{margin:34px 0 0;padding:14px 16px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:13.5px}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(10,8,14,.72);display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px}
+.modal.on{display:flex}
+.sheet{background:var(--surface);border-radius:20px;max-width:620px;width:100%;max-height:100%;overflow:auto;padding:14px}
+.sheet h2{font-family:var(--disp);margin:0 0 8px;font-size:20px}
+.big{position:relative;aspect-ratio:1;width:100%;border-radius:12px;overflow:hidden;background:var(--chip)}
+.big svg,.big img{display:block;width:100%;height:100%}.big img{image-rendering:pixelated}
+.big .jig{position:absolute;inset:0;pointer-events:none}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.three button{position:relative;aspect-ratio:1;border:2px solid var(--line);border-radius:10px;overflow:hidden;padding:0;background:var(--chip);cursor:pointer}
+.three button[aria-pressed="true"]{border-color:var(--accent)}
+.three svg,.three img{display:block;width:100%;height:100%}.three img{image-rendering:pixelated}
+.close{margin-top:12px;width:100%;font:inherit;font-weight:900;font-family:var(--disp);font-size:16px;border:0;border-radius:14px;padding:12px;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style></head><body>
+<div class="wrap">
+  <a class="back" href="../index.html">← 試作ギャラリーに戻る</a>
+  <h1>イラスト案10種</h1>
+  <p class="lead">いまのイラストはそのまま残して、画風だけを変えた見本です。同じ3つの絵（しょうぼうしゃ・ライオン・しんかんせん）を、10通りの描き方で並べました。絵をタップすると大きく見られます。「パズルの見え方」をオンにすると、25ピースに切ったときの様子も確認できます。</p>
+  <div class="bar">
+    <div class="tabs" id="tabs" role="group" aria-label="見る絵"></div>
+    <label class="sw"><input type="checkbox" id="jig"> パズルの見え方（5×5）</label>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="foot">これは、同じ下絵の形から、描き方だけを自動で切り替えた見本です。形（輪郭）は共通なので、気に入った画風は、その画風に合わせて形から描き起こし直して、本番のイラストに仕上げます。「手がかり」は、ピースを見分けやすいかどうかの目安です（◎ 多い ／ ○ ふつう ／ △ 少なめ）。</p>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="sheet">
+    <h2 id="mTitle"></h2>
+    <div class="big" id="mBig"></div>
+    <div class="three" id="mThree"></div>
+    <button class="close" id="mClose" type="button">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ------------------------------------------------------------ 色 */
+const h2r=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+const r2h=a=>'#'+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+const mix=(a,b,t)=>{const A=h2r(a),B=h2r(b);return r2h(A.map((v,i)=>v+(B[i]-v)*t))};
+const lighten=(c,t)=>mix(c,'#ffffff',t), darken=(c,t)=>mix(c,'#000000',t);
+
+/* ------------------------------------------------------------ 図形（形だけを持つ共通の下絵）
+   role: bg=背景 / m=主役の色 / a=差し色 / g=ガラス / k=暗い部分 / w=白っぽい部分 / s=影 / line=線 */
+const R=(x,y,w,h,c,role='m',rx=0,o=1)=>({t:'rect',g:`x="${x}" y="${y}" width="${w}" height="${h}"${rx?` rx="${rx}"`:''}`,c,role,o});
+const C=(x,y,r,c,role='m',o=1)=>({t:'circle',g:`cx="${x}" cy="${y}" r="${r}"`,c,role,o});
+const E=(x,y,rx,ry,c,role='m',o=1)=>({t:'ellipse',g:`cx="${x}" cy="${y}" rx="${rx}" ry="${ry}"`,c,role,o});
+const P=(d,c,role='m',o=1)=>({t:'path',g:`d="${d}"`,c,role,o});
+const L=(d,c,w=4)=>({t:'path',g:`d="${d}"`,c,role:'line',w,o:1});
+
+function truck(){
+  const s=[];
+  s.push(R(0,0,400,400,'#bfe3ff','bg'));
+  s.push(C(332,72,52,'#ffeaa0','bg',.7), C(332,72,34,'#ffd54a','bg'));
+  s.push(E(86,70,48,16,'#ffffff','bg'),E(118,58,30,19,'#ffffff','bg'),E(58,64,26,14,'#ffffff','bg'),E(262,112,40,13,'#ffffff','bg'),E(282,104,24,14,'#ffffff','bg'));
+  // 消防署
+  s.push(R(14,128,124,194,'#e9a88c','bg'),R(8,116,136,16,'#b85c4a','bg',4));
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)s.push(R(28+c*36,148+r*46,24,32,'#fff4c9','bg',3));
+  s.push(R(52,270,40,52,'#8a5a44','bg',3));
+  // 木
+  s.push(R(352,232,10,70,'#7a5230','bg'),C(357,214,34,'#5cb85c','bg'),C(338,236,24,'#4aa84f','bg'),C(377,236,22,'#4aa84f','bg'));
+  // 道
+  s.push(R(0,300,400,100,'#575c6b','bg'),R(0,292,400,12,'#c9c3b8','bg'));
+  for(let i=0;i<6;i++)s.push(R(10+i*70,355,40,8,'#f4f1e6','bg',4));
+  // くるま
+  s.push(E(200,316,140,10,'#000000','s',.28));
+  s.push(R(96,196,148,9,'#d7dbe2','a',3));
+  for(let i=0;i<8;i++)s.push(R(102+i*17,186,5,12,'#d7dbe2','a',2));
+  s.push(R(96,184,148,5,'#aeb4bf','a',2));
+  s.push(R(70,205,178,92,'#e63946','m',12));
+  s.push(P('M246 205 H300 Q318 205 326 228 L334 262 Q338 297 332 297 H246 Z','#e63946','m'));
+  s.push(P('M262 214 H294 Q305 214 311 230 L316 248 H262 Z','#bfe9ff','g'));
+  s.push(R(262,214,5,34,'#ffffff','w',2,.55));
+  s.push(R(70,252,178,10,'#ffffff','w',2),R(246,268,88,9,'#ffffff','w',2));
+  for(let i=0;i<4;i++){s.push(R(84+i*40,214,32,34,'#c42b37','a',5)); s.push(R(94+i*40,226,12,4,'#f2c9cd','w',2));}
+  s.push(R(254,190,40,12,'#3b82f6','a',5),P('M260 190 Q274 174 288 190 Z','#7db4ff','a'));
+  s.push(C(327,254,8,'#ffe27a','a'));
+  s.push(R(302,288,38,12,'#cfd4db','a',4));
+  for(const x of [122,274]){s.push(C(x,300,31,'#262a33','k'),C(x,300,16,'#d5d9e0','w'),C(x,300,6,'#8d94a0','k'));}
+  return {id:'truck',name:'しょうぼうしゃ',en:'Fire Engine',shapes:s};
+}
+function lion(){
+  const s=[],cx=200,cy=216;
+  s.push(R(0,0,400,400,'#ffe8b0','bg'));
+  s.push(C(66,70,64,'#ffd98a','bg',.7),C(66,70,40,'#ffb347','bg'));
+  s.push(P('M0 300 Q80 246 170 290 T330 276 T400 288 V330 H0 Z','#d89c4f','bg'));
+  s.push(P('M0 322 Q100 292 200 316 T400 306 V400 H0 Z','#e3b25a','bg'));
+  s.push(R(334,212,9,96,'#6b4a2f','bg'),E(338,204,50,17,'#6aa84f','bg'),E(312,216,30,11,'#7bb85c','bg'),E(366,214,28,10,'#7bb85c','bg'));
+  for(let i=0;i<12;i++){const a=i*Math.PI/6;s.push(C(cx+Math.cos(a)*104,cy+Math.sin(a)*104,46,'#b9651f','m'));}
+  for(let i=0;i<12;i++){const a=i*Math.PI/6+Math.PI/12;s.push(C(cx+Math.cos(a)*88,cy+Math.sin(a)*88,38,'#d98a2f','m'));}
+  s.push(C(cx,cy,100,'#e39a3a','m'));
+  for(const dx of [-72,72]){s.push(C(cx+dx,138,27,'#f2b64f','m'),C(cx+dx,139,14,'#f4a3a3','a'));}
+  s.push(E(cx,224,78,74,'#f6c96b','m'));
+  s.push(E(cx,258,45,34,'#fff0cc','w'));
+  s.push(C(cx-52,252,13,'#f6a49a','a',.85),C(cx+52,252,13,'#f6a49a','a',.85));
+  for(const dx of [-30,30]){s.push(E(cx+dx,210,11,13,'#ffffff','w'),C(cx+dx+1,212,7,'#3a2418','k'),C(cx+dx+3,209,2.4,'#ffffff','w'));}
+  s.push(L('M154 190 Q170 181 184 192','#8a4b1e',5),L('M246 190 Q230 181 216 192','#8a4b1e',5));
+  s.push(P('M184 240 Q200 233 216 240 Q214 254 200 260 Q186 254 184 240 Z','#6b3a2a','k'),E(196,242,6,2.6,'#ffffff','w',.6));
+  s.push(L('M200 260 V270 M200 270 Q188 282 176 272 M200 270 Q212 282 224 272','#6b3a2a',4));
+  for(const dx of [-1,1])for(let i=0;i<3;i++)s.push(C(cx+dx*(22+i*6),262+i*5,2,'#c98d5a','a'));
+  return {id:'lion',name:'ライオン',en:'Lion',shapes:s};
+}
+function train(){
+  const s=[];
+  s.push(R(0,0,400,400,'#a9d8ff','bg'),R(0,110,400,200,'#cfeaff','bg'));
+  s.push(C(72,64,28,'#fff3c0','bg'));
+  s.push(P('M30 306 L168 124 Q200 100 232 124 L372 306 Z','#5f7fa8','bg'));
+  s.push(P('M139 164 L168 124 Q200 100 232 124 L261 164 L241 152 L222 168 L200 150 L180 168 L160 152 Z','#ffffff','bg'));
+  s.push(P('M0 300 Q90 270 180 296 T400 288 V340 H0 Z','#8fcf8f','bg'),R(0,300,400,100,'#7bc67e','bg'));
+  for(const [x,f] of [[36,1],[366,-1]]){s.push(R(x-4,244,9,60,'#7a5230','bg'),C(x,236,32,'#f7b6cf','bg'),C(x-f*20,254,22,'#f4a3c0','bg'),C(x+f*20,252,22,'#f8c3d8','bg'));}
+  s.push(R(0,334,400,10,'#8b8f9c','bg'));
+  for(let i=0;i<17;i++)s.push(R(i*24+4,344,12,8,'#6b6e78','bg',2));
+  s.push(E(200,334,176,6,'#000000','s',.25));
+  s.push(P('M20 332 V252 Q20 232 42 228 H300 Q346 232 372 292 Q382 314 372 332 Z','#f4f6fa','m'));
+  s.push(P('M20 298 H362 L372 316 L372 332 H20 Z','#2d6cdf','a'),R(20,286,342,4,'#2d6cdf','a',2));
+  for(let i=0;i<9;i++)s.push(R(40+i*30,246,20,24,'#2b4a73','g',6),R(43+i*30,249,6,9,'#ffffff','w',2,.45));
+  s.push(P('M314 244 Q340 246 356 274 L314 274 Z','#2b4a73','g'));
+  s.push(L('M110 232 V330 M216 232 V330','#cfd5e0',3));
+  s.push(L('M168 228 L180 210 H206 L218 228','#444a55',4),R(174,206,38,6,'#444a55','k',3));
+  s.push(R(40,326,64,12,'#3a3f4b','k',5),R(246,326,64,12,'#3a3f4b','k',5),C(366,306,6,'#ffe27a','a'));
+  return {id:'train',name:'しんかんせん',en:'Shinkansen',shapes:s};
+}
+const SUBJECTS=[truck(),lion(),train()];
+
+/* ------------------------------------------------------------ 描画のための道具 */
+let UID=0;
+const el=(s,a)=>`<${s.t} ${s.g} ${a}/>`;
+const svg=(inner,defs='')=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">${defs?`<defs>${defs}</defs>`:''}${inner}</svg>`;
+const noiseRect=(f,op,blend='multiply')=>`<rect width="400" height="400" filter="url(#${f})" opacity="${op}" style="mix-blend-mode:${blend}"/>`;
+
+/* ------------------------------------------------------------ 10の画風 */
+const STYLES=[
+{ name:'水彩（にじみ）', desc:'にじみとムラのある、やわらかい絵本の絵。', good:'ムラが自然な模様になり、広い面にも手がかりが出る', warn:'色が淡いので、似た色のピースは見分けにくい', clue:['mid','○ ふつう'],
+  render(sub){const u='w'+(++UID);
+    const defs=`<filter id="${u}a" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="9" result="m"/><feColorMatrix in="m" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0.42" result="ma"/><feComposite in="d" in2="ma" operator="in"/></filter>
+<filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="1"/><feColorMatrix values="0 0 0 0 .55 0 0 0 0 .45 0 0 0 0 .3 0 0 0 .5 -0.1"/></filter>`;
+    const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.1)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}a)" opacity=".8"`):el(s,`fill="${lighten(s.c,.14)}" fill-opacity="${s.role==='s'?s.o:Math.min(.86,s.o)}" stroke="${darken(s.c,.15)}" stroke-opacity=".38" stroke-width="2.2" filter="url(#${u}a)"`)).join('');
+    return svg(`<rect width="400" height="400" fill="#fbf6e8"/><g style="mix-blend-mode:multiply">${body}</g>${noiseRect(u+'p',.3)}`,defs);}},
+{ name:'クレヨン', desc:'ざらっと塗った、手描きのクレヨン画。', good:'塗りムラと線のゆれが、どのピースにも手がかりになる', warn:'ざらつきで、細かい部分（目・窓）がつぶれやすい', clue:['ok','◎ 多い'],
+  render(sub){const u='c'+(++UID);
+    const f=(id,seed,sc)=>`<filter id="${u}${id}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="${seed}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${sc}" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.85 0.55" numOctaves="2" seed="${seed+3}" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.4 -0.6" result="gm"/><feComposite in="d" in2="gm" operator="in"/></filter>`;
+    const defs=f('a',2,6)+f('b',9,5)+`<filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .6 0 0 0 0 .5 0 0 0 0 .35 0 0 0 .6 -.15"/></filter>`;
+    const body=sub.shapes.map(s=>{
+      if(s.role==='line')return el(s,`fill="none" stroke="${darken(s.c,.2)}" stroke-width="${s.w+1}" stroke-linecap="round" filter="url(#${u}a)"`);
+      const o=s.role==='s'?s.o:1;
+      return el(s,`fill="${s.c}" fill-opacity="${o}" stroke="${darken(s.c,.28)}" stroke-width="3" stroke-linejoin="round" filter="url(#${u}a)"`)+el(s,`transform="translate(1.5 1)" fill="${lighten(s.c,.1)}" fill-opacity="${o*.9}" filter="url(#${u}b)"`);
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="#fff8e6"/>${body}${noiseRect(u+'p',.35)}`,defs);}},
+{ name:'切り紙（ペーパークラフト）', desc:'色紙を重ねて貼った、影つきの切り絵。', good:'重なりの影が輪郭になり、ピースの境目がはっきりする', warn:'広い背景は単調になりやすい（模様紙で補える）', clue:['ok','◎ 多い'],
+  render(sub){const u='p'+(++UID);
+    const defs=`<filter id="${u}s" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#2a1d10" flood-opacity=".38"/></filter><filter id="${u}t" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1.4" stdDeviation="1.2" flood-color="#2a1d10" flood-opacity=".28"/></filter><filter id="${u}f"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.5" numOctaves="3" seed="6"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .2 0 0 0 .55 -.12"/></filter>`;
+    const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='s'?'':el(s,`fill="${mix(s.c,'#f7efe0',.12)}" stroke="${lighten(s.c,.4)}" stroke-width="1.4" filter="url(#${u}${s.role==='bg'?'t':'s'})"`)).join('');
+    return svg(`<rect width="400" height="400" fill="#efe6d6"/>${body}${noiseRect(u+'f',.5)}`,defs);}},
+{ name:'ぷっくり（クレイ）', desc:'粘土のようにつやつやした、ふくらみのある絵。', good:'立体感でキャラクターが際立ち、シールにもなじむ', warn:'表現が重いので、端末によっては描画が遅くなる', clue:['mid','○ ふつう'],
+  render(sub){const u='k'+(++UID);
+    const defs=`<filter id="${u}a" x="-12%" y="-12%" width="125%" height="130%"><feGaussianBlur in="SourceAlpha" stdDeviation="4" result="b"/><feSpecularLighting in="b" surfaceScale="7" specularConstant=".95" specularExponent="24" lighting-color="#ffffff" result="sp"><fePointLight x="-120" y="-180" z="260"/></feSpecularLighting><feComposite in="sp" in2="SourceAlpha" operator="in" result="sp2"/><feComposite in="SourceGraphic" in2="sp2" operator="arithmetic" k1="0" k2="1" k3=".9" k4="0" result="lit"/><feGaussianBlur in="SourceAlpha" stdDeviation="4" result="sb"/><feOffset in="sb" dy="5" result="so"/><feFlood flood-color="#3b2a4d" flood-opacity=".35"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="lit"/></feMerge></filter>`;
+    const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='bg'?el(s,`fill="${lighten(s.c,.18)}"`):s.role==='s'?el(s,`fill="#000" fill-opacity="${s.o*.7}"`):el(s,`fill="${s.c}" fill-opacity="${s.o}" filter="url(#${u}a)"`)).join('');
+    return svg(`<rect width="400" height="400" fill="#f4ecff"/>${body}`,defs);}},
+{ name:'ステッカー（太い縁取り）', desc:'白いフチのついた、シールそのものの絵。', good:'シール帳にそのまま貼れる見た目。輪郭が太く、見分けやすい', warn:'背景なしの絵になるので、背景は模様で作る', clue:['ok','◎ 多い'],
+  render(sub){const u='t'+(++UID);
+    const defs=`<filter id="${u}a" x="-12%" y="-12%" width="124%" height="130%"><feMorphology in="SourceAlpha" operator="dilate" radius="8" result="d"/><feFlood flood-color="#ffffff" result="wf"/><feComposite in="wf" in2="d" operator="in" result="w"/><feGaussianBlur in="d" stdDeviation="3" result="sb"/><feOffset in="sb" dy="4" result="so"/><feFlood flood-color="#3a2d52" flood-opacity=".32"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="${u}d" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#ffe3ee"/><circle cx="7" cy="7" r="3.2" fill="#ffc2d8"/><circle cx="20" cy="20" r="3.2" fill="#ffd2c2"/></pattern>`;
+    const items=sub.shapes.filter(s=>s.role!=='bg');
+    const body=items.map(s=>s.role==='line'?el(s,`fill="none" stroke="#3a2d52" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='s'?'':el(s,`fill="${s.c}" fill-opacity="${s.o}" stroke="#3a2d52" stroke-width="4.5" stroke-linejoin="round"`)).join('');
+    return svg(`<rect width="400" height="400" fill="url(#${u}d)"/><g filter="url(#${u}a)" transform="translate(200 200) scale(.9) translate(-200 -205)">${body}</g>`,defs);}},
+{ name:'ミッドセンチュリー', desc:'少ない色数でまとめた、レトロなポスター風。', good:'おしゃれで、親も楽しめる。色数が少なく塗り分けが明快', warn:'同じ色の広い面が多く、ピースの手がかりは少なめ', clue:['mid','○ ふつう'],
+  render(sub){const u='m'+(++UID);
+    const PAL=['#e9c46a','#2a9d8f','#e76f51','#264653','#f4e9d1','#d9a05b','#8ab17d','#c44536'];
+    const near=c=>{const a=h2r(c);let b=PAL[0],bd=1e9;for(const p of PAL){const q=h2r(p),d=(a[0]-q[0])**2+(a[1]-q[1])**2+(a[2]-q[2])**2;if(d<bd){bd=d;b=p}}return b};
+    const defs=`<filter id="${u}g"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 .22 0 0 0 0 .16 0 0 0 0 .1 0 0 0 1.7 -.72"/></filter>`;
+    const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="#264653" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):el(s,`fill="${near(s.c)}" fill-opacity="${s.role==='s'?s.o:1}"`)).join('');
+    return svg(`<rect width="400" height="400" fill="#f4e9d1"/>${body}${noiseRect(u+'g',.55)}<rect x="10" y="10" width="380" height="380" fill="none" stroke="#f4e9d1" stroke-width="8"/>`,defs);}},
+{ name:'図鑑（細い線＋淡い色）', desc:'ペンの細い線に、淡い色を重ねた図鑑の挿絵。', good:'図鑑との相性が良く、線が多いので手がかりも十分', warn:'色が淡く地味なので、幼児にはやや大人っぽい', clue:['ok','◎ 多い'],
+  render(sub){const u='z'+(++UID);
+    const defs=`<pattern id="${u}h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#4b3b2b" stroke-width="1.1" opacity=".8"/></pattern><pattern id="${u}l" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="#4b3b2b" stroke-width=".9" opacity=".32"/></pattern><filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="2"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .4 0 0 0 0 .25 0 0 0 .5 -.12"/></filter>`;
+    const paper='#f3ead3',ink='#4b3b2b';
+    const items=sub.shapes.filter(s=>s.role!=='bg');
+    const body=items.map(s=>{
+      if(s.role==='line')return el(s,`fill="none" stroke="${ink}" stroke-width="${Math.max(1.4,s.w*.4)}" stroke-linecap="round" stroke-linejoin="round"`);
+      if(s.role==='s')return el(s,`fill="url(#${u}h)" opacity=".55"`);
+      const hatch=s.role==='k'?el(s,`fill="url(#${u}h)" opacity=".85"`):(s.role==='m'?el(s,`fill="url(#${u}l)"`):'');
+      return el(s,`fill="${mix(s.c,paper,.55)}" fill-opacity="${s.o}" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"`)+hatch;
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="${paper}"/><rect x="14" y="14" width="372" height="372" fill="none" stroke="${ink}" stroke-width="1.5"/><rect x="20" y="20" width="360" height="360" fill="none" stroke="${ink}" stroke-width=".8"/><g transform="translate(200 214) scale(.78) translate(-200 -214)">${body}</g><text x="200" y="56" text-anchor="middle" font-family="'Noto Serif JP','Hiragino Mincho ProN',serif" font-size="24" font-weight="700" fill="${ink}">${sub.name}</text><text x="200" y="372" text-anchor="middle" font-family="'Noto Serif JP',serif" font-size="13" fill="${ink}" letter-spacing="2">${sub.en}</text>${noiseRect(u+'p',.4)}`,defs);}},
+{ name:'ドット絵', desc:'64×64のドットで描いた、ゲームのような絵。', good:'一目で分かる。拡大しても崩れず、軽い', warn:'細かい部分が消え、ピースの手がかりは少なめ', clue:['low','△ 少なめ'], pixel:true,
+  async render(sub){
+    const PX=['#1a1c2c','#5d275d','#b13e53','#ef7d57','#ffcd75','#a7f070','#38b764','#257179','#29366f','#3b5dc9','#41a6f6','#73eff7','#f4f4f4','#94b0c2','#566c86','#333c57','#b9e3ff','#ffd7b0','#f7b6cf','#e9a88c','#e3b25a','#8a5a44','#d98a2f','#f6c96b','#5f7fa8','#7bc67e','#ffe8b0','#e63946','#d7dbe2'];
+    const rgb=PX.map(h2r);
+    const flat=svg(sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${s.c}" stroke-width="${Math.max(s.w,6)}" stroke-linecap="round"`):s.role==='s'?el(s,`fill="#333c57" fill-opacity=".5"`):el(s,`fill="${s.c}" fill-opacity="${s.o}"`)).join(''));
+    const img=new Image();await new Promise((ok,ng)=>{img.onload=ok;img.onerror=ng;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(flat)});
+    const N=64,cv=document.createElement('canvas');cv.width=cv.height=N;const x=cv.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,N,N);
+    const d=x.getImageData(0,0,N,N),a=d.data;
+    for(let i=0;i<a.length;i+=4){let b=0,bd=1e9;for(let k=0;k<rgb.length;k++){const q=rgb[k],dd=(a[i]-q[0])**2+(a[i+1]-q[1])**2+(a[i+2]-q[2])**2;if(dd<bd){bd=dd;b=k}}a[i]=rgb[b][0];a[i+1]=rgb[b][1];a[i+2]=rgb[b][2];a[i+3]=255}
+    // 輪郭：となりと色がちがう ドットのうち、暗いほうを少しだけ沈める
+    const o=x.createImageData(N,N);o.data.set(a);const q=o.data;
+    const same=(i,j)=>a[i]===a[j]&&a[i+1]===a[j+1]&&a[i+2]===a[j+2];
+    for(let yy=0;yy<N-1;yy++)for(let xx=0;xx<N-1;xx++){const i=(yy*N+xx)*4,r=i+4,b=i+N*4;if(!same(i,r)||!same(i,b)){const l=(a[i]+a[i+1]+a[i+2])/3;if(l<150){q[i]*=.7;q[i+1]*=.7;q[i+2]*=.7}}}
+    x.putImageData(o,0,0);
+    return `<img alt="" src="${cv.toDataURL('image/png')}">`;}},
+{ name:'フェルト（ぬいぐるみ）', desc:'羊毛フェルトを縫い合わせた、あたたかい手芸風。', good:'縫い目の点線と布のざらつきが、ピースの手がかりになる', warn:'縫い目が細かいので、小さく表示すると見えにくい', clue:['ok','◎ 多い'],
+  render(sub){const u='f'+(++UID);
+    const defs=`<filter id="${u}a" x="-8%" y="-8%" width="116%" height="122%"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="4" result="n"/><feDiffuseLighting in="n" surfaceScale="1.8" diffuseConstant="1.15" lighting-color="#ffffff" result="l"><feDistantLight azimuth="45" elevation="62"/></feDiffuseLighting><feComposite in="l" in2="SourceAlpha" operator="in" result="lc"/><feBlend in="SourceGraphic" in2="lc" mode="multiply" result="t"/><feComposite in="t" in2="SourceAlpha" operator="in" result="tc"/><feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="sb"/><feOffset in="sb" dy="3" result="so"/><feFlood flood-color="#3a2410" flood-opacity=".38"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="tc"/></feMerge></filter>`;
+    const body=sub.shapes.map(s=>{
+      if(s.role==='line')return el(s,`fill="none" stroke="${darken(s.c,.1)}" stroke-width="${s.w}" stroke-linecap="round" stroke-dasharray="${s.w*1.6} ${s.w*1.1}"`);
+      if(s.role==='s')return '';
+      const stitch=(s.role==='bg'&&s.t==='rect'&&s.g.includes('width="400"'))?'':el(s,`fill="none" stroke="${lighten(s.c,.6)}" stroke-width="2" stroke-dasharray="6 5" stroke-linecap="round" opacity=".85"`);
+      return el(s,`fill="${mix(s.c,'#ffffff',.06)}" fill-opacity="${s.o}" filter="url(#${u}a)"`)+stitch;
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="#e8dcc6"/>${body}`,defs);}},
+{ name:'ステンドグラス', desc:'黒い線で区切った、光を通すガラスの絵。', good:'黒い線で色が区切られ、どのピースも輪郭がはっきり', warn:'少し重い雰囲気。やわらかさを求めるなら不向き', clue:['ok','◎ 多い'],
+  render(sub){const u='g'+(++UID);
+    const defs=`<filter id="${u}a" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1 0 0 0 0 .97 0 0 0 0 .85 0 0 0 .75 -.3" result="w"/><feComposite in="w" in2="SourceAlpha" operator="in" result="wl"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="wl"/></feMerge></filter><radialGradient id="${u}r" cx=".5" cy=".28" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>`;
+    const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="#17111f" stroke-width="${s.w+1.5}" stroke-linecap="round"`):s.role==='s'?'':el(s,`fill="${mix(s.c,'#ffffff',-.0)}" fill-opacity=".95" stroke="#17111f" stroke-width="5" stroke-linejoin="round" filter="url(#${u}a)"`)).join('');
+    return svg(`<rect width="400" height="400" fill="#17111f"/>${body}<rect width="400" height="400" fill="url(#${u}r)" style="mix-blend-mode:soft-light"/><rect x="3" y="3" width="394" height="394" rx="6" fill="none" stroke="#17111f" stroke-width="14"/>`,defs);}},
+];
+
+/* ------------------------------------------------------------ パズルの線（5×5・見た目だけ） */
+function jigsaw(n=5){
+  const S=400/n; let seed=11; const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+  const knob=(x0,y0,x1,y1,dir)=>{const dx=x1-x0,dy=y1-y0,nx=-dy*dir,ny=dx*dir;
+    const p=(u,v)=>`${(x0+dx*u+nx*v).toFixed(1)} ${(y0+dy*u+ny*v).toFixed(1)}`;
+    return `L${p(.35,0)} C${p(.41,0)} ${p(.40,.06)} ${p(.38,.10)} C${p(.30,.20)} ${p(.42,.27)} ${p(.50,.27)} C${p(.58,.27)} ${p(.70,.20)} ${p(.62,.10)} C${p(.60,.06)} ${p(.59,0)} ${p(.65,0)} L${x1.toFixed(1)} ${y1.toFixed(1)}`};
+  let d='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    if(c<n-1){const x=(c+1)*S,y0=r*S,y1=(r+1)*S;d+=`M${x} ${y0} ${knob(x,y0,x,y1,rnd()<.5?1:-1)} `}
+    if(r<n-1){const y=(r+1)*S,x0=c*S,x1=(c+1)*S;d+=`M${x0} ${y} ${knob(x0,y,x1,y,rnd()<.5?1:-1)} `}
+  }
+  return `<svg class="jig" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice"><path d="${d}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="4" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".95" stroke-width="2" stroke-linejoin="round"/><rect x="1" y="1" width="398" height="398" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2"/></svg>`;
+}
+const JIG=jigsaw(5);
+
+/* ------------------------------------------------------------ 画面 */
+const state={subj:0,jig:false};
+const cache=new Map();
+async function art(si,subj){const k=si+'/'+subj;if(!cache.has(k)){cache.set(k,Promise.resolve(STYLES[si].render(SUBJECTS[subj])))}return cache.get(k)}
+// SVG の id が かぶらないよう、表示のたびに作りなおす（ドット絵だけは、できた画像を使いまわす）
+async function html(si,subj){
+  if(STYLES[si].pixel){const k=si+'/'+subj;if(!cache.has(k))cache.set(k,Promise.resolve(STYLES[si].render(SUBJECTS[subj])));return cache.get(k)}
+  return STYLES[si].render(SUBJECTS[subj]);
+}
+const grid=document.getElementById('grid');
+STYLES.forEach((st,i)=>{
+  const card=document.createElement('article');card.className='card';
+  card.innerHTML=`<button class="pv" type="button" aria-label="${st.name}を大きく見る"><span class="n">${String(i+1).padStart(2,'0')}</span></button>
+  <div class="info"><h2>${st.name}</h2><p>${st.desc}</p><p class="good">${st.good}</p><p class="warn warn">${st.warn}</p><div class="cl">手がかり <b class="${st.clue[0]}">${st.clue[1]}</b></div></div>`;
+  grid.appendChild(card);st.card=card;st.pv=card.querySelector('.pv');
+  st.pv.addEventListener('click',()=>openModal(i));
+});
+async function paint(i){
+  const st=STYLES[i];if(!st.pv)return;
+  const out=await html(i,state.subj);
+  st.pv.querySelectorAll('svg:not(.jig),img,.jig').forEach(e=>e.remove());
+  st.pv.insertAdjacentHTML('afterbegin',out);
+  if(state.jig)st.pv.insertAdjacentHTML('beforeend',JIG);
+}
+const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=STYLES.findIndex(s=>s.pv===e.target);if(i>=0&&!STYLES[i].done){STYLES[i].done=1;paint(i)}}})},{rootMargin:'300px'}):null;
+STYLES.forEach((st,i)=>{if(io)io.observe(st.pv);else{st.done=1;paint(i)}});
+function repaintAll(){STYLES.forEach((st,i)=>{if(st.done)paint(i)})}
+
+const tabs=document.getElementById('tabs');
+SUBJECTS.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=s.name;b.setAttribute('aria-pressed',i===0);b.onclick=()=>{state.subj=i;tabs.querySelectorAll('button').forEach((x,j)=>x.setAttribute('aria-pressed',j===i));repaintAll()};tabs.appendChild(b)});
+document.getElementById('jig').addEventListener('change',e=>{state.jig=e.target.checked;repaintAll();if(modal.classList.contains('on'))renderModal()});
+
+/* ------------------------------------------------------------ 拡大 */
+const modal=document.getElementById('modal'),mBig=document.getElementById('mBig'),mThree=document.getElementById('mThree');
+let mi=0,ms=0;
+async function renderModal(){
+  const st=STYLES[mi];document.getElementById('mTitle').textContent=`${String(mi+1).padStart(2,'0')} ${st.name}`;
+  mBig.innerHTML=await html(mi,ms)+(state.jig?JIG:'');
+  mThree.innerHTML='';
+  for(let k=0;k<SUBJECTS.length;k++){const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',k===ms);b.setAttribute('aria-label',SUBJECTS[k].name);b.innerHTML=await html(mi,k);b.onclick=()=>{ms=k;renderModal()};mThree.appendChild(b)}
+}
+function openModal(i){mi=i;ms=state.subj;modal.classList.add('on');renderModal();document.getElementById('mClose').focus()}
+document.getElementById('mClose').onclick=()=>modal.classList.remove('on');
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('on')});
+addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('on')});
+})();
+</script>
+</body></html>
