@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>イラスト案10種</title>
+<title>イラスト案</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&display=swap">
 <style>
 /* 画風の見本帳。やわらかい丸ゴシックで、ギャラリーと同じ空気に。絵そのものが主役なので、画面の色は控えめにする */
@@ -27,6 +27,7 @@ h1{font-family:var(--disp);font-weight:900;font-size:clamp(26px,6vw,38px);line-h
 .tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .sw{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
 .sw input{width:20px;height:20px;accent-color:var(--accent)}
+.sec{font-family:var(--disp);font-size:20px;margin:22px 0 12px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .pv{position:relative;aspect-ratio:1;width:100%;border:0;padding:0;background:var(--chip);cursor:zoom-in;display:block}
@@ -60,13 +61,16 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 </style></head><body>
 <div class="wrap">
   <a class="back" href="../index.html">← 試作ギャラリーに戻る</a>
-  <h1>イラスト案10種</h1>
-  <p class="lead">いまのイラストはそのまま残して、画風だけを変えた見本です。同じ3つの絵（しょうぼうしゃ・ライオン・しんかんせん）を、10通りの描き方で並べました。絵をタップすると大きく見られます。「パズルの見え方」をオンにすると、25ピースに切ったときの様子も確認できます。</p>
+  <h1>イラスト案</h1>
+  <p class="lead">いまのイラストはそのまま残して、画風だけを変えた見本です。前回の10案から、1・2・8・10を外し、新しい5案（11〜15）を足しました。同じ3つの絵（しょうぼうしゃ・ライオン・しんかんせん）で比べられます。絵をタップすると大きく見られ、「パズルの見え方」をオンにすると、25ピースに切ったときの様子も確認できます。</p>
   <div class="bar">
     <div class="tabs" id="tabs" role="group" aria-label="見る絵"></div>
     <label class="sw"><input type="checkbox" id="jig"> パズルの見え方（5×5）</label>
   </div>
-  <div class="grid" id="grid"></div>
+  <h2 class="sec">新しい案（11〜15）</h2>
+  <div class="grid" id="gridNew"></div>
+  <h2 class="sec">前回から残した案</h2>
+  <div class="grid" id="gridKept"></div>
   <p class="foot">これは、同じ下絵の形から、描き方だけを自動で切り替えた見本です。形（輪郭）は共通なので、気に入った画風は、その画風に合わせて形から描き起こし直して、本番のイラストに仕上げます。「手がかり」は、ピースを見分けやすいかどうかの目安です（◎ 多い ／ ○ ふつう ／ △ 少なめ）。</p>
 </div>
 
@@ -178,13 +182,13 @@ const noiseRect=(f,op,blend='multiply')=>`<rect width="400" height="400" filter=
 
 /* ------------------------------------------------------------ 10の画風 */
 const STYLES=[
-{ name:'水彩（にじみ）', desc:'にじみとムラのある、やわらかい絵本の絵。', good:'ムラが自然な模様になり、広い面にも手がかりが出る', warn:'色が淡いので、似た色のピースは見分けにくい', clue:['mid','○ ふつう'],
+{ num:1,hidden:1, name:'水彩（にじみ）', desc:'にじみとムラのある、やわらかい絵本の絵。', good:'ムラが自然な模様になり、広い面にも手がかりが出る', warn:'色が淡いので、似た色のピースは見分けにくい', clue:['mid','○ ふつう'],
   render(sub){const u='w'+(++UID);
     const defs=`<filter id="${u}a" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="9" result="m"/><feColorMatrix in="m" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0.42" result="ma"/><feComposite in="d" in2="ma" operator="in"/></filter>
 <filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="1"/><feColorMatrix values="0 0 0 0 .55 0 0 0 0 .45 0 0 0 0 .3 0 0 0 .5 -0.1"/></filter>`;
     const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.1)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}a)" opacity=".8"`):el(s,`fill="${lighten(s.c,.14)}" fill-opacity="${s.role==='s'?s.o:Math.min(.86,s.o)}" stroke="${darken(s.c,.15)}" stroke-opacity=".38" stroke-width="2.2" filter="url(#${u}a)"`)).join('');
     return svg(`<rect width="400" height="400" fill="#fbf6e8"/><g style="mix-blend-mode:multiply">${body}</g>${noiseRect(u+'p',.3)}`,defs);}},
-{ name:'クレヨン', desc:'ざらっと塗った、手描きのクレヨン画。', good:'塗りムラと線のゆれが、どのピースにも手がかりになる', warn:'ざらつきで、細かい部分（目・窓）がつぶれやすい', clue:['ok','◎ 多い'],
+{ num:2,hidden:1, name:'クレヨン', desc:'ざらっと塗った、手描きのクレヨン画。', good:'塗りムラと線のゆれが、どのピースにも手がかりになる', warn:'ざらつきで、細かい部分（目・窓）がつぶれやすい', clue:['ok','◎ 多い'],
   render(sub){const u='c'+(++UID);
     const f=(id,seed,sc)=>`<filter id="${u}${id}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="${seed}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${sc}" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.85 0.55" numOctaves="2" seed="${seed+3}" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.4 -0.6" result="gm"/><feComposite in="d" in2="gm" operator="in"/></filter>`;
     const defs=f('a',2,6)+f('b',9,5)+`<filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .6 0 0 0 0 .5 0 0 0 0 .35 0 0 0 .6 -.15"/></filter>`;
@@ -194,30 +198,30 @@ const STYLES=[
       return el(s,`fill="${s.c}" fill-opacity="${o}" stroke="${darken(s.c,.28)}" stroke-width="3" stroke-linejoin="round" filter="url(#${u}a)"`)+el(s,`transform="translate(1.5 1)" fill="${lighten(s.c,.1)}" fill-opacity="${o*.9}" filter="url(#${u}b)"`);
     }).join('');
     return svg(`<rect width="400" height="400" fill="#fff8e6"/>${body}${noiseRect(u+'p',.35)}`,defs);}},
-{ name:'切り紙（ペーパークラフト）', desc:'色紙を重ねて貼った、影つきの切り絵。', good:'重なりの影が輪郭になり、ピースの境目がはっきりする', warn:'広い背景は単調になりやすい（模様紙で補える）', clue:['ok','◎ 多い'],
+{ num:3,group:'kept', name:'切り紙（ペーパークラフト）', desc:'色紙を重ねて貼った、影つきの切り絵。', good:'重なりの影が輪郭になり、ピースの境目がはっきりする', warn:'広い背景は単調になりやすい（模様紙で補える）', clue:['ok','◎ 多い'],
   render(sub){const u='p'+(++UID);
     const defs=`<filter id="${u}s" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#2a1d10" flood-opacity=".38"/></filter><filter id="${u}t" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1.4" stdDeviation="1.2" flood-color="#2a1d10" flood-opacity=".28"/></filter><filter id="${u}f"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.5" numOctaves="3" seed="6"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .2 0 0 0 .55 -.12"/></filter>`;
     const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='s'?'':el(s,`fill="${mix(s.c,'#f7efe0',.12)}" stroke="${lighten(s.c,.4)}" stroke-width="1.4" filter="url(#${u}${s.role==='bg'?'t':'s'})"`)).join('');
     return svg(`<rect width="400" height="400" fill="#efe6d6"/>${body}${noiseRect(u+'f',.5)}`,defs);}},
-{ name:'ぷっくり（クレイ）', desc:'粘土のようにつやつやした、ふくらみのある絵。', good:'立体感でキャラクターが際立ち、シールにもなじむ', warn:'表現が重いので、端末によっては描画が遅くなる', clue:['mid','○ ふつう'],
+{ num:4,group:'kept', name:'ぷっくり（クレイ）', desc:'粘土のようにつやつやした、ふくらみのある絵。', good:'立体感でキャラクターが際立ち、シールにもなじむ', warn:'表現が重いので、端末によっては描画が遅くなる', clue:['mid','○ ふつう'],
   render(sub){const u='k'+(++UID);
     const defs=`<filter id="${u}a" x="-12%" y="-12%" width="125%" height="130%"><feGaussianBlur in="SourceAlpha" stdDeviation="4" result="b"/><feSpecularLighting in="b" surfaceScale="7" specularConstant=".95" specularExponent="24" lighting-color="#ffffff" result="sp"><fePointLight x="-120" y="-180" z="260"/></feSpecularLighting><feComposite in="sp" in2="SourceAlpha" operator="in" result="sp2"/><feComposite in="SourceGraphic" in2="sp2" operator="arithmetic" k1="0" k2="1" k3=".9" k4="0" result="lit"/><feGaussianBlur in="SourceAlpha" stdDeviation="4" result="sb"/><feOffset in="sb" dy="5" result="so"/><feFlood flood-color="#3b2a4d" flood-opacity=".35"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="lit"/></feMerge></filter>`;
     const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='bg'?el(s,`fill="${lighten(s.c,.18)}"`):s.role==='s'?el(s,`fill="#000" fill-opacity="${s.o*.7}"`):el(s,`fill="${s.c}" fill-opacity="${s.o}" filter="url(#${u}a)"`)).join('');
     return svg(`<rect width="400" height="400" fill="#f4ecff"/>${body}`,defs);}},
-{ name:'ステッカー（太い縁取り）', desc:'白いフチのついた、シールそのものの絵。', good:'シール帳にそのまま貼れる見た目。輪郭が太く、見分けやすい', warn:'背景なしの絵になるので、背景は模様で作る', clue:['ok','◎ 多い'],
+{ num:5,group:'kept', name:'ステッカー（太い縁取り）', desc:'白いフチのついた、シールそのものの絵。', good:'シール帳にそのまま貼れる見た目。輪郭が太く、見分けやすい', warn:'背景なしの絵になるので、背景は模様で作る', clue:['ok','◎ 多い'],
   render(sub){const u='t'+(++UID);
     const defs=`<filter id="${u}a" x="-12%" y="-12%" width="124%" height="130%"><feMorphology in="SourceAlpha" operator="dilate" radius="8" result="d"/><feFlood flood-color="#ffffff" result="wf"/><feComposite in="wf" in2="d" operator="in" result="w"/><feGaussianBlur in="d" stdDeviation="3" result="sb"/><feOffset in="sb" dy="4" result="so"/><feFlood flood-color="#3a2d52" flood-opacity=".32"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="${u}d" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#ffe3ee"/><circle cx="7" cy="7" r="3.2" fill="#ffc2d8"/><circle cx="20" cy="20" r="3.2" fill="#ffd2c2"/></pattern>`;
     const items=sub.shapes.filter(s=>s.role!=='bg');
     const body=items.map(s=>s.role==='line'?el(s,`fill="none" stroke="#3a2d52" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='s'?'':el(s,`fill="${s.c}" fill-opacity="${s.o}" stroke="#3a2d52" stroke-width="4.5" stroke-linejoin="round"`)).join('');
     return svg(`<rect width="400" height="400" fill="url(#${u}d)"/><g filter="url(#${u}a)" transform="translate(200 200) scale(.9) translate(-200 -205)">${body}</g>`,defs);}},
-{ name:'ミッドセンチュリー', desc:'少ない色数でまとめた、レトロなポスター風。', good:'おしゃれで、親も楽しめる。色数が少なく塗り分けが明快', warn:'同じ色の広い面が多く、ピースの手がかりは少なめ', clue:['mid','○ ふつう'],
+{ num:6,group:'kept', name:'ミッドセンチュリー', desc:'少ない色数でまとめた、レトロなポスター風。', good:'おしゃれで、親も楽しめる。色数が少なく塗り分けが明快', warn:'同じ色の広い面が多く、ピースの手がかりは少なめ', clue:['mid','○ ふつう'],
   render(sub){const u='m'+(++UID);
     const PAL=['#e9c46a','#2a9d8f','#e76f51','#264653','#f4e9d1','#d9a05b','#8ab17d','#c44536'];
     const near=c=>{const a=h2r(c);let b=PAL[0],bd=1e9;for(const p of PAL){const q=h2r(p),d=(a[0]-q[0])**2+(a[1]-q[1])**2+(a[2]-q[2])**2;if(d<bd){bd=d;b=p}}return b};
     const defs=`<filter id="${u}g"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 .22 0 0 0 0 .16 0 0 0 0 .1 0 0 0 1.7 -.72"/></filter>`;
     const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="#264653" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):el(s,`fill="${near(s.c)}" fill-opacity="${s.role==='s'?s.o:1}"`)).join('');
     return svg(`<rect width="400" height="400" fill="#f4e9d1"/>${body}${noiseRect(u+'g',.55)}<rect x="10" y="10" width="380" height="380" fill="none" stroke="#f4e9d1" stroke-width="8"/>`,defs);}},
-{ name:'図鑑（細い線＋淡い色）', desc:'ペンの細い線に、淡い色を重ねた図鑑の挿絵。', good:'図鑑との相性が良く、線が多いので手がかりも十分', warn:'色が淡く地味なので、幼児にはやや大人っぽい', clue:['ok','◎ 多い'],
+{ num:7,group:'kept', name:'図鑑（細い線＋淡い色）', desc:'ペンの細い線に、淡い色を重ねた図鑑の挿絵。', good:'図鑑との相性が良く、線が多いので手がかりも十分', warn:'色が淡く地味なので、幼児にはやや大人っぽい', clue:['ok','◎ 多い'],
   render(sub){const u='z'+(++UID);
     const defs=`<pattern id="${u}h" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#4b3b2b" stroke-width="1.1" opacity=".8"/></pattern><pattern id="${u}l" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="9" stroke="#4b3b2b" stroke-width=".9" opacity=".32"/></pattern><filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="2"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .4 0 0 0 0 .25 0 0 0 .5 -.12"/></filter>`;
     const paper='#f3ead3',ink='#4b3b2b';
@@ -229,7 +233,7 @@ const STYLES=[
       return el(s,`fill="${mix(s.c,paper,.55)}" fill-opacity="${s.o}" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"`)+hatch;
     }).join('');
     return svg(`<rect width="400" height="400" fill="${paper}"/><rect x="14" y="14" width="372" height="372" fill="none" stroke="${ink}" stroke-width="1.5"/><rect x="20" y="20" width="360" height="360" fill="none" stroke="${ink}" stroke-width=".8"/><g transform="translate(200 214) scale(.78) translate(-200 -214)">${body}</g><text x="200" y="56" text-anchor="middle" font-family="'Noto Serif JP','Hiragino Mincho ProN',serif" font-size="24" font-weight="700" fill="${ink}">${sub.name}</text><text x="200" y="372" text-anchor="middle" font-family="'Noto Serif JP',serif" font-size="13" fill="${ink}" letter-spacing="2">${sub.en}</text>${noiseRect(u+'p',.4)}`,defs);}},
-{ name:'ドット絵', desc:'64×64のドットで描いた、ゲームのような絵。', good:'一目で分かる。拡大しても崩れず、軽い', warn:'細かい部分が消え、ピースの手がかりは少なめ', clue:['low','△ 少なめ'], pixel:true,
+{ num:8,hidden:1, name:'ドット絵', desc:'64×64のドットで描いた、ゲームのような絵。', good:'一目で分かる。拡大しても崩れず、軽い', warn:'細かい部分が消え、ピースの手がかりは少なめ', clue:['low','△ 少なめ'], pixel:true,
   async render(sub){
     const PX=['#1a1c2c','#5d275d','#b13e53','#ef7d57','#ffcd75','#a7f070','#38b764','#257179','#29366f','#3b5dc9','#41a6f6','#73eff7','#f4f4f4','#94b0c2','#566c86','#333c57','#b9e3ff','#ffd7b0','#f7b6cf','#e9a88c','#e3b25a','#8a5a44','#d98a2f','#f6c96b','#5f7fa8','#7bc67e','#ffe8b0','#e63946','#d7dbe2'];
     const rgb=PX.map(h2r);
@@ -244,7 +248,7 @@ const STYLES=[
     for(let yy=0;yy<N-1;yy++)for(let xx=0;xx<N-1;xx++){const i=(yy*N+xx)*4,r=i+4,b=i+N*4;if(!same(i,r)||!same(i,b)){const l=(a[i]+a[i+1]+a[i+2])/3;if(l<150){q[i]*=.7;q[i+1]*=.7;q[i+2]*=.7}}}
     x.putImageData(o,0,0);
     return `<img alt="" src="${cv.toDataURL('image/png')}">`;}},
-{ name:'フェルト（ぬいぐるみ）', desc:'羊毛フェルトを縫い合わせた、あたたかい手芸風。', good:'縫い目の点線と布のざらつきが、ピースの手がかりになる', warn:'縫い目が細かいので、小さく表示すると見えにくい', clue:['ok','◎ 多い'],
+{ num:9,group:'kept', name:'フェルト（ぬいぐるみ）', desc:'羊毛フェルトを縫い合わせた、あたたかい手芸風。', good:'縫い目の点線と布のざらつきが、ピースの手がかりになる', warn:'縫い目が細かいので、小さく表示すると見えにくい', clue:['ok','◎ 多い'],
   render(sub){const u='f'+(++UID);
     const defs=`<filter id="${u}a" x="-8%" y="-8%" width="116%" height="122%"><feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="4" result="n"/><feDiffuseLighting in="n" surfaceScale="1.8" diffuseConstant="1.15" lighting-color="#ffffff" result="l"><feDistantLight azimuth="45" elevation="62"/></feDiffuseLighting><feComposite in="l" in2="SourceAlpha" operator="in" result="lc"/><feBlend in="SourceGraphic" in2="lc" mode="multiply" result="t"/><feComposite in="t" in2="SourceAlpha" operator="in" result="tc"/><feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="sb"/><feOffset in="sb" dy="3" result="so"/><feFlood flood-color="#3a2410" flood-opacity=".38"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="tc"/></feMerge></filter>`;
     const body=sub.shapes.map(s=>{
@@ -254,11 +258,72 @@ const STYLES=[
       return el(s,`fill="${mix(s.c,'#ffffff',.06)}" fill-opacity="${s.o}" filter="url(#${u}a)"`)+stitch;
     }).join('');
     return svg(`<rect width="400" height="400" fill="#e8dcc6"/>${body}`,defs);}},
-{ name:'ステンドグラス', desc:'黒い線で区切った、光を通すガラスの絵。', good:'黒い線で色が区切られ、どのピースも輪郭がはっきり', warn:'少し重い雰囲気。やわらかさを求めるなら不向き', clue:['ok','◎ 多い'],
+{ num:10,hidden:1, name:'ステンドグラス', desc:'黒い線で区切った、光を通すガラスの絵。', good:'黒い線で色が区切られ、どのピースも輪郭がはっきり', warn:'少し重い雰囲気。やわらかさを求めるなら不向き', clue:['ok','◎ 多い'],
   render(sub){const u='g'+(++UID);
     const defs=`<filter id="${u}a" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 1 0 0 0 0 .97 0 0 0 0 .85 0 0 0 .75 -.3" result="w"/><feComposite in="w" in2="SourceAlpha" operator="in" result="wl"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="wl"/></feMerge></filter><radialGradient id="${u}r" cx=".5" cy=".28" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></radialGradient>`;
     const body=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="#17111f" stroke-width="${s.w+1.5}" stroke-linecap="round"`):s.role==='s'?'':el(s,`fill="${mix(s.c,'#ffffff',-.0)}" fill-opacity=".95" stroke="#17111f" stroke-width="5" stroke-linejoin="round" filter="url(#${u}a)"`)).join('');
     return svg(`<rect width="400" height="400" fill="#17111f"/>${body}<rect width="400" height="400" fill="url(#${u}r)" style="mix-blend-mode:soft-light"/><rect x="3" y="3" width="394" height="394" rx="6" fill="none" stroke="#17111f" stroke-width="14"/>`,defs);}},
+
+{ num:11, group:'new', name:'ちぎり絵（和紙）', desc:'和紙を手でちぎって貼った、ふちがふわっとした絵。', good:'ちぎったふちの白い繊維が、ピースの境目の手がかりになる', warn:'細かい部分は大まかになる（顔などは別パーツで補う）', clue:['ok','◎ 多い'],
+  render(sub){const u='n'+(++UID);
+    const defs=`<filter id="${u}a" x="-14%" y="-14%" width="128%" height="132%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="8" result="t"/><feColorMatrix in="t" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 -.3" result="tw"/><feComposite in="tw" in2="d" operator="in" result="twc"/><feOffset in="d" dy="2" result="so"/><feGaussianBlur in="so" stdDeviation="1.6" result="sb"/><feColorMatrix in="sb" type="matrix" values="0 0 0 0 .2 0 0 0 0 .14 0 0 0 0 .08 0 0 0 .35 0" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="d"/><feMergeNode in="twc"/></feMerge></filter>
+<filter id="${u}r" x="-14%" y="-14%" width="128%" height="132%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="1.0" numOctaves="2" seed="2" result="f"/><feColorMatrix in="f" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3.4 -.95" result="fm"/><feComposite in="d" in2="fm" operator="in"/></filter>
+<filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.6" numOctaves="3" seed="3"/><feColorMatrix values="0 0 0 0 .55 0 0 0 0 .45 0 0 0 0 .3 0 0 0 .5 -.1"/></filter>`;
+    const body=sub.shapes.map(s=>{
+      if(s.role==='s')return '';
+      if(s.role==='line')return el(s,`fill="none" stroke="${s.c}" stroke-width="${s.w*1.5}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}a)"`);
+      const rim=lighten(s.c,.78);
+      return el(s,`fill="${rim}" stroke="${rim}" stroke-width="9" stroke-linejoin="round" filter="url(#${u}r)"`)+el(s,`fill="${mix(s.c,'#f4ecd9',.06)}" fill-opacity="${s.o}" filter="url(#${u}a)"`);
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="#f4ecd9"/>${body}${noiseRect(u+'p',.4)}`,defs);}},
+{ num:12, group:'new', name:'刺繍（ししゅう）', desc:'麻の布に、色糸でぎっしり縫ったワッペン風。', good:'糸の筋目と縁取りが細かく、どのピースにも模様が出る', warn:'小さく見ると糸目が細かすぎて、ざらざらして見える', clue:['ok','◎ 多い'],
+  render(sub){const u='e'+(++UID);
+    const cols=[...new Set(sub.shapes.filter(s=>s.role!=='line'&&s.role!=='s').map(s=>s.c))];
+    const idx=c=>cols.indexOf(c);
+    const pats=cols.map((c,i)=>`<pattern id="${u}p${i}" width="4.6" height="4.6" patternUnits="userSpaceOnUse" patternTransform="rotate(58)"><rect width="4.6" height="4.6" fill="${darken(c,.14)}"/><rect width="3.3" height="4.6" fill="${c}"/><rect width="1.1" height="4.6" fill="${lighten(c,.38)}" opacity=".75"/></pattern>`).join('');
+    const defs=pats+`<pattern id="${u}w" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#efe6d4"/><path d="M0 3H6M3 0V6" stroke="#d8cbb3" stroke-width="1"/></pattern><filter id="${u}s" x="-6%" y="-6%" width="112%" height="116%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.3" flood-color="#2a1d10" flood-opacity=".4"/></filter><filter id="${u}f"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .4 0 0 0 0 .32 0 0 0 0 .2 0 0 0 .45 -.1"/></filter>`;
+    const body=sub.shapes.map(s=>{
+      if(s.role==='s')return '';
+      if(s.role==='line')return el(s,`fill="none" stroke="${darken(s.c,.1)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}s)"`);
+      return el(s,`fill="url(#${u}p${idx(s.c)})" fill-opacity="${s.o}" stroke="${darken(s.c,.3)}" stroke-width="2.4" stroke-linejoin="round" filter="url(#${u}s)"`);
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="url(#${u}w)"/><rect x="9" y="9" width="382" height="382" fill="none" stroke="#c9b894" stroke-width="2" stroke-dasharray="8 6" stroke-linecap="round"/><g transform="translate(200 200) scale(.9) translate(-200 -200)">${body}</g>${noiseRect(u+'f',.35)}`,defs);}},
+{ num:13, group:'new', name:'木のおもちゃ（積み木パズル）', desc:'木の板に色を塗った、厚みのある木製パズル風。', good:'木目と面取りの光が、ピースごとの手がかりになる。親しみやすい', warn:'見た目が重め。表示にやや時間がかかる', clue:['ok','◎ 多い'],
+  render(sub){const u='o'+(++UID);
+    const defs=`<filter id="${u}a" x="-8%" y="-8%" width="116%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.24" numOctaves="3" seed="3" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 .32 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .8 -.28" result="gm"/><feComposite in="gm" in2="SourceAlpha" operator="in" result="gc"/><feMerge result="paint"><feMergeNode in="SourceGraphic"/><feMergeNode in="gc"/></feMerge><feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="b"/><feSpecularLighting in="b" surfaceScale="4" specularConstant=".7" specularExponent="18" lighting-color="#ffffff" result="sp"><fePointLight x="-100" y="-160" z="200"/></feSpecularLighting><feComposite in="sp" in2="SourceAlpha" operator="in" result="sp2"/><feComposite in="paint" in2="sp2" operator="arithmetic" k1="0" k2="1" k3=".55" k4="0" result="lit"/><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="sb"/><feOffset in="sb" dy="4" result="so"/><feFlood flood-color="#3a2410" flood-opacity=".42"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="lit"/></feMerge></filter>
+<filter id="${u}b" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.24" numOctaves="3" seed="3" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 .32 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .8 -.28" result="gm"/><feComposite in="gm" in2="SourceAlpha" operator="in" result="gc"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gc"/></feMerge></filter>
+<filter id="${u}w"><feTurbulence type="fractalNoise" baseFrequency="0.008 0.22" numOctaves="3" seed="6"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .18 0 0 0 0 .08 0 0 0 1.1 -.4"/></filter>`;
+    const body=sub.shapes.map(s=>{
+      if(s.role==='s')return '';
+      if(s.role==='line')return el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`);
+      if(s.role==='bg')return el(s,`fill="${mix(s.c,'#e2bd8a',.12)}" fill-opacity=".92" filter="url(#${u}b)"`);
+      return el(s,`fill="${s.c}" fill-opacity="${s.o}" filter="url(#${u}a)"`);
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="#e2bd8a"/><rect width="400" height="400" filter="url(#${u}w)" opacity=".7"/><g transform="translate(200 200) scale(.92) translate(-200 -200)">${body}</g><rect x="7" y="7" width="386" height="386" rx="4" fill="none" stroke="#b98a4e" stroke-width="3" opacity=".6"/>`,defs);}},
+{ num:14, group:'new', name:'ゆるい線画（ずらし塗り）', desc:'ゆれる黒い線に、ずらして塗った淡い色。絵本のイラスト風。', good:'線と色がずれる味わいで、輪郭が見分けやすい。作り手の個性が出る', warn:'線を主役にするので、色面の手がかりは少なめ', clue:['mid','○ ふつう'],
+  render(sub){const u='y'+(++UID);
+    const defs=`<filter id="${u}w" x="-6%" y="-6%" width="112%" height="112%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="4.5" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="${u}c" x="-6%" y="-6%" width="112%" height="112%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G" result="d"/><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="1" result="g"/><feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 .45" result="gm"/><feComposite in="d" in2="gm" operator="in"/></filter>
+<filter id="${u}p"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="2"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .42 0 0 0 0 .3 0 0 0 .35 -.08"/></filter>`;
+    const ink='#2b2433';
+    const big=s=>s.t==='rect'&&/width="(400|3\d\d)"/.test(s.g);
+    const body=sub.shapes.map(s=>{
+      if(s.role==='s')return '';
+      if(s.role==='line')return el(s,`fill="none" stroke="${ink}" stroke-width="${Math.max(3,s.w*.8)}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}w)"`);
+      const f=el(s,`transform="translate(6 5)" fill="${lighten(s.c,.16)}" fill-opacity="${s.o}" filter="url(#${u}c)"`);
+      return f+(big(s)?'':el(s,`fill="none" stroke="${ink}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#${u}w)"`));   // 1つずつ「ぬる→線」の順に重ねる（うしろの線は、手前の色でかくれる）
+    }).join('');
+    return svg(`<rect width="400" height="400" fill="#fffdf4"/>${body}${noiseRect(u+'p',.4)}`,defs);}},
+{ num:15, group:'new', name:'ジオラマ（ミニチュア）', desc:'上下をぼかして、模型のように見せた写真風の絵。', good:'本物の写真に近い雰囲気で、乗り物好きの子に響きやすい', warn:'ぼけた部分は手がかりが減る。表示がやや重い', clue:['mid','○ ふつう'],
+  render(sub){const u='d'+(++UID);
+    const defs=`<filter id="${u}a" x="-12%" y="-12%" width="125%" height="130%"><feGaussianBlur in="SourceAlpha" stdDeviation="3.5" result="b"/><feSpecularLighting in="b" surfaceScale="6" specularConstant=".85" specularExponent="20" lighting-color="#ffffff" result="sp"><fePointLight x="-140" y="-200" z="260"/></feSpecularLighting><feComposite in="sp" in2="SourceAlpha" operator="in" result="sp2"/><feComposite in="SourceGraphic" in2="sp2" operator="arithmetic" k1="0" k2="1" k3=".8" k4="0" result="lit"/><feGaussianBlur in="SourceAlpha" stdDeviation="3" result="sb"/><feOffset in="sb" dy="5" dx="3" result="so"/><feFlood flood-color="#1b1230" flood-opacity=".38"/><feComposite in2="so" operator="in" result="sh"/><feMerge><feMergeNode in="sh"/><feMergeNode in="lit"/></feMerge></filter>
+<filter id="${u}blur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="${u}sat"><feColorMatrix type="saturate" values="1.35"/></filter>
+<linearGradient id="${u}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".26" stop-color="#fff" stop-opacity="0"/><stop offset=".72" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="${u}m"><rect width="400" height="400" fill="url(#${u}g)"/></mask>
+<radialGradient id="${u}v" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#1b1230" stop-opacity=".42"/></radialGradient>`;
+    const content=sub.shapes.map(s=>s.role==='line'?el(s,`fill="none" stroke="${darken(s.c,.15)}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"`):s.role==='bg'?el(s,`fill="${s.c}"`):s.role==='s'?el(s,`fill="#000" fill-opacity="${s.o*.8}"`):el(s,`fill="${s.c}" fill-opacity="${s.o}" filter="url(#${u}a)"`)).join('');
+    return svg(`<g filter="url(#${u}sat)"><g id="${u}c">${content}</g><g mask="url(#${u}m)"><use href="#${u}c" filter="url(#${u}blur)"/></g></g><rect width="400" height="400" fill="url(#${u}v)"/>`,defs);}},
 ];
 
 /* ------------------------------------------------------------ パズルの線（5×5・見た目だけ） */
@@ -285,12 +350,13 @@ async function html(si,subj){
   if(STYLES[si].pixel){const k=si+'/'+subj;if(!cache.has(k))cache.set(k,Promise.resolve(STYLES[si].render(SUBJECTS[subj])));return cache.get(k)}
   return STYLES[si].render(SUBJECTS[subj]);
 }
-const grid=document.getElementById('grid');
+const grids={new:document.getElementById('gridNew'),kept:document.getElementById('gridKept')};
 STYLES.forEach((st,i)=>{
+  if(st.hidden)return;
   const card=document.createElement('article');card.className='card';
-  card.innerHTML=`<button class="pv" type="button" aria-label="${st.name}を大きく見る"><span class="n">${String(i+1).padStart(2,'0')}</span></button>
+  card.innerHTML=`<button class="pv" type="button" aria-label="${st.name}を大きく見る"><span class="n">${String(st.num).padStart(2,'0')}</span></button>
   <div class="info"><h2>${st.name}</h2><p>${st.desc}</p><p class="good">${st.good}</p><p class="warn warn">${st.warn}</p><div class="cl">手がかり <b class="${st.clue[0]}">${st.clue[1]}</b></div></div>`;
-  grid.appendChild(card);st.card=card;st.pv=card.querySelector('.pv');
+  grids[st.group].appendChild(card);st.card=card;st.pv=card.querySelector('.pv');
   st.pv.addEventListener('click',()=>openModal(i));
 });
 async function paint(i){
@@ -301,7 +367,7 @@ async function paint(i){
   if(state.jig)st.pv.insertAdjacentHTML('beforeend',JIG);
 }
 const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=STYLES.findIndex(s=>s.pv===e.target);if(i>=0&&!STYLES[i].done){STYLES[i].done=1;paint(i)}}})},{rootMargin:'300px'}):null;
-STYLES.forEach((st,i)=>{if(io)io.observe(st.pv);else{st.done=1;paint(i)}});
+STYLES.forEach((st,i)=>{if(st.hidden)return;if(io)io.observe(st.pv);else{st.done=1;paint(i)}});
 function repaintAll(){STYLES.forEach((st,i)=>{if(st.done)paint(i)})}
 
 const tabs=document.getElementById('tabs');
@@ -312,7 +378,7 @@ document.getElementById('jig').addEventListener('change',e=>{state.jig=e.target.
 const modal=document.getElementById('modal'),mBig=document.getElementById('mBig'),mThree=document.getElementById('mThree');
 let mi=0,ms=0;
 async function renderModal(){
-  const st=STYLES[mi];document.getElementById('mTitle').textContent=`${String(mi+1).padStart(2,'0')} ${st.name}`;
+  const st=STYLES[mi];document.getElementById('mTitle').textContent=`${String(st.num).padStart(2,'0')} ${st.name}`;
   mBig.innerHTML=await html(mi,ms)+(state.jig?JIG:'');
   mThree.innerHTML='';
   for(let k=0;k<SUBJECTS.length;k++){const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',k===ms);b.setAttribute('aria-label',SUBJECTS[k].name);b.innerHTML=await html(mi,k);b.onclick=()=>{ms=k;renderModal()};mThree.appendChild(b)}
