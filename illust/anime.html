@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>アニメ調イラスト案</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* アニメ調の見本帳。絵が主役なので、画面は他の見本帳と同じ控えめな作りにそろえる */
+:root{
+  --bg:#fbf8f3; --surface:#ffffff; --fg:#2d2a32; --muted:#6c6672; --line:#e9e2d8;
+  --accent:#f26a3d; --accent-fg:#ffffff; --chip:#f3ece2; --ok:#2f8f5b; --mid:#b8860b; --low:#a8576b;
+  --disp:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --ok:#6fd39b; --mid:#ecc15a; --low:#e59ab0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1c1a1f; --surface:#27242c; --fg:#f2eff5; --muted:#a9a3b1; --line:#3a3641; --accent:#ff8a5c; --accent-fg:#1c1a1f; --chip:#34303b; --ok:#6fd39b; --mid:#ecc15a; --low:#e59ab0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;padding-inline:max(16px,env(safe-area-inset-left));padding-block:24px 56px;line-height:1.7;font-size:15px}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font-family:var(--disp);font-weight:900;font-size:clamp(26px,6vw,38px);line-height:1.25;margin:0 0 8px;text-wrap:balance}
+.lead{margin:0 0 18px;color:var(--muted);max-width:42em}
+.back{display:inline-block;margin:0 14px 14px 0;color:var(--muted);font-size:13px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 0;margin:0 0 18px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:inherit;font-weight:700;font-size:14px;border:2px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 14px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.sw{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.sw input{width:20px;height:20px;accent-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.pv{position:relative;aspect-ratio:1;width:100%;border:0;padding:0;background:var(--chip);cursor:zoom-in;display:block}
+.pv svg{display:block;width:100%;height:100%}
+.pv .jig{position:absolute;inset:0;pointer-events:none}
+.pv .n{position:absolute;left:10px;top:8px;z-index:2;font-family:var(--disp);font-weight:900;font-size:26px;line-height:1;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.info{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.info h2{font-family:var(--disp);font-weight:900;font-size:19px;margin:0}
+.info p{margin:0;font-size:13.5px}
+.cl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.cl b{font-size:14px}
+.cl .ok{color:var(--ok)}.cl .mid{color:var(--mid)}.cl .low{color:var(--low)}
+.good:before{content:"◯ ";color:var(--ok);font-weight:700}.warn:before{content:"△ ";color:var(--mid);font-weight:700}
+.warn{color:var(--muted)}
+.foot{margin:34px 0 0;padding:14px 16px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:13.5px}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(10,8,14,.72);display:none;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px}
+.modal.on{display:flex}
+.sheet{background:var(--surface);border-radius:20px;max-width:620px;width:100%;max-height:100%;overflow:auto;padding:14px}
+.sheet h2{font-family:var(--disp);margin:0 0 8px;font-size:20px}
+.big{position:relative;aspect-ratio:1;width:100%;border-radius:12px;overflow:hidden;background:var(--chip)}
+.big svg{display:block;width:100%;height:100%}
+.big .jig{position:absolute;inset:0;pointer-events:none}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.three button{position:relative;aspect-ratio:1;border:2px solid var(--line);border-radius:10px;overflow:hidden;padding:0;background:var(--chip);cursor:pointer}
+.three button[aria-pressed="true"]{border-color:var(--accent)}
+.three svg{display:block;width:100%;height:100%}
+.close{margin-top:12px;width:100%;font:inherit;font-weight:900;font-family:var(--disp);font-size:16px;border:0;border-radius:14px;padding:12px;background:var(--accent);color:var(--accent-fg);cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style></head><body>
+<div class="wrap">
+  <a class="back" href="../index.html">← 試作ギャラリーに戻る</a><a class="back" href="index.html">← イラスト案（前回の画風）</a>
+  <h1>アニメ調イラスト案</h1>
+  <p class="lead">アニメ調の絵を、10通りの雰囲気で描き分けた見本です。どれも「くっきりした線」と「2色の影（セル塗り）」を土台に、空の色・光・質感・線の太さを変えています。絵をタップすると大きく見られ、「パズルの見え方」をオンにすると25ピースに切ったときの様子も確認できます。</p>
+  <div class="bar">
+    <div class="tabs" id="tabs" role="group" aria-label="見る絵"></div>
+    <label class="sw"><input type="checkbox" id="jig"> パズルの見え方（5×5）</label>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="foot">これは、同じ下絵の形から、アニメ調の塗り方を自動で切り替えた見本です。特定の作品や会社の絵を真似たものではなく、「アニメによくある表現」の方向性を並べたものです（ストアで公開する絵は、特定の作品・作家に似せないよう注意が必要です）。形は共通なので、気に入った方向は、あらためて形から描き起こして仕上げます。「手がかり」は、ピースの見分けやすさの目安です（◎ 多い ／ ○ ふつう ／ △ 少なめ）。</p>
+</div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="sheet">
+    <h2 id="mTitle"></h2>
+    <div class="big" id="mBig"></div>
+    <div class="three" id="mThree"></div>
+    <button class="close" id="mClose" type="button">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ------------------------------------------------------------ 色 */
+const h2r=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+const r2h=a=>'#'+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+const mix=(a,b,t)=>{const A=h2r(a),B=h2r(b);return r2h(A.map((v,i)=>v+(B[i]-v)*t))};
+const lighten=(c,t)=>mix(c,'#ffffff',t), darken=(c,t)=>mix(c,'#000000',t);
+const rgb2hsl=([r,g,b])=>{r/=255;g/=255;b/=255;const M=Math.max(r,g,b),m=Math.min(r,g,b);let h=0,s=0,l=(M+m)/2;if(M!==m){const d=M-m;s=l>.5?d/(2-M-m):d/(M+m);h=M===r?(g-b)/d+(g<b?6:0):M===g?(b-r)/d+2:(r-g)/d+4;h/=6}return[h,s,l]};
+const hsl2rgb=([h,s,l])=>{const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;return t<1/6?p+(q-p)*6*t:t<1/2?q:t<2/3?p+(q-p)*(2/3-t)*6:p};let r,g,b;if(s===0)r=g=b=l;else{const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;r=f(p,q,h+1/3);g=f(p,q,h);b=f(p,q,h-1/3)}return[r*255,g*255,b*255]};
+const adj=(c,o)=>{const k=Object.assign({s:1,l:0,h:0},o),[H,S,L]=rgb2hsl(h2r(c));return r2h(hsl2rgb([(H+k.h+1)%1,Math.min(1,S*k.s),Math.max(0,Math.min(1,L+k.l))]))};
+const lum=c=>{const [r,g,b]=h2r(c);return (0.299*r+0.587*g+0.114*b)/255};
+
+/* ------------------------------------------------------------ 下絵（形だけを持つ共通の絵） */
+const R=(x,y,w,h,c,role='m',rx=0,o=1)=>({t:'rect',g:`x="${x}" y="${y}" width="${w}" height="${h}"${rx?` rx="${rx}"`:''}`,c,role,o});
+const C=(x,y,r,c,role='m',o=1)=>({t:'circle',g:`cx="${x}" cy="${y}" r="${r}"`,c,role,o});
+const E=(x,y,rx,ry,c,role='m',o=1)=>({t:'ellipse',g:`cx="${x}" cy="${y}" rx="${rx}" ry="${ry}"`,c,role,o});
+const P=(d,c,role='m',o=1)=>({t:'path',g:`d="${d}"`,c,role,o});
+const L=(d,c,w=4)=>({t:'path',g:`d="${d}"`,c,role:'line',w,o:1});
+function truck(){
+  const s=[];
+  s.push(R(0,0,400,400,'#bfe3ff','bg'));
+  s.push(C(332,72,52,'#ffeaa0','bg',.7), C(332,72,34,'#ffd54a','bg'));
+  s.push(E(86,70,48,16,'#ffffff','bg'),E(118,58,30,19,'#ffffff','bg'),E(58,64,26,14,'#ffffff','bg'),E(262,112,40,13,'#ffffff','bg'),E(282,104,24,14,'#ffffff','bg'));
+  s.push(R(14,128,124,194,'#e9a88c','bg'),R(8,116,136,16,'#b85c4a','bg',4));
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++)s.push(R(28+c*36,148+r*46,24,32,'#fff4c9','bg',3));
+  s.push(R(52,270,40,52,'#8a5a44','bg',3));
+  s.push(R(352,232,10,70,'#7a5230','bg'),C(357,214,34,'#5cb85c','bg'),C(338,236,24,'#4aa84f','bg'),C(377,236,22,'#4aa84f','bg'));
+  s.push(R(0,300,400,100,'#575c6b','bg'),R(0,292,400,12,'#c9c3b8','bg'));
+  for(let i=0;i<6;i++)s.push(R(10+i*70,355,40,8,'#f4f1e6','bg',4));
+  s.push(E(200,316,140,10,'#000000','s',.28));
+  s.push(R(96,196,148,9,'#d7dbe2','a',3));
+  for(let i=0;i<8;i++)s.push(R(102+i*17,186,5,12,'#d7dbe2','a',2));
+  s.push(R(96,184,148,5,'#aeb4bf','a',2));
+  s.push(R(70,205,178,92,'#e63946','m',12));
+  s.push(P('M246 205 H300 Q318 205 326 228 L334 262 Q338 297 332 297 H246 Z','#e63946','m'));
+  s.push(P('M262 214 H294 Q305 214 311 230 L316 248 H262 Z','#bfe9ff','g'));
+  s.push(R(262,214,5,34,'#ffffff','w',2,.55));
+  s.push(R(70,252,178,10,'#ffffff','w',2),R(246,268,88,9,'#ffffff','w',2));
+  for(let i=0;i<4;i++){s.push(R(84+i*40,214,32,34,'#c42b37','a',5)); s.push(R(94+i*40,226,12,4,'#f2c9cd','w',2));}
+  s.push(R(254,190,40,12,'#3b82f6','a',5),P('M260 190 Q274 174 288 190 Z','#7db4ff','a'));
+  s.push(C(327,254,8,'#ffe27a','a'));
+  s.push(R(302,288,38,12,'#cfd4db','a',4));
+  for(const x of [122,274]){s.push(C(x,300,31,'#262a33','k'),C(x,300,16,'#d5d9e0','w'),C(x,300,6,'#8d94a0','k'));}
+  return {id:'truck',name:'しょうぼうしゃ',sun:{x:332,y:72},shapes:s};
+}
+function lion(){
+  const s=[],cx=200,cy=216;
+  s.push(R(0,0,400,400,'#ffe8b0','bg'));
+  s.push(C(66,70,64,'#ffd98a','bg',.7),C(66,70,40,'#ffb347','bg'));
+  s.push(P('M0 300 Q80 246 170 290 T330 276 T400 288 V330 H0 Z','#d89c4f','bg'));
+  s.push(P('M0 322 Q100 292 200 316 T400 306 V400 H0 Z','#e3b25a','bg'));
+  s.push(R(334,212,9,96,'#6b4a2f','bg'),E(338,204,50,17,'#6aa84f','bg'),E(312,216,30,11,'#7bb85c','bg'),E(366,214,28,10,'#7bb85c','bg'));
+  for(let i=0;i<12;i++){const a=i*Math.PI/6;s.push(C(cx+Math.cos(a)*104,cy+Math.sin(a)*104,46,'#b9651f','m'));}
+  for(let i=0;i<12;i++){const a=i*Math.PI/6+Math.PI/12;s.push(C(cx+Math.cos(a)*88,cy+Math.sin(a)*88,38,'#d98a2f','m'));}
+  s.push(C(cx,cy,100,'#e39a3a','m'));
+  for(const dx of [-72,72]){s.push(C(cx+dx,138,27,'#f2b64f','m'),C(cx+dx,139,14,'#f4a3a3','a'));}
+  s.push(E(cx,224,78,74,'#f6c96b','m'));
+  s.push(E(cx,258,45,34,'#fff0cc','w'));
+  s.push(C(cx-52,252,13,'#f6a49a','a',.85),C(cx+52,252,13,'#f6a49a','a',.85));
+  for(const dx of [-30,30]){s.push(E(cx+dx,210,11,13,'#ffffff','w'),C(cx+dx+1,212,7,'#3a2418','k'),C(cx+dx+3,209,2.4,'#ffffff','w'));}
+  s.push(L('M154 190 Q170 181 184 192','#8a4b1e',5),L('M246 190 Q230 181 216 192','#8a4b1e',5));
+  s.push(P('M184 240 Q200 233 216 240 Q214 254 200 260 Q186 254 184 240 Z','#6b3a2a','k'),E(196,242,6,2.6,'#ffffff','w',.6));
+  s.push(L('M200 260 V270 M200 270 Q188 282 176 272 M200 270 Q212 282 224 272','#6b3a2a',4));
+  for(const dx of [-1,1])for(let i=0;i<3;i++)s.push(C(cx+dx*(22+i*6),262+i*5,2,'#c98d5a','a'));
+  return {id:'lion',name:'ライオン',sun:{x:66,y:70},shapes:s};
+}
+function train(){
+  const s=[];
+  s.push(R(0,0,400,400,'#a9d8ff','bg'),R(0,110,400,200,'#cfeaff','bg'));
+  s.push(C(72,64,28,'#fff3c0','bg'));
+  s.push(P('M30 306 L168 124 Q200 100 232 124 L372 306 Z','#5f7fa8','bg'));
+  s.push(P('M139 164 L168 124 Q200 100 232 124 L261 164 L241 152 L222 168 L200 150 L180 168 L160 152 Z','#ffffff','bg'));
+  s.push(P('M0 300 Q90 270 180 296 T400 288 V340 H0 Z','#8fcf8f','bg'),R(0,300,400,100,'#7bc67e','bg'));
+  for(const [x,f] of [[36,1],[366,-1]]){s.push(R(x-4,244,9,60,'#7a5230','bg'),C(x,236,32,'#f7b6cf','bg'),C(x-f*20,254,22,'#f4a3c0','bg'),C(x+f*20,252,22,'#f8c3d8','bg'));}
+  s.push(R(0,334,400,10,'#8b8f9c','bg'));
+  for(let i=0;i<17;i++)s.push(R(i*24+4,344,12,8,'#6b6e78','bg',2));
+  s.push(E(200,334,176,6,'#000000','s',.25));
+  s.push(P('M20 332 V252 Q20 232 42 228 H300 Q346 232 372 292 Q382 314 372 332 Z','#f4f6fa','m'));
+  s.push(P('M20 298 H362 L372 316 L372 332 H20 Z','#2d6cdf','a'),R(20,286,342,4,'#2d6cdf','a',2));
+  for(let i=0;i<9;i++)s.push(R(40+i*30,246,20,24,'#2b4a73','g',6),R(43+i*30,249,6,9,'#ffffff','w',2,.45));
+  s.push(P('M314 244 Q340 246 356 274 L314 274 Z','#2b4a73','g'));
+  s.push(L('M110 232 V330 M216 232 V330','#cfd5e0',3));
+  s.push(L('M168 228 L180 210 H206 L218 228','#444a55',4),R(174,206,38,6,'#444a55','k',3));
+  s.push(R(40,326,64,12,'#3a3f4b','k',5),R(246,326,64,12,'#3a3f4b','k',5),C(366,306,6,'#ffe27a','a'));
+  return {id:'train',name:'しんかんせん',sun:{x:72,y:64},shapes:s};
+}
+const SUBJECTS=[truck(),lion(),train()];
+/* 図形の大きさ・位置を はかる（影やつやの 大きさを、図形に合わせるため） */
+(function measure(){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','0');svg.setAttribute('height','0');svg.style.cssText='position:absolute;visibility:hidden';document.body.appendChild(svg);
+  for(const sub of SUBJECTS)sub.shapes.forEach((s,i)=>{s.i=i;if(s.role==='line'){s.bw=s.bh=40;s.bx=s.by=0;return}svg.innerHTML=`<${s.t} ${s.g}/>`;const b=svg.firstChild.getBBox();s.bx=b.x;s.by=b.y;s.bw=b.width;s.bh=b.height});
+  svg.remove();
+})();
+
+/* ------------------------------------------------------------ 描画の土台 */
+let UID=0,CX=null;
+const el=(s,a)=>`<${s.t} ${s.g} ${a}/>`;
+const SKY={day:['#2c7be5','#7cc6ff','#eaf7ff'],soft:['#a9dcff','#d3eeff','#fff6e0'],cel:['#3a78c9','#7fb2e8','#f0d6a8'],candy:['#ffc4e6','#d8c8ff','#c8f0ff'],burst:['#fff3a0','#ffb347','#ff6a3d'],dusk:['#3b2a6e','#e0587a','#ffb66b'],night:['#080d2a','#1c2a6c','#5a3a8a'],cine:['#1f4466','#c98058','#ffcf9a'],tech:['#06142e','#1b5fa8','#a8e6ff']};
+const isCloud=s=>s.role==='bg'&&s.t==='ellipse'&&s.c.toLowerCase()==='#ffffff';
+const isSkyR=s=>s.role==='bg'&&s.t==='rect'&&s.g.includes('x="0" y="0" width="400"');
+const isHaze=s=>s.role==='bg'&&s.t==='rect'&&s.g.includes('x="0" y="110" width="400"');
+const maskDef=(id,s,dx,dy)=>`<mask id="${id}" maskUnits="userSpaceOnUse" x="-20" y="-20" width="440" height="440"><rect x="-20" y="-20" width="440" height="440" fill="#fff"/><${s.t} ${s.g} transform="translate(${dx.toFixed(1)} ${dy.toFixed(1)})" fill="#000"/></mask>`;
+const star=(x,y,r,fill,op=1,rot=0)=>`<path transform="translate(${x} ${y}) rotate(${rot})" d="M0 ${-r} L${r*.2} ${-r*.2} L${r} 0 L${r*.2} ${r*.2} L0 ${r} L${-r*.2} ${r*.2} L${-r} 0 L${-r*.2} ${-r*.2} Z" fill="${fill}" opacity="${op}"/>`;
+const rnd=(seed)=>()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+
+/* 光の筋・レンズフレア・きらきら・ボケ・粒子 */
+function rays(u,sun,op=.2,n=7,spread=.15){
+  const base=Math.atan2(230-sun.y,200-sun.x);let d='';
+  for(let k=-(n>>1);k<=(n>>1);k++){const a=base+k*spread,w=.045,Lg=620;d+=`<path d="M${sun.x} ${sun.y} L${(sun.x+Math.cos(a-w)*Lg).toFixed(1)} ${(sun.y+Math.sin(a-w)*Lg).toFixed(1)} L${(sun.x+Math.cos(a+w)*Lg).toFixed(1)} ${(sun.y+Math.sin(a+w)*Lg).toFixed(1)} Z"/>`}
+  return `<g fill="url(#${u}rg)" opacity="${op}" style="mix-blend-mode:screen">${d}</g>`;
+}
+const raysDef=(u,sun,col='#fff')=>`<linearGradient id="${u}rg" gradientUnits="userSpaceOnUse" x1="${sun.x}" y1="${sun.y}" x2="200" y2="330"><stop offset="0" stop-color="${col}" stop-opacity=".95"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient>`;
+const flareDef=u=>`<radialGradient id="${u}fg"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".7" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="${u}sg"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".25" stop-color="#fff6c8" stop-opacity=".7"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>`;
+function flare(u,sun,k=1){let d=`<circle cx="${sun.x}" cy="${sun.y}" r="${70*k}" fill="url(#${u}sg)"/>`;
+  [[.22,13],[.4,24],[.62,9],[.85,30],[1.1,15]].forEach(([t,r],i)=>{const x=sun.x+(200-sun.x)*t*1.0,y=sun.y+(230-sun.y)*t*1.0;d+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r*k}" fill="url(#${u}fg)"/>${i%2?`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r*k*.9}" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.4"/>`:''}`});
+  return `<g style="mix-blend-mode:screen">${d}</g>`}
+const grain=(u,op,blend='overlay')=>`<rect width="400" height="400" filter="url(#${u}gr)" opacity="${op}" style="mix-blend-mode:${blend}"/>`;
+const grainDef=(u,f=.9)=>`<filter id="${u}gr"><feTurbulence type="fractalNoise" baseFrequency="${f}" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.2 -.1"/></filter>`;
+const vignetteDef=(u,col='#0b0820',op=.45)=>`<radialGradient id="${u}vg" cx=".5" cy=".5" r=".78"><stop offset=".55" stop-color="${col}" stop-opacity="0"/><stop offset="1" stop-color="${col}" stop-opacity="${op}"/></radialGradient>`;
+const bloomDef=(u,sd=9,th=.62)=>`<filter id="${u}bl" x="-10%" y="-10%" width="120%" height="120%"><feColorMatrix type="matrix" values="1.5 0 0 0 -${th} 0 1.5 0 0 -${th} 0 0 1.5 0 -${th} 0 0 0 1 0"/><feGaussianBlur stdDeviation="${sd}"/></filter>`;
+
+/* ------------------------------------------------------------ アニメ塗りの共通処理（セル塗り：本体色＋影＋ハイライト＋線） */
+function anime(sub,cfg){
+  const u='a'+(++UID);CX={u,sub,cfg};
+  const sk=SKY[cfg.sky||'day'];
+  let defs=`<linearGradient id="${u}sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sk[0]}"/><stop offset=".55" stop-color="${sk[1]}"/><stop offset="1" stop-color="${sk[2]}"/></linearGradient>`+(cfg.defs?cfg.defs(u,sub):'');
+  const bg=[],fg=[],glow=[];
+  for(const s of sub.shapes){
+    const i=s.i,tgt=s.role==='bg'?bg:fg;
+    if(isSkyR(s)){bg.push(el(s,`fill="url(#${u}sky)"`));continue}
+    if(isHaze(s))continue;
+    if(s.role==='s'){tgt.push(el(s,`fill="#000" fill-opacity="${(s.o*(cfg.shadow??1)).toFixed(2)}"`));continue}
+    const c=cfg.fill(s);
+    if(s.role==='line'){tgt.push(el(s,`fill="none" stroke="${cfg.line(s,c)||c}" stroke-width="${(s.w*(cfg.lineK||1)).toFixed(1)}" stroke-linecap="round" stroke-linejoin="round"`));continue}
+    const k=Math.min(1,Math.min(s.bw,s.bh)/46),o=cfg.off;
+    const sh=cfg.shade&&cfg.shade(s,c),li=cfg.light&&cfg.light(s,c),ln=cfg.line&&cfg.line(s,c);
+    let m=el(s,`fill="${cfg.paint?cfg.paint(s,c):c}" fill-opacity="${s.o}"`);
+    if(li){defs+=maskDef(u+'h'+i,s,o.hx*k,o.hy*k);m+=el(s,`fill="${li}" mask="url(#${u}h${i})"`)}
+    if(sh){defs+=maskDef(u+'s'+i,s,o.sx*k,o.sy*k);m+=el(s,`fill="${sh}" mask="url(#${u}s${i})"`)}
+    if(ln)m+=el(s,`fill="none" stroke="${ln}" stroke-width="${cfg.lw(s)}" stroke-linejoin="round" ${cfg.lineAttr?cfg.lineAttr(u):''}`);
+    if(cfg.extra)m+=cfg.extra(u,s,c,k)||'';
+    tgt.push(m);
+    if(cfg.emissive&&cfg.emissive(s,c))glow.push(el(s,`fill="${c}"`));
+  }
+  let out=`<g id="${u}c">${bg.join('')}${cfg.before?cfg.before(u,sub):''}${fg.join('')}</g>`;
+  if(glow.length)out+=`<g filter="url(#${u}gl)" style="mix-blend-mode:screen">${glow.join('')}</g>`;
+  if(cfg.bloom)out+=`<use href="#${u}c" filter="url(#${u}bl)" style="mix-blend-mode:screen" opacity="${cfg.bloom}"/>`;
+  out+=cfg.over?cfg.over(u,sub):'';
+  if(cfg.wrap)out=cfg.wrap(u,out);
+  defs+=bloomDef(u,cfg.bloomSd||9,cfg.bloomTh||.62)+`<filter id="${u}gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/></feMerge></filter>`;
+  const bars=cfg.letterbox?`<rect y="0" width="400" height="${cfg.letterbox}" fill="#000"/><rect y="${400-cfg.letterbox}" width="400" height="${cfg.letterbox}" fill="#000"/>`:'';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice"><defs>${defs}</defs>${out}${bars}</svg>`;
+}
+const fgOnly=s=>s.role!=='bg';
+const warmGlow=(sub)=>sub.sun;
+
+/* ------------------------------------------------------------ 10の雰囲気 */
+const STYLES=[
+{ num:1, name:'青空と光の劇場アニメ風', desc:'まぶしい青空、大きな雲、きらめく光。映画のポスターのような絵。', good:'空の色と光の筋で華やか。広い空にも変化が出る', warn:'光の演出が多く、画面が賑やかになる', clue:['ok','◎ 多い'],
+  cfg:{sky:'day',bloom:.35,shadow:.35,off:{sx:-6,sy:-8,hx:2.5,hy:3.5},
+    fill:s=>s.role==='bg'?adj(s.c,{s:1.12}):adj(s.c,{s:1.2}),
+    shade:(s,c)=>isCloud(s)?mix(c,'#9db8ee',.6):adj(c,{l:-.17,s:1.05,h:.025}),
+    light:(s,c)=>s.role==='bg'&&!isCloud(s)?null:lighten(c,.5),
+    line:(s,c)=>s.role==='bg'?null:darken(c,.5),lw:()=>1.4,
+    defs:(u,sub)=>raysDef(u,sub.sun)+flareDef(u),
+    over:(u,sub)=>rays(u,sub.sun,.2)+flare(u,sub.sun,.9)+star(sub.sun.x,sub.sun.y,26,'#fff',.9)}},
+{ num:2, name:'ほのぼの日常系', desc:'やわらかい色えんぴつの線と、パステルの影。やさしい絵本アニメ風。', good:'淡い色でもやさしく、幼児向けの雰囲気にぴったり', warn:'派手さがなく、ピースの色の差は小さめ', clue:['mid','○ ふつう'],
+  cfg:{sky:'soft',shadow:.22,off:{sx:-6,sy:-8,hx:3,hy:4},
+    fill:s=>adj(s.c,{s:.85,l:.05}),
+    shade:(s,c)=>isCloud(s)?mix(c,'#c9d6f0',.7):mix(adj(c,{l:-.08}),'#8d79b8',.22),
+    light:(s,c)=>s.role==='bg'?(isCloud(s)?null:lighten(c,.2)):lighten(c,.3),
+    line:(s,c)=>s.role==='bg'?null:darken(mix(c,'#8a5a3a',.3),.34),lw:()=>1.8,
+    lineAttr:u=>`filter="url(#${u}wob)"`,
+    defs:u=>`<filter id="${u}wob" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>`+grainDef(u,.75),
+    over:(u)=>grain(u,.35,'multiply')}},
+{ num:3, name:'90年代セルアニメ', desc:'フィルムの粒子と、わずかな色ずれ。昔のテレビアニメの質感。', good:'黒めの線と濃い影で輪郭がはっきり。見分けやすい', warn:'ざらつきで、広い色面が少し汚れて見える', clue:['ok','◎ 多い'],
+  cfg:{sky:'cel',shadow:.3,off:{sx:-9,sy:-11,hx:2,hy:3},
+    fill:s=>adj(s.c,{s:.92}),
+    shade:(s,c)=>isCloud(s)?mix(c,'#a8b6cf',.6):adj(c,{l:-.21}),
+    light:(s,c)=>(s.role==='bg'||s.bw<40)?null:lighten(c,.38),
+    line:(s,c)=>s.role==='bg'?null:'#1a1420',lw:s=>2.2,lineK:1.2,
+    defs:u=>grainDef(u,.85)+vignetteDef(u,'#1a1008',.4)+`<filter id="${u}ab" x="-2%" y="-2%" width="104%" height="104%"><feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="r"/><feOffset in="r" dx="1.6" result="ro"/><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="g"/><feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="b"/><feOffset in="b" dx="-1.6" result="bo"/><feBlend in="ro" in2="g" mode="screen" result="rg"/><feBlend in="rg" in2="bo" mode="screen"/></filter><pattern id="${u}sl" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1.4" fill="#000" opacity=".16"/></pattern>`,
+    wrap:(u,inner)=>`<g filter="url(#${u}ab)">${inner}</g>`,
+    over:(u)=>grain(u,.42,'overlay')+`<rect width="400" height="400" fill="url(#${u}sl)"/><rect width="400" height="400" fill="url(#${u}vg)"/>`}},
+{ num:4, name:'魔法少女（パステルとキラキラ）', desc:'ピンクと水色のパステルに、きらきらの星とボケ。', good:'華やかで、女の子にも男の子にも楽しい雰囲気。星が手がかりになる', warn:'甘い色合いなので、乗り物の力強さは出にくい', clue:['ok','◎ 多い'],
+  cfg:{sky:'candy',bloom:.35,bloomTh:.5,shadow:.18,off:{sx:-6,sy:-8,hx:4,hy:5},
+    fill:s=>adj(s.c,{s:s.role==='bg'?.8:.95,l:s.role==='bg'?.14:.1}),
+    shade:(s,c)=>isCloud(s)?mix(c,'#d8c8ff',.7):mix(c,'#b57ad8',.34),
+    light:(s,c)=>(s.role==='bg'&&!isCloud(s))?null:lighten(c,.65),
+    line:(s,c)=>s.role==='bg'?null:mix(darken(c,.35),'#c04a9a',.5),lw:()=>1.6,
+    over:(u)=>{const r=rnd(7);let d='';for(let i=0;i<9;i++){const x=20+r()*360,y=20+r()*360,rr=8+r()*20;d+=`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(0)}" fill="#fff" opacity="${(.12+r()*.18).toFixed(2)}"/>`}
+      const st=[[40,60,15],[352,48,19],[300,150,11],[70,170,9],[368,250,14],[30,300,12],[200,36,10],[130,350,13],[330,350,10],[160,120,7]];
+      return `<g style="mix-blend-mode:screen">${d}</g>`+st.map(([x,y,r],i)=>star(x,y,r,i%3?'#fff':'#ffe27a',.95,i*7)).join('')}}},
+{ num:5, name:'少年バトル（集中線とトーン）', desc:'集中線、太い黒線、点々のスクリーントーン。熱い展開の一コマ。', good:'線が太く濃く、どのピースも輪郭が強い。迫力がある', warn:'情報量が多く、幼児には少し激しい', clue:['ok','◎ 多い'],
+  cfg:{sky:'burst',shadow:.4,lineK:1.3,off:{sx:-10,sy:-12,hx:3,hy:4},
+    fill:s=>s.role==='bg'?adj(s.c,{s:.45,l:-.1}):adj(s.c,{s:1.35}),
+    paint:(s,c)=>c,
+    shade:(s,c)=>s.role==='bg'?null:`url(#${CX.u}d${CX.pi[c]})`,
+    light:(s,c)=>(s.role==='bg'||s.bw<40)?null:lighten(c,.55),
+    line:(s,c)=>s.role==='bg'?null:'#000',lw:()=>4,
+    defs:(u,sub)=>{const cols=[...new Set(sub.shapes.filter(s=>s.role!=='bg'&&s.role!=='line'&&s.role!=='s').map(s=>adj(s.c,{s:1.35})))];CX.pi={};
+      return cols.map((c,i)=>{CX.pi[c]=i;return `<pattern id="${u}d${i}" width="5.5" height="5.5" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="5.5" height="5.5" fill="${darken(c,.12)}"/><circle cx="2.75" cy="2.75" r="1.9" fill="${darken(c,.62)}"/></pattern>`}).join('')},
+    before:(u,sub)=>{let d='';const n=90;for(let i=0;i<n;i++){const a=i/n*Math.PI*2,w=.016+((i*37)%7)*.004,r1=95+((i*13)%5)*10;d+=`<path d="M${(200+Math.cos(a-w)*600).toFixed(1)} ${(225+Math.sin(a-w)*600).toFixed(1)} L${(200+Math.cos(a+w)*600).toFixed(1)} ${(225+Math.sin(a+w)*600).toFixed(1)} L${(200+Math.cos(a)*r1).toFixed(1)} ${(225+Math.sin(a)*r1).toFixed(1)} Z" fill="${i%2?'#fff':'#1a1020'}" opacity="${i%2?.55:.5}"/>`}return d},
+    over:u=>`<rect width="400" height="400" fill="url(#${u}vg)"/>`,defsExtra:1}},
+{ num:6, name:'夕焼けのエモい情景', desc:'オレンジと紫の空、逆光の影、まぶしいリムライト。', good:'空の色が大きく変わり、広い面でもピースの違いが出る', warn:'全体に暗めで、細かい色の見分けはやや難しい', clue:['ok','◎ 多い'],
+  cfg:{sky:'dusk',bloom:.35,bloomTh:.55,shadow:.45,off:{sx:-8,sy:-10,hx:6,hy:7},
+    fill:s=>s.role==='bg'?(isCloud(s)?mix('#ffd0c0','#ff8a6a',.4):mix(adj(s.c,{s:.8}),'#4a2b66',.62)):mix(adj(s.c,{s:1.1}),'#ff8a4a',.16),
+    shade:(s,c)=>s.role==='bg'?null:mix(c,'#4a2060',.55),
+    light:(s,c)=>s.role==='bg'?(isCloud(s)?'#fff0d8':null):'#ffd9a0',
+    line:(s,c)=>s.role==='bg'?null:darken(mix(c,'#4a2060',.5),.4),lw:()=>1.5,
+    defs:(u,sub)=>raysDef(u,sub.sun,'#ffd9a0')+flareDef(u),
+    over:(u,sub)=>rays(u,sub.sun,.2,9,.13)+flare(u,sub.sun,1.1)}},
+{ num:7, name:'夜景ネオン', desc:'暗い夜空に、光る窓と街灯。ネオンのふちどり。', good:'光る部分が目印になり、暗い部分とのコントラストが強い', warn:'全体が暗く、幼児向けとしては雰囲気が大人っぽい', clue:['mid','○ ふつう'],
+  cfg:{sky:'night',shadow:.5,off:{sx:-7,sy:-9,hx:3,hy:4},
+    fill:s=>{return s.role==='bg'?(isCloud(s)?'#2a3a7a':(CX.em(s)?lighten(s.c,.25):mix(s.c,'#0b1030',.64))):(CX.em(s)?lighten(s.c,.2):mix(adj(s.c,{s:1.1}),'#0b1030',.34))},
+    shade:(s,c)=>(s.role==='bg'||CX.em(s))?null:'#070a22',
+    light:(s,c)=>(s.role==='bg'||CX.em(s)||s.bw<22)?null:(s.i%2?'#5ff3ff':'#ff6ad8'),
+    line:(s,c)=>s.role==='bg'?null:'#050818',lw:()=>1.4,
+    emissive:(s)=>CX.em(s),
+    defs:(u,sub)=>{CX.em=s=>{if(s.role==='s'||s.role==='line')return false;const [r,g,b]=h2r(s.c);return lum(s.c)>.8&&r>200&&b<236};return vignetteDef(u,'#02030f',.5)},
+    over:(u,sub)=>{const r=rnd(5);let d='';for(let i=0;i<46;i++){d+=`<circle cx="${(r()*400).toFixed(0)}" cy="${(r()*170).toFixed(0)}" r="${(.7+r()*1.6).toFixed(1)}" fill="#fff" opacity="${(.4+r()*.6).toFixed(2)}"/>`}return d+`<rect width="400" height="400" fill="url(#${u}vg)"/>`}}},
+{ num:8, name:'ちびキャラ（ぷにぷに太線）', desc:'丸くて太いふちどりに、つやつやのハイライト。ゆるかわいい絵。', good:'太い線と丸いハイライトで、小さく見ても形が分かる。幼児向き', warn:'細かい描き込みが少なくなる', clue:['ok','◎ 多い'],
+  cfg:{sky:'soft',bloom:.22,shadow:.25,off:{sx:-6,sy:-8,hx:9,hy:11},
+    fill:s=>adj(s.c,{s:.95,l:.1}),
+    shade:(s,c)=>isCloud(s)?mix(c,'#c9d6f0',.7):adj(c,{l:-.1}),
+    light:(s,c)=>(s.role==='bg'&&!isCloud(s))?null:lighten(c,.62),
+    line:(s,c)=>s.role==='bg'?null:darken(c,.4),lw:()=>4.2,
+    extra:(u,s,c,k)=>(s.role!=='bg'&&Math.min(s.bw,s.bh)>=34)?`<ellipse cx="${(s.bx+s.bw*.26).toFixed(1)}" cy="${(s.by+s.bh*.24).toFixed(1)}" rx="${(s.bw*.11).toFixed(1)}" ry="${(Math.min(s.bw,s.bh)*.07).toFixed(1)}" transform="rotate(-28 ${(s.bx+s.bw*.26).toFixed(1)} ${(s.by+s.bh*.24).toFixed(1)})" fill="#fff" opacity=".85"/>`:'',
+    over:u=>star(46,52,12,'#fff',.95)+star(350,92,9,'#fff',.9)+star(330,330,11,'#fff',.85)}},
+{ num:9, name:'劇場版シネマ（ワイド画面）', desc:'上下に黒帯、オレンジとティールの色調、光の筋。映画の一場面。', good:'色調が統一され、光の筋と影でメリハリがある', warn:'黒帯の分だけ絵が狭くなり、パズルの絵は上下を切る必要がある', clue:['ok','◎ 多い'],
+  cfg:{sky:'cine',bloom:.35,shadow:.45,letterbox:46,off:{sx:-8,sy:-10,hx:4,hy:5},
+    fill:s=>s.role==='bg'?adj(mix(s.c,'#2a6a8a',.12),{s:.95}):mix(adj(s.c,{s:1.05}),'#ff9a5a',.08),
+    shade:(s,c)=>isCloud(s)?mix(c,'#6a8aa8',.6):mix(c,'#0d3a4a',.55),
+    light:(s,c)=>(s.role==='bg'&&!isCloud(s))?null:'#ffd0a0',
+    line:(s,c)=>s.role==='bg'?null:darken(mix(c,'#0d3a4a',.4),.3),lw:()=>1.5,
+    defs:(u,sub)=>raysDef(u,sub.sun,'#ffe2b0')+flareDef(u)+grainDef(u,.9)+vignetteDef(u,'#02101a',.55),
+    over:(u,sub)=>rays(u,sub.sun,.2,8,.12)+`<g style="mix-blend-mode:screen"><ellipse cx="${sub.sun.x}" cy="${sub.sun.y}" rx="190" ry="4" fill="#9fe3ff" opacity=".5"/></g>`+flare(u,sub.sun,1.1)+grain(u,.3,'overlay')+`<rect width="400" height="400" fill="url(#${u}vg)"/>`}},
+{ num:10, name:'メカアニメ（金属の光）', desc:'金属のつやと、鋭い白いハイライト。ロボットアニメ風。', good:'金属の光の帯が手がかりに。乗り物の力強さが出る', warn:'金属の質感は、動物には合いにくい', clue:['ok','◎ 多い'],
+  cfg:{sky:'tech',bloom:.4,bloomTh:.5,shadow:.45,off:{sx:-7,sy:-9,hx:7,hy:8},
+    fill:s=>s.role==='bg'?adj(s.c,{s:1.05,l:-.05}):adj(s.c,{s:1.25,l:-.02}),
+    paint:(s,c)=>(s.role==='bg'||s.role==='line'||s.bw<20)?c:`url(#${CX.u}m${CX.mi[c]})`,
+    shade:(s,c)=>s.role==='bg'?(isCloud(s)?mix(c,'#6f9ed8',.6):null):darken(c,.4),
+    light:(s,c)=>(s.role==='bg'||s.bw<26)?null:'#ffffff',
+    line:(s,c)=>s.role==='bg'?null:'#0a1a33',lw:()=>1.5,
+    defs:(u,sub)=>{const cols=[...new Set(sub.shapes.filter(s=>s.role!=='bg'&&s.role!=='line'&&s.role!=='s').map(s=>adj(s.c,{s:1.25,l:-.02})))];CX.mi={};
+      return cols.map((c,i)=>{CX.mi[c]=i;return `<linearGradient id="${u}m${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lighten(c,.4)}"/><stop offset=".42" stop-color="${c}"/><stop offset=".5" stop-color="${darken(c,.32)}"/><stop offset=".78" stop-color="${darken(c,.12)}"/><stop offset="1" stop-color="${lighten(c,.12)}"/></linearGradient>`}).join('')+vignetteDef(u,'#020a1c',.4)},
+    over:(u,sub)=>{const r=rnd(9);let d='';for(let i=0;i<14;i++){const y=30+r()*330,x=r()*300,l=40+r()*120;d+=`<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${l.toFixed(0)}" height="${(1+r()*1.8).toFixed(1)}" fill="#fff" opacity="${(.18+r()*.25).toFixed(2)}"/>`}
+      return d+star(sub.sun.x,sub.sun.y,34,'#fff',.95)+star(sub.sun.x,sub.sun.y,20,'#9fe3ff',.9,45)+`<rect width="400" height="400" fill="url(#${u}vg)"/>`}}},
+];
+STYLES.forEach(st=>{st.render=sub=>anime(sub,st.cfg)});
+
+/* ------------------------------------------------------------ パズルの線（5×5・見た目だけ） */
+function jigsaw(n=5){
+  const S=400/n;let seed=11;const rn=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+  const knob=(x0,y0,x1,y1,dir)=>{const dx=x1-x0,dy=y1-y0,nx=-dy*dir,ny=dx*dir;
+    const p=(u,v)=>`${(x0+dx*u+nx*v).toFixed(1)} ${(y0+dy*u+ny*v).toFixed(1)}`;
+    return `L${p(.35,0)} C${p(.41,0)} ${p(.40,.06)} ${p(.38,.10)} C${p(.30,.20)} ${p(.42,.27)} ${p(.50,.27)} C${p(.58,.27)} ${p(.70,.20)} ${p(.62,.10)} C${p(.60,.06)} ${p(.59,0)} ${p(.65,0)} L${x1.toFixed(1)} ${y1.toFixed(1)}`};
+  let d='';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    if(c<n-1){const x=(c+1)*S,y0=r*S,y1=(r+1)*S;d+=`M${x} ${y0} ${knob(x,y0,x,y1,rn()<.5?1:-1)} `}
+    if(r<n-1){const y=(r+1)*S,x0=c*S,x1=(c+1)*S;d+=`M${x0} ${y} ${knob(x0,y,x1,y,rn()<.5?1:-1)} `}
+  }
+  return `<svg class="jig" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice"><path d="${d}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="4" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".95" stroke-width="2" stroke-linejoin="round"/><rect x="1" y="1" width="398" height="398" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2"/></svg>`;
+}
+const JIG=jigsaw(5);
+
+/* ------------------------------------------------------------ 画面 */
+const state={subj:0,jig:false};
+const grid=document.getElementById('grid');
+STYLES.forEach((st,i)=>{
+  const card=document.createElement('article');card.className='card';
+  card.innerHTML=`<button class="pv" type="button" aria-label="${st.name}を大きく見る"><span class="n">${String(st.num).padStart(2,'0')}</span></button>
+  <div class="info"><h2>${st.name}</h2><p>${st.desc}</p><p class="good">${st.good}</p><p class="warn">${st.warn}</p><div class="cl">手がかり <b class="${st.clue[0]}">${st.clue[1]}</b></div></div>`;
+  grid.appendChild(card);st.pv=card.querySelector('.pv');
+  st.pv.addEventListener('click',()=>openModal(i));
+});
+function paint(i){
+  const st=STYLES[i];
+  st.pv.querySelectorAll('svg,.jig').forEach(e=>e.remove());
+  st.pv.insertAdjacentHTML('afterbegin',st.render(SUBJECTS[state.subj]));
+  if(state.jig)st.pv.insertAdjacentHTML('beforeend',JIG);
+}
+const io=('IntersectionObserver' in window)?new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const i=STYLES.findIndex(s=>s.pv===e.target);if(i>=0&&!STYLES[i].done){STYLES[i].done=1;paint(i)}}})},{rootMargin:'300px'}):null;
+STYLES.forEach((st,i)=>{if(io)io.observe(st.pv);else{st.done=1;paint(i)}});
+function repaintAll(){STYLES.forEach((st,i)=>{if(st.done)paint(i)})}
+const tabs=document.getElementById('tabs');
+SUBJECTS.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=s.name;b.setAttribute('aria-pressed',i===0);b.onclick=()=>{state.subj=i;tabs.querySelectorAll('button').forEach((x,j)=>x.setAttribute('aria-pressed',j===i));repaintAll()};tabs.appendChild(b)});
+document.getElementById('jig').addEventListener('change',e=>{state.jig=e.target.checked;repaintAll();if(modal.classList.contains('on'))renderModal()});
+
+/* ------------------------------------------------------------ 拡大 */
+const modal=document.getElementById('modal'),mBig=document.getElementById('mBig'),mThree=document.getElementById('mThree');
+let mi=0,ms=0;
+function renderModal(){
+  const st=STYLES[mi];document.getElementById('mTitle').textContent=`${String(st.num).padStart(2,'0')} ${st.name}`;
+  mBig.innerHTML=st.render(SUBJECTS[ms])+(state.jig?JIG:'');
+  mThree.innerHTML='';
+  SUBJECTS.forEach((sb,k)=>{const b=document.createElement('button');b.type='button';b.setAttribute('aria-pressed',k===ms);b.setAttribute('aria-label',sb.name);b.innerHTML=st.render(sb);b.onclick=()=>{ms=k;renderModal()};mThree.appendChild(b)});
+}
+function openModal(i){mi=i;ms=state.subj;modal.classList.add('on');renderModal();document.getElementById('mClose').focus()}
+document.getElementById('mClose').onclick=()=>modal.classList.remove('on');
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('on')});
+addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('on')});
+})();
+</script>
+</body></html>
